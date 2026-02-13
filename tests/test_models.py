@@ -1,0 +1,150 @@
+from pathlib import Path
+
+import pytest
+from pydantic import ValidationError
+
+from haiku.skills.models import (
+    DecompositionPlan,
+    OrchestratorResult,
+    Skill,
+    SkillMetadata,
+    SkillSource,
+    Task,
+    TaskStatus,
+)
+
+
+class TestSkillMetadata:
+    def test_minimal(self):
+        meta = SkillMetadata(name="my-skill", description="Does things.")
+        assert meta.name == "my-skill"
+        assert meta.description == "Does things."
+        assert meta.license is None
+        assert meta.compatibility is None
+        assert meta.metadata == {}
+        assert meta.allowed_tools == []
+
+    def test_all_fields(self):
+        meta = SkillMetadata(
+            name="full-skill",
+            description="A full skill.",
+            license="MIT",
+            compatibility="Requires network",
+            metadata={"author": "test", "version": "1.0"},
+            allowed_tools=["Bash(git:*)", "Read"],
+        )
+        assert meta.license == "MIT"
+        assert meta.compatibility == "Requires network"
+        assert meta.metadata == {"author": "test", "version": "1.0"}
+        assert meta.allowed_tools == ["Bash(git:*)", "Read"]
+
+    def test_name_validation_uppercase_rejected(self):
+        with pytest.raises(ValidationError):
+            SkillMetadata(name="MySkill", description="Bad name.")
+
+    def test_name_validation_leading_hyphen_rejected(self):
+        with pytest.raises(ValidationError):
+            SkillMetadata(name="-bad", description="Bad name.")
+
+    def test_name_validation_trailing_hyphen_rejected(self):
+        with pytest.raises(ValidationError):
+            SkillMetadata(name="bad-", description="Bad name.")
+
+    def test_name_validation_consecutive_hyphens_rejected(self):
+        with pytest.raises(ValidationError):
+            SkillMetadata(name="bad--name", description="Bad name.")
+
+    def test_name_validation_too_long_rejected(self):
+        with pytest.raises(ValidationError):
+            SkillMetadata(name="a" * 65, description="Too long name.")
+
+    def test_name_validation_empty_rejected(self):
+        with pytest.raises(ValidationError):
+            SkillMetadata(name="", description="Empty name.")
+
+    def test_description_empty_rejected(self):
+        with pytest.raises(ValidationError):
+            SkillMetadata(name="ok", description="")
+
+    def test_description_too_long_rejected(self):
+        with pytest.raises(ValidationError):
+            SkillMetadata(name="ok", description="x" * 1025)
+
+
+class TestSkillSource:
+    def test_values(self):
+        assert SkillSource.FILESYSTEM.value == "filesystem"
+        assert SkillSource.ENTRYPOINT.value == "entrypoint"
+        assert SkillSource.MCP.value == "mcp"
+
+
+class TestSkill:
+    def test_minimal(self):
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(metadata=meta, source=SkillSource.FILESYSTEM)
+        assert skill.metadata.name == "test"
+        assert skill.source == SkillSource.FILESYSTEM
+        assert skill.path is None
+        assert skill.instructions is None
+
+    def test_with_path_and_instructions(self):
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(
+            metadata=meta,
+            source=SkillSource.FILESYSTEM,
+            path=Path("/some/path"),
+            instructions="Do the thing.",
+        )
+        assert skill.path == Path("/some/path")
+        assert skill.instructions == "Do the thing."
+
+
+class TestTaskStatus:
+    def test_values(self):
+        assert TaskStatus.PENDING.value == "pending"
+        assert TaskStatus.IN_PROGRESS.value == "in_progress"
+        assert TaskStatus.COMPLETED.value == "completed"
+        assert TaskStatus.FAILED.value == "failed"
+
+
+class TestTask:
+    def test_defaults(self):
+        task = Task(id="1", description="Do something.", skills=["my-skill"])
+        assert task.status == TaskStatus.PENDING
+        assert task.result is None
+        assert task.error is None
+
+    def test_completed_task(self):
+        task = Task(
+            id="1",
+            description="Do something.",
+            skills=["my-skill"],
+            status=TaskStatus.COMPLETED,
+            result="Done.",
+        )
+        assert task.status == TaskStatus.COMPLETED
+        assert task.result == "Done."
+
+
+class TestDecompositionPlan:
+    def test_plan(self):
+        tasks = [Task(id="1", description="Step 1.", skills=["a"])]
+        plan = DecompositionPlan(tasks=tasks, reasoning="Simple task.")
+        assert len(plan.tasks) == 1
+        assert plan.reasoning == "Simple task."
+
+
+class TestOrchestratorResult:
+    def test_result(self):
+        tasks = [
+            Task(
+                id="1",
+                description="Step 1.",
+                skills=["a"],
+                status=TaskStatus.COMPLETED,
+                result="Done.",
+            )
+        ]
+        result = OrchestratorResult(answer="Final answer.", tasks=tasks)
+        assert result.answer == "Final answer."
+        assert len(result.tasks) == 1

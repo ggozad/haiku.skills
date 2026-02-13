@@ -85,3 +85,10 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 norecursedirs = [".git", ".venv"]
 filterwarnings = ["error", "ignore::UserWarning", "ignore::DeprecationWarning"]
+
+[tool.coverage.run]
+source = ["haiku/skills"]
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
