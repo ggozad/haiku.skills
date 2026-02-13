@@ -1,0 +1,391 @@
+interactions:
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '1735'
+      content-type:
+      - application/json
+      host:
+      - localhost:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a task planning agent. Your job is to analyze a user request and decompose it into subtasks that can be handled by available skills.
+
+          ## Available skills
+
+          - **calculator**: Perform mathematical calculations.
+
+          ## Instructions
+
+          Given the user's request, create a plan by:
+          1. Identifying which skills are relevant to the request
+          2. Breaking the request into subtasks, each assigned to one or more skills
+          3. Keeping it simple: if the request can be handled by a single skill, create a single task
+
+          Each task must have:
+          - A unique id (starting from "1")
+          - A clear description of what needs to be done
+          - A list of skill names to use (from the available skills above)
+
+          Provide brief reasoning for your decomposition.
+        role: system
+      - content: What is 15 * 23 + 7?
+        role: user
+      model: gpt-oss
+      stream: false
+      tool_choice: required
+      tools:
+      - function:
+          description: The final response which ends this conversation
+          name: final_result
+          parameters:
+            $defs:
+              Task:
+                additionalProperties: false
+                properties:
+                  description:
+                    type: string
+                  error:
+                    anyOf:
+                    - type: string
+                    - type: 'null'
+                    default: null
+                  id:
+                    type: string
+                  result:
+                    anyOf:
+                    - type: string
+                    - type: 'null'
+                    default: null
+                  skills:
+                    items:
+                      type: string
+                    type: array
+                  status:
+                    anyOf:
+                    - $ref: '#/$defs/TaskStatus'
+                    default: pending
+                required:
+                - id
+                - description
+                - skills
+                type: object
+              TaskStatus:
+                enum:
+                - pending
+                - in_progress
+                - completed
+                - failed
+                type: string
+            additionalProperties: false
+            properties:
+              reasoning:
+                type: string
+              tasks:
+                items:
+                  $ref: '#/$defs/Task'
+                type: array
+            required:
+            - tasks
+            - reasoning
+            type: object
+        type: function
+    uri: http://localhost:11434/v1/chat/completions
+  response:
+    headers:
+      content-length:
+      - '784'
+      content-type:
+      - application/json
+    parsed_body:
+      choices:
+      - finish_reason: tool_calls
+        index: 0
+        message:
+          content: ''
+          reasoning: 'User asks: "What is 15 * 23 + 7?" We need to compute the expression. The relevant skill is calculator.
+            We produce a single task.'
+          role: assistant
+          tool_calls:
+          - function:
+              arguments: '{"reasoning":"The user requests the result of a simple arithmetic expression. The calculator skill
+                can perform this.","tasks":[{"description":"Compute the expression: 15 * 23 + 7","id":"1","skills":["calculator"]}]}'
+              name: final_result
+            id: call_728l9g7o
+            index: 0
+            type: function
+      created: 1771023054
+      id: chatcmpl-73
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 103
+        prompt_tokens: 297
+        total_tokens: 400
+    status:
+      code: 200
+      message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '1000'
+      content-type:
+      - application/json
+      host:
+      - localhost:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a focused execution agent. Complete the following task using the skills and instructions provided.
+
+          ## Task
+
+          Compute the expression: 15 * 23 + 7
+
+          ## Skill instructions
+
+          ## calculator
+
+          You are a calculator assistant. Use the calculate tool to evaluate mathematical expressions. Always use the tool rather than computing in your head.
+
+          ## Guidelines
+
+          - Follow the skill instructions carefully
+          - Stay focused on the specific task described above
+          - Provide a clear, complete result
+        role: system
+      - content: What is 15 * 23 + 7?
+        role: user
+      model: gpt-oss
+      stream: false
+      tool_choice: auto
+      tools:
+      - function:
+          description: Evaluate a mathematical expression and return the result.
+          name: calculate
+          parameters:
+            additionalProperties: false
+            properties:
+              expression:
+                description: A mathematical expression to evaluate, e.g. '2 + 2'.
+                type: string
+            required:
+            - expression
+            type: object
+          strict: true
+        type: function
+    uri: http://localhost:11434/v1/chat/completions
+  response:
+    headers:
+      content-length:
+      - '762'
+      content-type:
+      - application/json
+    parsed_body:
+      choices:
+      - finish_reason: tool_calls
+        index: 0
+        message:
+          content: ''
+          reasoning: |-
+            The user asks "What is 15 * 23 + 7?" I need to compute. According to guidelines and instructions: "You are a focused execution agent. Compute the expression 15 * 23 + 7. Use the calculate tool." So use function call.
+
+            We should call function: calculate with expression "15 * 23 + 7". Then return result.
+          role: assistant
+          tool_calls:
+          - function:
+              arguments: '{"expression":"15 * 23 + 7"}'
+              name: calculate
+            id: call_rdyjq86j
+            index: 0
+            type: function
+      created: 1771023058
+      id: chatcmpl-667
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 106
+        prompt_tokens: 248
+        total_tokens: 354
+    status:
+      code: 200
+      message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '1560'
+      content-type:
+      - application/json
+      host:
+      - localhost:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a focused execution agent. Complete the following task using the skills and instructions provided.
+
+          ## Task
+
+          Compute the expression: 15 * 23 + 7
+
+          ## Skill instructions
+
+          ## calculator
+
+          You are a calculator assistant. Use the calculate tool to evaluate mathematical expressions. Always use the tool rather than computing in your head.
+
+          ## Guidelines
+
+          - Follow the skill instructions carefully
+          - Stay focused on the specific task described above
+          - Provide a clear, complete result
+        role: system
+      - content: What is 15 * 23 + 7?
+        role: user
+      - content: null
+        reasoning: |-
+          The user asks "What is 15 * 23 + 7?" I need to compute. According to guidelines and instructions: "You are a focused execution agent. Compute the expression 15 * 23 + 7. Use the calculate tool." So use function call.
+
+          We should call function: calculate with expression "15 * 23 + 7". Then return result.
+        role: assistant
+        tool_calls:
+        - function:
+            arguments: '{"expression":"15 * 23 + 7"}'
+            name: calculate
+          id: call_rdyjq86j
+          type: function
+      - content: '352'
+        role: tool
+        tool_call_id: call_rdyjq86j
+      model: gpt-oss
+      stream: false
+      tool_choice: auto
+      tools:
+      - function:
+          description: Evaluate a mathematical expression and return the result.
+          name: calculate
+          parameters:
+            additionalProperties: false
+            properties:
+              expression:
+                description: A mathematical expression to evaluate, e.g. '2 + 2'.
+                type: string
+            required:
+            - expression
+            type: object
+          strict: true
+        type: function
+    uri: http://localhost:11434/v1/chat/completions
+  response:
+    headers:
+      content-length:
+      - '333'
+      content-type:
+      - application/json
+    parsed_body:
+      choices:
+      - finish_reason: stop
+        index: 0
+        message:
+          content: The result of \(15 \times 23 + 7\) is **352**.
+          role: assistant
+      created: 1771023059
+      id: chatcmpl-671
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 23
+        prompt_tokens: 365
+        total_tokens: 388
+    status:
+      code: 200
+      message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '650'
+      content-type:
+      - application/json
+      host:
+      - localhost:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a synthesis agent. Your job is to combine the results from multiple subtasks into a coherent final answer for the user.
+
+          ## Original request
+
+          What is 15 * 23 + 7?
+
+          ## Subtask results
+
+          ### Task 1: Compute the expression: 15 * 23 + 7
+          The result of \(15 \times 23 + 7\) is **352**.
+
+          ## Instructions
+
+          Combine the subtask results into a single, coherent response that fully addresses the user's original request. Do not mention the subtasks or the decomposition process — just provide the final answer.
+        role: system
+      - content: What is 15 * 23 + 7?
+        role: user
+      model: gpt-oss
+      stream: false
+    uri: http://localhost:11434/v1/chat/completions
+  response:
+    headers:
+      content-length:
+      - '426'
+      content-type:
+      - application/json
+    parsed_body:
+      choices:
+      - finish_reason: stop
+        index: 0
+        message:
+          content: The result of \(15 \times 23 + 7\) is **352**.
+          reasoning: 'We just need to answer. The calculation: 15*23=345, plus 7 is 352. Answer 352.'
+          role: assistant
+      created: 1771023061
+      id: chatcmpl-128
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 56
+        prompt_tokens: 208
+        total_tokens: 264
+    status:
+      code: 200
+      message: OK
+version: 1

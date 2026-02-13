@@ -1,0 +1,411 @@
+interactions:
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '2246'
+      content-type:
+      - application/json
+      host:
+      - localhost:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a task planning agent. Your job is to analyze a user request and decompose it into subtasks that can be handled by available skills.
+
+          ## Available skills
+
+          - **simple-skill**: A simple test skill that does basic operations.
+          - **skill-with-refs**: A skill with references, metadata, and all optional fields.
+          - **summarizer**: Summarize text into concise bullet points.
+          - **translator**: Translate text between languages.
+
+          ## Instructions
+
+          Given the user's request, create a plan by:
+          1. Identifying which skills are relevant to the request
+          2. Breaking the request into subtasks, each assigned to one or more skills
+          3. Keeping it simple: if the request can be handled by a single skill, create a single task
+
+          Each task must have:
+          - A unique id (starting from "1")
+          - A clear description of what needs to be done
+          - A list of skill names to use (from the available skills above)
+
+          Provide brief reasoning for your decomposition.
+        role: system
+      - content: 'First summarize the following text, then translate the summary to French: Machine learning is a subset of
+          artificial intelligence that enables systems to learn and improve from experience without being explicitly programmed.
+          It focuses on developing algorithms that can access data and use it to learn for themselves.'
+        role: user
+      model: gpt-oss
+      stream: false
+      tool_choice: required
+      tools:
+      - function:
+          description: The final response which ends this conversation
+          name: final_result
+          parameters:
+            $defs:
+              Task:
+                additionalProperties: false
+                properties:
+                  description:
+                    type: string
+                  error:
+                    anyOf:
+                    - type: string
+                    - type: 'null'
+                    default: null
+                  id:
+                    type: string
+                  result:
+                    anyOf:
+                    - type: string
+                    - type: 'null'
+                    default: null
+                  skills:
+                    items:
+                      type: string
+                    type: array
+                  status:
+                    anyOf:
+                    - $ref: '#/$defs/TaskStatus'
+                    default: pending
+                required:
+                - id
+                - description
+                - skills
+                type: object
+              TaskStatus:
+                enum:
+                - pending
+                - in_progress
+                - completed
+                - failed
+                type: string
+            additionalProperties: false
+            properties:
+              reasoning:
+                type: string
+              tasks:
+                items:
+                  $ref: '#/$defs/Task'
+                type: array
+            required:
+            - tasks
+            - reasoning
+            type: object
+        type: function
+    uri: http://localhost:11434/v1/chat/completions
+  response:
+    headers:
+      content-length:
+      - '1275'
+      content-type:
+      - application/json
+    parsed_body:
+      choices:
+      - finish_reason: tool_calls
+        index: 0
+        message:
+          content: ''
+          reasoning: 'We need to produce plan. The user''s request: "First summarize the following text, then translate the
+            summary to French". So two subtasks: summarization, translation. Use summarizer then translator. Provide plan:
+            tasks 1 and 2. Provide reasoning. No final function.'
+          role: assistant
+          tool_calls:
+          - function:
+              arguments: '{"reasoning":"The request requires two consecutive operations: summarization of the provided text
+                and then translation of that summary into French. Summarizer skill will produce the concise summary, and translator
+                skill will transform that summary from English to French. Two distinct tasks are defined, each with the appropriate
+                skill. ","tasks":[{"description":"Summarize the provided text about machine learning.","id":"1","skills":["summarizer"]},{"description":"Translate
+                the summary produced in Task 1 into French.","id":"2","skills":["translator"]}]}'
+              name: final_result
+            id: call_bpat0mme
+            index: 0
+            type: function
+      created: 1771023068
+      id: chatcmpl-262
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 186
+        prompt_tokens: 391
+        total_tokens: 577
+    status:
+      code: 200
+      message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '1011'
+      content-type:
+      - application/json
+      host:
+      - localhost:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a focused execution agent. Complete the following task using the skills and instructions provided.
+
+          ## Task
+
+          Summarize the provided text about machine learning.
+
+          ## Skill instructions
+
+          ## summarizer
+
+          # Summarizer
+
+          You are a text summarization assistant. When given text:
+
+          1. Identify the key points
+          2. Condense them into concise bullet points
+          3. Preserve the essential meaning
+          4. Return a markdown bulleted list
+
+          ## Guidelines
+
+          - Follow the skill instructions carefully
+          - Stay focused on the specific task described above
+          - Provide a clear, complete result
+        role: system
+      - content: 'First summarize the following text, then translate the summary to French: Machine learning is a subset of
+          artificial intelligence that enables systems to learn and improve from experience without being explicitly programmed.
+          It focuses on developing algorithms that can access data and use it to learn for themselves.'
+        role: user
+      model: gpt-oss
+      stream: false
+    uri: http://localhost:11434/v1/chat/completions
+  response:
+    headers:
+      content-type:
+      - application/json
+      transfer-encoding:
+      - chunked
+    parsed_body:
+      choices:
+      - finish_reason: stop
+        index: 0
+        message:
+          content: "**English summary**\n\n- Machine learning is a subset of AI that enables systems to learn and improve
+            from experience without explicit programming.  \n- It focuses on developing algorithms that can access data and
+            use it to learn for themselves.  \n\n**Traduction en français**\n\n- L’apprentissage automatique est une branche
+            de l’intelligence artificielle qui permet aux systèmes d’apprendre et de s’améliorer grâce à l’expérience sans
+            être explicitement programmés.  \n- Il vise à développer des algorithmes capables d’accéder aux données et de
+            les utiliser pour apprendre par eux‑mêmes."
+          reasoning: "We need to first summarize the provided text, then translate the summary to French. The output should
+            be in markdown bulleted list? Actually the instructions: Summarizer skill says return markdown bullet list. But
+            the user wants first summary then translate summary to French. So we need produce a summary (likely bullet points)
+            then translate it. It's unclear if we need to produce both English summary and French translation. Should we produce
+            French bullet list? Possibly we output two sections: English summary (in bullet points), then French translation
+            (in bullet points). That may satisfy. Let's do that.\n\nKey points from text: machine learning is subset of AI,
+            enables systems to learn/improve from experience without explicit programming, focuses on developing algorithms
+            that access data and learn themselves.\n\nThus English summary: \n- Machine learning is a subset of AI that allows
+            systems to learn and improve from experience without explicit programming.\n- It focuses on creating algorithms
+            that can consume data and use it to learn autonomously.\n\nFrench translation: \n- L'apprentissage automatique
+            est une branche de l'intelligence artificielle qui permet aux systèmes d'apprendre et de s'améliorer grâce à l'expérience
+            sans être explicitement programmés.\n- Il cherche à développer des algorithmes capables d'accéder aux données
+            et de les utiliser pour apprendre par eux-mêmes.\n\nWe need markdown bullets. So:\n\n- English bullet list\n-
+            French bullet list\n\nAlso perhaps include headings? Not necessary. Just list items. Let's produce two bullet
+            lists.\n\nOk."
+          role: assistant
+      created: 1771023081
+      id: chatcmpl-666
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 425
+        prompt_tokens: 243
+        total_tokens: 668
+    status:
+      code: 200
+      message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '1053'
+      content-type:
+      - application/json
+      host:
+      - localhost:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a focused execution agent. Complete the following task using the skills and instructions provided.
+
+          ## Task
+
+          Translate the summary produced in Task 1 into French.
+
+          ## Skill instructions
+
+          ## translator
+
+          # Translator
+
+          You are a translation assistant. When given text and a target language:
+
+          1. Identify the source language
+          2. Translate the text accurately to the target language
+          3. Preserve the original meaning and tone
+          4. Return only the translated text
+
+          ## Guidelines
+
+          - Follow the skill instructions carefully
+          - Stay focused on the specific task described above
+          - Provide a clear, complete result
+        role: system
+      - content: 'First summarize the following text, then translate the summary to French: Machine learning is a subset of
+          artificial intelligence that enables systems to learn and improve from experience without being explicitly programmed.
+          It focuses on developing algorithms that can access data and use it to learn for themselves.'
+        role: user
+      model: gpt-oss
+      stream: false
+    uri: http://localhost:11434/v1/chat/completions
+  response:
+    headers:
+      content-type:
+      - application/json
+      transfer-encoding:
+      - chunked
+    parsed_body:
+      choices:
+      - finish_reason: stop
+        index: 0
+        message:
+          content: "Machine learning allows systems to learn and improve from experience without explicit programming, focusing
+            on developing algorithms that use data to learn on their own.  \n\nL’apprentissage automatique permet aux systèmes
+            d’apprendre et de s’améliorer grâce à l’expérience sans être explicitement programmés, en se concentrant sur le
+            développement d’algorithmes qui utilisent les données pour apprendre par eux-mêmes."
+          reasoning: |-
+            The user: "First summarize the following text, then translate the summary to French: Machine learning is a subset of artificial intelligence that enables systems to learn and improve from experience without being explicitly programmed. It focuses on developing algorithms that can access data and use it to learn for themselves."
+
+            We have to do summarization first, then translate that summary to French in a single answer. The instructions say: "Translate the summary into French." So the answer should be the French translation. But guidelines earlier: "Return only the translated text". But that was under the translator skill, but the user asks summarization first, then translation. That might be contradictory. The conversation: The user says "First summarize the following text, then translate the summary to French". So the assistant should produce the summary first (in English maybe), then the translation. But the translator skill says "Return only the translated text." But that conflicts: translator skill would return just translated text. But we have a higher-level instruction: "First summarize the following text, then translate the summary to French." So the assistant should do that: produce summary, then translation. But translator skill says "Return only the translated text." This might be a conflict. Which instruction has higher priority? The system instructions: "When given text and a target language: ... Return only the translated text." The user instruction instructs "First summarize the following text, then translate the summary to French". The user instruction asks for summary before translation. The translator skill is a lower-level instruction. So we should comply with the user request: first provide a summary, then the French translation. But the translator skill says "Return only the translated text". This may mean that when the assistant is translating, it shouldn't provide extra commentary. But after summarizing, the assistant should not provide any instructions, but just the summary and then the translation. So we should output two lines: summary, then translation in French. That's the best approach.
+
+            We must do a succinct summary: Machine learning allows systems to learn from data without explicit programming. Use algorithms to learn from data.
+
+            Now translate summary to French: "L'apprentissage automatique permet aux systèmes d'apprendre et de s'améliorer à partir des données sans être explicitement programmés, en développant des algorithmes capables de tirer des enseignements autonomes."
+
+            We need exactly the translation of the summary; keep meaning. Our summary: "Machine learning allows systems to learn and improve from experience without explicit programming, focusing on developing algorithms that use data to learn on their own."
+
+            Translate that: "L'apprentissage automatique permet aux systèmes d'apprendre et de s'améliorer grâce à l'expérience sans être explicitement programmés, en se concentrant sur le développement d'algorithmes qui utilisent les données pour apprendre par eux-mêmes."
+
+            Make it concise. Good.
+
+            Thus output: first the summary in English, then the French translation. No extra explanation. Let's do it.
+          role: assistant
+      created: 1771023104
+      id: chatcmpl-137
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 677
+        prompt_tokens: 245
+        total_tokens: 922
+    status:
+      code: 200
+      message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '2337'
+      content-type:
+      - application/json
+      host:
+      - localhost:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: "You are a synthesis agent. Your job is to combine the results from multiple subtasks into a coherent final
+          answer for the user.\n\n## Original request\n\nFirst summarize the following text, then translate the summary to
+          French: Machine learning is a subset of artificial intelligence that enables systems to learn and improve from experience
+          without being explicitly programmed. It focuses on developing algorithms that can access data and use it to learn
+          for themselves.\n\n## Subtask results\n\n### Task 1: Summarize the provided text about machine learning.\n**English
+          summary**\n\n- Machine learning is a subset of AI that enables systems to learn and improve from experience without
+          explicit programming.  \n- It focuses on developing algorithms that can access data and use it to learn for themselves.
+          \ \n\n**Traduction en français**\n\n- L’apprentissage automatique est une branche de l’intelligence artificielle
+          qui permet aux systèmes d’apprendre et de s’améliorer grâce à l’expérience sans être explicitement programmés.  \n-
+          Il vise à développer des algorithmes capables d’accéder aux données et de les utiliser pour apprendre par eux‑mêmes.\n\n###
+          Task 2: Translate the summary produced in Task 1 into French.\nMachine learning allows systems to learn and improve
+          from experience without explicit programming, focusing on developing algorithms that use data to learn on their
+          own.  \n\nL’apprentissage automatique permet aux systèmes d’apprendre et de s’améliorer grâce à l’expérience sans
+          être explicitement programmés, en se concentrant sur le développement d’algorithmes qui utilisent les données pour
+          apprendre par eux-mêmes.\n\n## Instructions\n\nCombine the subtask results into a single, coherent response that
+          fully addresses the user's original request. Do not mention the subtasks or the decomposition process — just provide
+          the final answer."
+        role: system
+      - content: 'First summarize the following text, then translate the summary to French: Machine learning is a subset of
+          artificial intelligence that enables systems to learn and improve from experience without being explicitly programmed.
+          It focuses on developing algorithms that can access data and use it to learn for themselves.'
+        role: user
+      model: gpt-oss
+      stream: false
+    uri: http://localhost:11434/v1/chat/completions
+  response:
+    headers:
+      content-length:
+      - '1907'
+      content-type:
+      - application/json
+    parsed_body:
+      choices:
+      - finish_reason: stop
+        index: 0
+        message:
+          content: "**English summary:**  \nMachine learning is a subset of artificial intelligence that enables systems to
+            learn and improve from experience without explicit programming. It focuses on developing algorithms that can access
+            data and use it to learn independently.\n\n**Traduction en français :**  \nL’apprentissage automatique est une
+            branche de l’intelligence artificielle qui permet aux systèmes d’apprendre et de s’améliorer grâce à l’expérience
+            sans être explicitement programmés. Il se concentre sur le développement d’algorithmes capables d’accéder aux
+            données et de les utiliser pour apprendre par eux‑mêmes."
+          reasoning: |-
+            We need to produce a final answer: first summarize then translate to French. The subtasks gave us an English summary and French translation. The English summary is: "Machine learning is a subset of AI that enables systems to learn and improve from experience without explicit programming. It focuses on developing algorithms that can access data and use it to learn for themselves." That is fine. The French translation: "L’apprentissage automatique est une branche de l’intelligence artificielle qui permet aux systèmes d’apprendre et de s’améliorer grâce à l’expérience sans être explicitement programmés. Il vise à développer des algorithmes capables d’accéder aux données et de les utiliser pour apprendre par eux‑mêmes." That's good. Make sure it's coherent. Provide both the English summary and the French translation. Probably separate sections, but straightforward. Use simple formatting? It's okay.
+
+            Let's produce final answer.
+          role: assistant
+      created: 1771023114
+      id: chatcmpl-988
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 303
+        prompt_tokens: 475
+        total_tokens: 778
+    status:
+      code: 200
+      message: OK
+version: 1

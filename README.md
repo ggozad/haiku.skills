@@ -7,6 +7,8 @@ A Python library for building skill-powered AI agents. Implements the [Agent Ski
 - **Skill discovery** — Scan filesystem paths for [SKILL.md](https://agentskills.io/specification) directories or load skills from Python entrypoints
 - **Task decomposition** — Agents decompose requests into subtasks, spawn dynamic sub-agents with targeted skill subsets, and synthesize results
 - **Progressive disclosure** — Lightweight metadata loaded at startup, full instructions loaded on activation
+- **In-process tools** — Attach pydantic-ai `Tool` functions or `AbstractToolset` instances to skills
+- **Script tools** — Python scripts in `scripts/` with a `main()` function, automatically discovered and executed via `uv run`
 
 ## Installation
 
@@ -79,6 +81,69 @@ def create_my_skill() -> Skill:
         instructions="# My Skill\n\nInstructions here...",
     )
 ```
+
+### Skills with tools
+
+Skills can carry in-process tools that are passed to sub-agents:
+
+```python
+from haiku.skills import Skill, SkillMetadata, SkillSource, create_agent
+
+def calculate(expression: str) -> str:
+    """Evaluate a mathematical expression."""
+    return str(eval(expression))
+
+skill = Skill(
+    metadata=SkillMetadata(
+        name="calculator",
+        description="Perform mathematical calculations.",
+    ),
+    source=SkillSource.ENTRYPOINT,
+    instructions="Use the calculate tool to evaluate expressions.",
+    tools=[calculate],
+)
+
+agent = create_agent(
+    model="anthropic:claude-sonnet-4-5-20250929",
+    skills=[skill],
+)
+```
+
+For `FunctionToolset` or other `AbstractToolset` instances, use the `toolsets` parameter instead.
+
+### Script tools
+
+Skills can include executable Python scripts in a `scripts/` directory:
+
+```
+my-skill/
+├── SKILL.md
+└── scripts/
+    └── analyze.py
+```
+
+Scripts must define a `main()` function with type-annotated parameters and a `__main__` block that reads JSON from stdin:
+
+```python
+"""Analyze data."""
+import json
+import sys
+
+def main(data: str, operation: str = "describe") -> str:
+    """Analyze the given data.
+
+    Args:
+        data: Input data to analyze.
+        operation: Analysis operation to perform.
+    """
+    return f"Analyzed {len(data)} chars with {operation}"
+
+if __name__ == "__main__":
+    args = json.loads(sys.stdin.read())
+    json.dump({"result": main(**args)}, sys.stdout)
+```
+
+Script tools are automatically discovered when a skill is activated and can use [PEP 723](https://peps.python.org/pep-0723/) inline dependencies.
 
 ### Using the registry directly
 
