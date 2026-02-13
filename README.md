@@ -5,7 +5,6 @@ A Python library for building skill-powered AI agents. Implements the [Agent Ski
 ## Features
 
 - **Skill discovery** — Scan filesystem paths for [SKILL.md](https://agentskills.io/specification) directories or load skills from Python entrypoints
-- **MCP server integration** — Each MCP server maps to one skill
 - **Task decomposition** — Agents decompose requests into subtasks, spawn dynamic sub-agents with targeted skill subsets, and synthesize results
 - **Progressive disclosure** — Lightweight metadata loaded at startup, full instructions loaded on activation
 
@@ -39,25 +38,22 @@ Instructions for the agent go here...
 
 See the [Agent Skills specification](https://agentskills.io/specification) for the full format.
 
-### Discovering skills
+### Creating an agent
 
 ```python
-from haiku.skills.registry import SkillRegistry
+from pathlib import Path
+from haiku.skills import create_agent
 
-registry = SkillRegistry()
+agent = create_agent(
+    model="anthropic:claude-sonnet-4-5-20250929",
+    skill_paths=[Path("./skills")],
+)
 
-# Discover from filesystem paths
-registry.discover(paths=[Path("./skills")])
-
-# Or from Python entrypoints
-registry.discover(use_entrypoints=True)
-
-# List available skills
-print(registry.names)
-
-# Activate a skill (loads full instructions)
-registry.activate("my-skill")
+result = await agent.run("Analyze this dataset.")
+print(result.answer)
 ```
+
+`create_agent` discovers skills, builds a registry, and returns a `SkillAgent` that handles the full orchestration pipeline: decompose the request into subtasks, execute each with a targeted sub-agent, and synthesize the results.
 
 ### Entrypoint skills
 
@@ -71,7 +67,7 @@ my-skill = "my_package.skills:create_my_skill"
 Where the entry point is a callable returning a `Skill`:
 
 ```python
-from haiku.skills.models import Skill, SkillMetadata, SkillSource
+from haiku.skills import Skill, SkillMetadata, SkillSource
 
 def create_my_skill() -> Skill:
     return Skill(
@@ -82,6 +78,20 @@ def create_my_skill() -> Skill:
         source=SkillSource.ENTRYPOINT,
         instructions="# My Skill\n\nInstructions here...",
     )
+```
+
+### Using the registry directly
+
+```python
+from haiku.skills import SkillRegistry
+
+registry = SkillRegistry()
+registry.discover(paths=[Path("./skills")])
+
+print(registry.names)          # Available skill names
+print(registry.list_metadata()) # Lightweight metadata for all skills
+
+registry.activate("my-skill")  # Loads full instructions on demand
 ```
 
 ## License
