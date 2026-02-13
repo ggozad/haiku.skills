@@ -69,6 +69,19 @@ class TestSkillRegistry:
         assert skill.instructions is not None
         assert "# Simple Skill" in skill.instructions
 
+    def test_activate_discovers_script_tools(self):
+        registry = SkillRegistry()
+        skill = _make_skill(
+            "simple-skill",
+            "A simple test skill that does basic operations.",
+            path=FIXTURES / "simple-skill",
+        )
+        registry.register(skill)
+        registry.activate("simple-skill")
+        assert len(skill.tools) == 1
+        tool = skill.tools[0]
+        assert hasattr(tool, "name") and tool.name == "greet"
+
     def test_activate_unknown_raises(self):
         registry = SkillRegistry()
         with pytest.raises(KeyError, match="unknown"):
