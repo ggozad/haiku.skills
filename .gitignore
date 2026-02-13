@@ -1,0 +1,22 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+**/.DS_Store
+
+# Virtual environments
+.venv
+
+# tests
+.coverage*
+.pytest_cache/
+.ruff_cache/
+
+# environment variables and config files
+.env
+TODO.md
+PLAN.md
+DEVNOTES.md

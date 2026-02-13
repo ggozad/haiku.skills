@@ -1,0 +1,87 @@
+[project]
+
+name = "haiku.skills"
+description = "Skill-powered AI agents implementing the Agent Skills specification"
+version = "0.1.0"
+authors = [{ name = "Yiorgis Gozadinos", email = "ggozadinos@gmail.com" }]
+license = { text = "MIT" }
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.13"
+keywords = [
+    "agent-skills",
+    "pydantic-ai",
+    "mcp",
+    "ai-agents",
+    "task-decomposition",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "pydantic>=2.12.5",
+    "pydantic-ai-slim[mcp]>=1.46.0",
+    "pyyaml>=6.0.3",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+exclude = [
+    "/tests",
+    "/.github",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["haiku"]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.5.1",
+    "ty>=0.0.14",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.14.13",
+]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "UP",
+    "I",
+]
+ignore = ["E501"]
+per-file-ignores = { "__init__.py" = ["F401", "F403"] }
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.isort]
+known-first-party = ["haiku"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ty.environment]
+python-version = "3.13"
+python = ".venv"
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "session"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+norecursedirs = [".git", ".venv"]
+filterwarnings = ["error", "ignore::UserWarning", "ignore::DeprecationWarning"]
