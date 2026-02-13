@@ -1,7 +1,7 @@
 [project]
 
 name = "haiku.skills"
-description = "Skill-powered AI agents implementing the Agent Skills specification"
+description = "Skill-powered AI agents implementing the Agent Skills specification with pydantic-ai"
 version = "0.1.0"
 authors = [{ name = "Yiorgis Gozadinos", email = "ggozadinos@gmail.com" }]
 license = { text = "MIT" }
@@ -34,10 +34,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build]
-exclude = [
-    "/tests",
-    "/.github",
-]
+exclude = ["/tests", "/.github"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["haiku"]
@@ -56,12 +53,7 @@ dev = [
 line-length = 88
 
 [tool.ruff.lint]
-select = [
-    "E",
-    "F",
-    "UP",
-    "I",
-]
+select = ["E", "F", "UP", "I"]
 ignore = ["E501"]
 per-file-ignores = { "__init__.py" = ["F401", "F403"] }
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"

@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
+from pydantic_ai.toolsets.function import FunctionToolset
 
 from haiku.skills.models import (
     DecompositionPlan,
@@ -86,6 +87,8 @@ class TestSkill:
         assert skill.source == SkillSource.FILESYSTEM
         assert skill.path is None
         assert skill.instructions is None
+        assert skill.tools == []
+        assert skill.toolsets == []
 
     def test_with_path_and_instructions(self):
         meta = SkillMetadata(name="test", description="Test skill.")
@@ -97,6 +100,53 @@ class TestSkill:
         )
         assert skill.path == Path("/some/path")
         assert skill.instructions == "Do the thing."
+
+    def test_with_tools(self):
+        def my_tool(x: int) -> int:
+            return x * 2
+
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(metadata=meta, source=SkillSource.FILESYSTEM, tools=[my_tool])
+        assert len(skill.tools) == 1
+        assert skill.tools[0] is my_tool
+
+    def test_with_toolsets(self):
+        toolset = FunctionToolset()
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(metadata=meta, source=SkillSource.FILESYSTEM, toolsets=[toolset])
+        assert len(skill.toolsets) == 1
+        assert skill.toolsets[0] is toolset
+
+    def test_tools_and_toolsets_settable(self):
+        def tool_a(x: int) -> int:
+            return x
+
+        def tool_b(x: int) -> int:
+            return x
+
+        toolset = FunctionToolset()
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(metadata=meta, source=SkillSource.FILESYSTEM)
+        skill.tools = [tool_a, tool_b]
+        skill.toolsets = [toolset]
+        assert len(skill.tools) == 2
+        assert len(skill.toolsets) == 1
+
+    def test_tools_and_toolsets_excluded_from_serialization(self):
+        def my_tool(x: int) -> int:
+            return x * 2
+
+        toolset = FunctionToolset()
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(
+            metadata=meta,
+            source=SkillSource.FILESYSTEM,
+            tools=[my_tool],
+            toolsets=[toolset],
+        )
+        data = skill.model_dump()
+        assert "tools" not in data
+        assert "toolsets" not in data
 
 
 class TestTaskStatus:

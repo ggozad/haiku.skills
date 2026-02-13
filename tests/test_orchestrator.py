@@ -2,8 +2,16 @@ from pathlib import Path
 
 import pytest
 from pydantic_ai.models.test import TestModel
+from pydantic_ai.toolsets.function import FunctionToolset
 
-from haiku.skills.models import DecompositionPlan, Task, TaskStatus
+from haiku.skills.models import (
+    DecompositionPlan,
+    Skill,
+    SkillMetadata,
+    SkillSource,
+    Task,
+    TaskStatus,
+)
 from haiku.skills.orchestrator import Orchestrator
 from haiku.skills.prompts import PLAN_PROMPT, SUBTASK_PROMPT, SYNTHESIS_PROMPT
 from haiku.skills.registry import SkillRegistry
@@ -111,3 +119,113 @@ class TestOrchestrator:
         assert len(result.tasks) >= 1
         for task in result.tasks:
             assert task.status in (TaskStatus.COMPLETED, TaskStatus.FAILED)
+
+    def test_gather_skill_tools_empty(self, registry: SkillRegistry):
+        model = TestModel()
+        orchestrator = Orchestrator(model=model, registry=registry)
+        tools = orchestrator._gather_skill_tools(["simple-skill"])
+        assert tools == []
+
+    def test_gather_skill_tools_with_tools(self):
+        def my_tool(x: int) -> int:
+            """Double a number."""
+            return x * 2
+
+        meta = SkillMetadata(name="tool-skill", description="Has tools.")
+        skill = Skill(
+            metadata=meta,
+            source=SkillSource.FILESYSTEM,
+            instructions="Use the tool.",
+            tools=[my_tool],
+        )
+        registry = SkillRegistry()
+        registry.register(skill)
+        model = TestModel()
+        orchestrator = Orchestrator(model=model, registry=registry)
+        tools = orchestrator._gather_skill_tools(["tool-skill"])
+        assert len(tools) == 1
+        assert tools[0] is my_tool
+
+    def test_gather_skill_tools_unknown_skill_skipped(self, registry: SkillRegistry):
+        model = TestModel()
+        orchestrator = Orchestrator(model=model, registry=registry)
+        tools = orchestrator._gather_skill_tools(["nonexistent"])
+        assert tools == []
+
+    async def test_execute_task_with_tools(self, allow_model_requests: None):
+        def greet(name: str) -> str:
+            """Greet someone by name."""
+            return f"Hello, {name}!"
+
+        meta = SkillMetadata(name="greeter", description="Greets people.")
+        skill = Skill(
+            metadata=meta,
+            source=SkillSource.FILESYSTEM,
+            instructions="Use the greet tool.",
+            tools=[greet],
+        )
+        registry = SkillRegistry()
+        registry.register(skill)
+        model = TestModel(custom_output_text="The answer is 42.")
+        orchestrator = Orchestrator(model=model, registry=registry)
+        task = Task(id="1", description="Greet Alice.", skills=["greeter"])
+        executed = await orchestrator.execute_task(task, "Greet Alice.")
+        assert executed.error is None, f"Task failed: {executed.error}"
+        assert executed.status == TaskStatus.COMPLETED
+
+    def test_gather_skill_toolsets_empty(self, registry: SkillRegistry):
+        model = TestModel()
+        orchestrator = Orchestrator(model=model, registry=registry)
+        toolsets = orchestrator._gather_skill_toolsets(["simple-skill"])
+        assert toolsets == []
+
+    def test_gather_skill_toolsets_with_toolsets(self):
+        def greet(name: str) -> str:
+            """Greet someone by name."""
+            return f"Hello, {name}!"
+
+        toolset = FunctionToolset()
+        toolset.add_function(greet)
+        meta = SkillMetadata(name="ts-skill", description="Has toolsets.")
+        skill = Skill(
+            metadata=meta,
+            source=SkillSource.FILESYSTEM,
+            instructions="Use the toolset.",
+            toolsets=[toolset],
+        )
+        registry = SkillRegistry()
+        registry.register(skill)
+        model = TestModel()
+        orchestrator = Orchestrator(model=model, registry=registry)
+        toolsets = orchestrator._gather_skill_toolsets(["ts-skill"])
+        assert len(toolsets) == 1
+        assert toolsets[0] is toolset
+
+    def test_gather_skill_toolsets_unknown_skill_skipped(self, registry: SkillRegistry):
+        model = TestModel()
+        orchestrator = Orchestrator(model=model, registry=registry)
+        toolsets = orchestrator._gather_skill_toolsets(["nonexistent"])
+        assert toolsets == []
+
+    async def test_execute_task_with_toolsets(self, allow_model_requests: None):
+        def greet(name: str) -> str:
+            """Greet someone by name."""
+            return f"Hello, {name}!"
+
+        toolset = FunctionToolset()
+        toolset.add_function(greet)
+        meta = SkillMetadata(name="greeter", description="Greets people.")
+        skill = Skill(
+            metadata=meta,
+            source=SkillSource.FILESYSTEM,
+            instructions="Use the greet toolset.",
+            toolsets=[toolset],
+        )
+        registry = SkillRegistry()
+        registry.register(skill)
+        model = TestModel(custom_output_text="Hello!")
+        orchestrator = Orchestrator(model=model, registry=registry)
+        task = Task(id="1", description="Greet Alice.", skills=["greeter"])
+        executed = await orchestrator.execute_task(task, "Greet Alice.")
+        assert executed.error is None, f"Task failed: {executed.error}"
+        assert executed.status == TaskStatus.COMPLETED

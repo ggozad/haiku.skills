@@ -1,9 +1,12 @@
 import re
+from collections.abc import Callable
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator
+from pydantic_ai import Tool
+from pydantic_ai.toolsets import AbstractToolset
 
 _NAME_PATTERN = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$")
 
@@ -40,10 +43,41 @@ class SkillSource(StrEnum):
 
 
 class Skill(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     metadata: SkillMetadata
     source: SkillSource
     path: Path | None = None
     instructions: str | None = None
+    _tools: list = PrivateAttr(default_factory=list)
+    _toolsets: list = PrivateAttr(default_factory=list)
+
+    def __init__(
+        self,
+        *,
+        tools: list[Tool | Callable[..., Any]] | None = None,
+        toolsets: list[AbstractToolset[Any]] | None = None,
+        **data: Any,
+    ) -> None:
+        super().__init__(**data)
+        self._tools = tools or []
+        self._toolsets = toolsets or []
+
+    @property
+    def tools(self) -> list[Tool | Callable[..., Any]]:
+        return self._tools
+
+    @tools.setter
+    def tools(self, value: list[Tool | Callable[..., Any]]) -> None:
+        self._tools = value
+
+    @property
+    def toolsets(self) -> list[AbstractToolset[Any]]:
+        return self._toolsets
+
+    @toolsets.setter
+    def toolsets(self, value: list[AbstractToolset[Any]]) -> None:
+        self._toolsets = value
 
 
 class TaskStatus(StrEnum):

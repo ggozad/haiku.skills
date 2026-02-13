@@ -1,8 +1,10 @@
 import asyncio
-from typing import cast
+from collections.abc import Callable
+from typing import Any, cast
 
-from pydantic_ai import Agent
+from pydantic_ai import Agent, Tool
 from pydantic_ai.models import Model
+from pydantic_ai.toolsets import AbstractToolset
 
 from haiku.skills.models import (
     DecompositionPlan,
@@ -46,11 +48,18 @@ class Orchestrator:
         task.status = TaskStatus.IN_PROGRESS
         try:
             skill_instructions = self._gather_skill_instructions(task.skills)
+            skill_tools = self._gather_skill_tools(task.skills)
+            skill_toolsets = self._gather_skill_toolsets(task.skills)
             system_prompt = SUBTASK_PROMPT.format(
                 task_description=task.description,
                 skill_instructions=skill_instructions,
             )
-            agent = Agent(self._model, system_prompt=system_prompt)
+            agent = Agent(
+                self._model,
+                system_prompt=system_prompt,
+                tools=skill_tools,
+                toolsets=skill_toolsets or None,
+            )
             async with self._semaphore:
                 result = await agent.run(user_request)
             task.status = TaskStatus.COMPLETED
@@ -81,6 +90,26 @@ class Orchestrator:
         tasks = list(executed)
         answer = await self.synthesize(user_request, tasks)
         return OrchestratorResult(answer=answer, tasks=tasks)
+
+    def _gather_skill_tools(
+        self, skill_names: list[str]
+    ) -> list[Tool[Any] | Callable[..., Any]]:
+        tools: list[Tool[Any] | Callable[..., Any]] = []
+        for name in skill_names:
+            skill = self._registry.get(name)
+            if skill and skill.tools:
+                tools.extend(skill.tools)
+        return tools
+
+    def _gather_skill_toolsets(
+        self, skill_names: list[str]
+    ) -> list[AbstractToolset[Any]]:
+        toolsets: list[AbstractToolset[Any]] = []
+        for name in skill_names:
+            skill = self._registry.get(name)
+            if skill and skill.toolsets:
+                toolsets.extend(skill.toolsets)
+        return toolsets
 
     def _gather_skill_instructions(self, skill_names: list[str]) -> str:
         parts: list[str] = []
