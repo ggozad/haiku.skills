@@ -140,6 +140,23 @@ class TestDiscoverScriptTools:
         tools = discover_script_tools(skill_path)
         assert tools == []
 
+    def test_skips_init_py(self, tmp_path: Path):
+        scripts_dir = tmp_path / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "__init__.py").write_text("")
+        (scripts_dir / "tool.py").write_text(
+            "import json, sys\n"
+            "def main(x: str) -> str:\n"
+            '    """Do stuff."""\n'
+            "    return x\n"
+            'if __name__ == "__main__":\n'
+            "    args = json.loads(sys.stdin.read())\n"
+            '    json.dump({"result": main(**args)}, sys.stdout)\n'
+        )
+        tools = discover_script_tools(tmp_path)
+        assert len(tools) == 1
+        assert tools[0].name == "tool"
+
     def test_returns_empty_for_nonexistent_path(self, tmp_path: Path):
         tools = discover_script_tools(tmp_path / "nonexistent")
         assert tools == []

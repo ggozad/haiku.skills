@@ -172,5 +172,7 @@ def discover_script_tools(skill_path: Path) -> list[Tool]:
         return []
     tools: list[Tool] = []
     for script in sorted(scripts_dir.glob("*.py")):
+        if script.name == "__init__.py":
+            continue
         tools.append(create_script_tool(script))
     return tools
