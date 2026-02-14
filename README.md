@@ -1,17 +1,18 @@
 # haiku.skills
 
-A Python library for building skill-powered AI agents. Implements the [Agent Skills specification](https://agentskills.io/specification) and uses [pydantic-ai](https://ai.pydantic.dev/) for agent creation.
+[![Tests](https://github.com/ggozad/haiku.skills/actions/workflows/test.yml/badge.svg)](https://github.com/ggozad/haiku.skills/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/ggozad/haiku.skills/graph/badge.svg)](https://codecov.io/gh/ggozad/haiku.skills)
+
+Skill-powered AI agents implementing the [Agent Skills specification](https://agentskills.io/specification) with [pydantic-ai](https://ai.pydantic.dev/).
 
 ## Features
 
-- **Conversational agent** — Chat directly or delegate to the skill orchestrator when specialized skills are needed
-- **Skill discovery** — Scan filesystem paths for [SKILL.md](https://agentskills.io/specification) directories or load skills from Python entrypoints
-- **Task decomposition** — The orchestrator decomposes requests into subtasks, spawns dynamic sub-agents with targeted skill subsets, and synthesizes results
-- **Progressive disclosure** — Lightweight metadata loaded at startup, full instructions loaded on activation
+- **Skill discovery** — Scan filesystem paths for [SKILL.md](https://agentskills.io/specification) directories or load from Python entrypoints
+- **Task decomposition** — Orchestrator decomposes requests into subtasks, spawns sub-agents with targeted skill subsets, synthesizes results
+- **Progressive disclosure** — Lightweight metadata at startup, full instructions on activation
 - **In-process tools** — Attach pydantic-ai `Tool` functions or `AbstractToolset` instances to skills
-- **Script tools** — Python scripts in `scripts/` with a `main()` function, automatically discovered and executed via `uv run`
-- **MCP integration** — Wrap any MCP server (stdio, SSE, streamable HTTP) as a skill with `skill_from_mcp()`
-- **Chat TUI** — Interactive terminal UI powered by [Textual](https://textual.textualize.io/)
+- **Script tools** — Python scripts in `scripts/` with a `main()` function, discovered and executed via `uv run`
+- **MCP integration** — Wrap any MCP server (stdio, SSE, streamable HTTP) as a skill
 
 ## Installation
 
@@ -19,18 +20,10 @@ A Python library for building skill-powered AI agents. Implements the [Agent Ski
 uv add haiku.skills
 ```
 
-For the chat TUI:
-
-```bash
-uv add "haiku.skills[tui]"
-```
-
 Individual skills are available as extras:
 
 ```bash
-uv add "haiku.skills[brave-search]"
-uv add "haiku.skills[image-generation]"
-uv add "haiku.skills[code-execution]"
+uv add "haiku.skills[brave-search,image-generation,code-execution]"
 ```
 
 ## Quick start
@@ -38,11 +31,6 @@ uv add "haiku.skills[code-execution]"
 ### Creating a skill
 
 A skill is a directory containing a `SKILL.md` file with YAML frontmatter:
-
-```
-my-skill/
-└── SKILL.md
-```
 
 ```markdown
 ---
@@ -71,16 +59,13 @@ agent = create_agent(
 
 state = OrchestratorState()
 answer = await agent.run("Analyze this dataset.", state)
-print(answer)
 ```
 
-`create_agent` discovers skills, builds a registry, and returns a `SkillAgent`. The agent can respond directly to simple messages or delegate to the orchestrator when skills are needed. The orchestrator decomposes the request into subtasks, executes each with a targeted sub-agent, and synthesizes the results.
+The agent responds directly to simple messages or delegates to the orchestrator when skills are needed. The orchestrator decomposes requests into subtasks, executes each with a targeted sub-agent, and synthesizes results.
 
-The `OrchestratorState` object is observable — you can poll it to track the orchestrator's phase, task progress, and final result. When orchestration completes, `state.result` contains the authoritative answer and individual task results, bypassing any LLM reformulation.
+`OrchestratorState` is observable — poll it to track phase, task progress, and final result.
 
 ### Conversation history
-
-The agent maintains conversation history across calls:
 
 ```python
 state = OrchestratorState()
@@ -90,59 +75,7 @@ await agent.run("What did I just say?", state)  # remembers prior messages
 agent.clear_history()  # reset conversation
 ```
 
-### Chat TUI
-
-Launch the interactive chat interface:
-
-```bash
-haiku-skills chat -s ./skills
-```
-
-Options:
-
-| Flag | Description |
-|---|---|
-| `-m`, `--model` | Model to use (e.g. `openai:gpt-4o`) |
-| `-s`, `--skill-path` | Path to directory containing skill subdirectories (repeatable) |
-| `--use-entrypoints` | Discover skills from Python entrypoints |
-
-Environment variables (or `.env` file):
-
-| Variable | Description | Default |
-|---|---|---|
-| `HAIKU_SKILLS_MODEL` | Model to use | `ollama:gpt-oss` |
-| `HAIKU_SKILLS_PATHS` | Colon-separated skill paths | — |
-| `HAIKU_SKILLS_USE_ENTRYPOINTS` | Enable entrypoint discovery (`1`/`true`/`yes`) | — |
-| `LOGFIRE_TOKEN` | [Pydantic Logfire](https://logfire.pydantic.dev/) token for tracing | — |
-
-### Entrypoint skills
-
-Packages can expose skills via Python entrypoints in `pyproject.toml`:
-
-```toml
-[project.entry-points."haiku.skills"]
-my-skill = "my_package.skills:create_my_skill"
-```
-
-Where the entry point is a callable returning a `Skill`:
-
-```python
-from haiku.skills import Skill, SkillMetadata, SkillSource
-
-def create_my_skill() -> Skill:
-    return Skill(
-        metadata=SkillMetadata(
-            name="my-skill",
-            description="Helps with data analysis tasks.",
-        ),
-        source=SkillSource.ENTRYPOINT,
-        instructions="# My Skill\n\nInstructions here...",
-    )
-```
-
 ### Skills with tools
-
-Skills can carry in-process tools that are passed to sub-agents:
 
 ```python
 from haiku.skills import Skill, SkillMetadata, SkillSource, create_agent
@@ -161,31 +94,18 @@ skill = Skill(
     tools=[calculate],
 )
 
-agent = create_agent(
-    model="anthropic:claude-sonnet-4-5-20250929",
-    skills=[skill],
-)
+agent = create_agent(model="anthropic:claude-sonnet-4-5-20250929", skills=[skill])
 ```
 
-For `FunctionToolset` or other `AbstractToolset` instances, use the `toolsets` parameter instead.
+For `AbstractToolset` instances, use the `toolsets` parameter instead.
 
 ### Script tools
 
-Skills can include executable Python scripts in a `scripts/` directory:
-
-```
-my-skill/
-├── SKILL.md
-└── scripts/
-    └── analyze.py
-```
-
-Scripts must define a `main()` function with type-annotated parameters and a `__main__` block that reads JSON from stdin:
+Skills can include executable Python scripts in a `scripts/` directory. Scripts must define a `main()` function with type-annotated parameters:
 
 ```python
 """Analyze data."""
-import json
-import sys
+import json, sys
 
 def main(data: str, operation: str = "describe") -> str:
     """Analyze the given data.
@@ -201,46 +121,46 @@ if __name__ == "__main__":
     json.dump({"result": main(**args)}, sys.stdout)
 ```
 
-Script tools are automatically discovered when a skill is activated and can use [PEP 723](https://peps.python.org/pep-0723/) inline dependencies.
+Script tools are automatically discovered on skill activation and support [PEP 723](https://peps.python.org/pep-0723/) inline dependencies.
 
 ### MCP server skills
 
-Any [MCP](https://modelcontextprotocol.io/) server can be wrapped as a skill using `skill_from_mcp()`:
+Any [MCP](https://modelcontextprotocol.io/) server can be wrapped as a skill:
 
 ```python
 from pydantic_ai.mcp import MCPServerStdio
 from haiku.skills import create_agent, skill_from_mcp
 
-server = MCPServerStdio("uvx", args=["my-mcp-server"])
 skill = skill_from_mcp(
-    server,
+    MCPServerStdio("uvx", args=["my-mcp-server"]),
     name="my-mcp-skill",
     description="Tools from my MCP server.",
     instructions="Use these tools when the user asks about...",
 )
 
-agent = create_agent(
-    model="anthropic:claude-sonnet-4-5-20250929",
-    skills=[skill],
-)
+agent = create_agent(model="anthropic:claude-sonnet-4-5-20250929", skills=[skill])
 ```
 
-SSE and streamable HTTP servers work the same way:
+SSE and streamable HTTP servers work the same way via `MCPServerSSE` and `MCPServerStreamableHTTP`.
+
+### Entrypoint skills
+
+Packages can expose skills via Python entrypoints:
+
+```toml
+[project.entry-points."haiku.skills"]
+my-skill = "my_package.skills:create_my_skill"
+```
 
 ```python
-from pydantic_ai.mcp import MCPServerSSE, MCPServerStreamableHTTP
+from haiku.skills import Skill, SkillMetadata, SkillSource
 
-sse_skill = skill_from_mcp(
-    MCPServerSSE("http://localhost:8000/sse"),
-    name="sse-skill",
-    description="Tools via SSE.",
-)
-
-http_skill = skill_from_mcp(
-    MCPServerStreamableHTTP("http://localhost:8000/mcp"),
-    name="http-skill",
-    description="Tools via streamable HTTP.",
-)
+def create_my_skill() -> Skill:
+    return Skill(
+        metadata=SkillMetadata(name="my-skill", description="Data analysis."),
+        source=SkillSource.ENTRYPOINT,
+        instructions="# My Skill\n\nInstructions here...",
+    )
 ```
 
 ### Using the registry directly
@@ -251,25 +171,39 @@ from haiku.skills import SkillRegistry
 registry = SkillRegistry()
 registry.discover(paths=[Path("./skills")])
 
-print(registry.names)          # Available skill names
-print(registry.list_metadata()) # Lightweight metadata for all skills
+print(registry.names)           # Available skill names
+print(registry.list_metadata()) # Lightweight metadata
 
-registry.activate("my-skill")  # Loads full instructions on demand
+registry.activate("my-skill")   # Loads full instructions on demand
 ```
 
 ## Skill packages
 
-Individual skills are distributed as separate packages under `skills/`:
+Distributable skills under `skills/`:
 
 - **[brave-search](skills/brave-search)** — Web search via [Brave Search API](https://brave.com/search/api/) (requires `BRAVE_API_KEY`)
-- **[image-generation](skills/image-generation)** — Image generation via [Ollama](https://ollama.com/) (requires a running Ollama instance)
-- **[code-execution](skills/code-execution)** — Sandboxed Python code execution via [pydantic-monty](https://github.com/pydantic/pydantic-monty)
+- **[image-generation](skills/image-generation)** — Image generation via [Ollama](https://ollama.com/)
+- **[code-execution](skills/code-execution)** — Sandboxed Python execution via [pydantic-monty](https://github.com/pydantic/pydantic-monty)
 
-Install via extras and use with entrypoint discovery:
+## Chat TUI
+
+A debug/development chat interface is included:
 
 ```bash
-uv add "haiku.skills[brave-search]"
-haiku-skills chat --use-entrypoints
+uv add "haiku.skills[tui]"
+```
+
+Point it at a directory of skills for filesystem discovery:
+
+```bash
+haiku-skills chat -s ./skills -m openai:gpt-4o
+```
+
+Or install bundled skill packages and use entrypoint discovery:
+
+```bash
+uv add "haiku.skills[tui,brave-search,image-generation,code-execution]"
+haiku-skills chat --use-entrypoints -m openai:gpt-4o
 ```
 
 ## License
