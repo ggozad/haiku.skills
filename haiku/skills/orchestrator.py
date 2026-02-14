@@ -2,7 +2,8 @@ import asyncio
 from collections.abc import Callable
 from typing import Any
 
-from pydantic_ai import Agent, Tool
+from pydantic_ai import Agent, Tool, UsageLimits
+from pydantic_ai.messages import ModelMessage, ModelRequest, ToolReturnPart
 from pydantic_ai.models import Model
 from pydantic_ai.toolsets import AbstractToolset
 
@@ -16,6 +17,16 @@ from haiku.skills.models import (
 )
 from haiku.skills.prompts import PLAN_PROMPT, SUBTASK_PROMPT, SYNTHESIS_PROMPT
 from haiku.skills.registry import SkillRegistry
+
+
+def _last_tool_result(messages: list[ModelMessage]) -> str | None:
+    """Extract the content of the last tool return from messages."""
+    for message in reversed(messages):
+        if isinstance(message, ModelRequest):
+            for part in reversed(message.parts):
+                if isinstance(part, ToolReturnPart):
+                    return part.model_response_str()
+    return None
 
 
 class Orchestrator:
@@ -69,9 +80,13 @@ class Orchestrator:
                 deps_type=OrchestratorState,
             )
             async with self._semaphore:
-                result = await agent.run(user_request, deps=state)
+                result = await agent.run(
+                    user_request,
+                    deps=state,
+                    usage_limits=UsageLimits(request_limit=10),
+                )
             task.status = TaskStatus.COMPLETED
-            task.result = result.output
+            task.result = _last_tool_result(result.all_messages()) or result.output
         except Exception as e:
             task.status = TaskStatus.FAILED
             task.error = str(e)

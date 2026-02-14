@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from textual.app import ComposeResult, SystemCommand
 
 try:
+    import textual_image.widget  # noqa: F401
     from textual.app import App, SystemCommand
     from textual.binding import Binding
     from textual.widgets import Footer, Header, Input

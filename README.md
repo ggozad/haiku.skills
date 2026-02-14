@@ -68,7 +68,7 @@ print(answer)
 
 `create_agent` discovers skills, builds a registry, and returns a `SkillAgent`. The agent can respond directly to simple messages or delegate to the orchestrator when skills are needed. The orchestrator decomposes the request into subtasks, executes each with a targeted sub-agent, and synthesizes the results.
 
-The `OrchestratorState` object is observable — you can poll it to track the orchestrator's phase and task progress.
+The `OrchestratorState` object is observable — you can poll it to track the orchestrator's phase, task progress, and final result. When orchestration completes, `state.result` contains the authoritative answer and individual task results, bypassing any LLM reformulation.
 
 ### Conversation history
 
@@ -247,6 +247,19 @@ print(registry.names)          # Available skill names
 print(registry.list_metadata()) # Lightweight metadata for all skills
 
 registry.activate("my-skill")  # Loads full instructions on demand
+```
+
+## Examples
+
+The `examples/` directory contains ready-to-use skills:
+
+- **brave-search** — Web search via [Brave Search API](https://brave.com/search/api/) (requires `BRAVE_API_KEY`)
+- **image-generation** — Image generation via [Ollama](https://ollama.com/) (requires a running Ollama instance)
+
+Try them with the chat TUI:
+
+```bash
+haiku-skills chat -s examples
 ```
 
 ## License
