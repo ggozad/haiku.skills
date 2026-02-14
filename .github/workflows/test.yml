@@ -19,7 +19,7 @@ jobs:
         with:
           python-version-file: "pyproject.toml"
       - name: Install dependencies
-        run: uv sync --extra tui
+        run: uv sync --all-extras
       - name: Lint
         run: uv run ruff check
       - name: Format check
