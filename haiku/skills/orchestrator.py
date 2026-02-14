@@ -130,8 +130,15 @@ class Orchestrator:
         )
         state.tasks = list(executed)
 
-        state.phase = OrchestratorPhase.SYNTHESIZING
-        answer = await self.synthesize(user_request, state.tasks, state)
+        if len(state.tasks) == 1:
+            task = state.tasks[0]
+            if task.status == TaskStatus.COMPLETED:
+                answer = task.result or ""
+            else:
+                answer = task.error or "Task failed."
+        else:
+            state.phase = OrchestratorPhase.SYNTHESIZING
+            answer = await self.synthesize(user_request, state.tasks, state)
 
         state.phase = OrchestratorPhase.IDLE
         result = OrchestratorResult(answer=answer, tasks=state.tasks)

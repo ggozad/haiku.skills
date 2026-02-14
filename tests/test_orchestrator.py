@@ -292,7 +292,117 @@ class TestOrchestrator:
 
         assert OrchestratorPhase.PLANNING in phases_seen
         assert OrchestratorPhase.EXECUTING in phases_seen
+        assert OrchestratorPhase.SYNTHESIZING not in phases_seen
+
+    async def test_state_tracks_phase_transitions_multi_task(
+        self, registry: SkillRegistry, allow_model_requests: None
+    ):
+        multi_plan = DecompositionPlan(
+            tasks=[
+                Task(id="1", description="First.", skills=["simple-skill"]),
+                Task(id="2", description="Second.", skills=["simple-skill"]),
+            ],
+            reasoning="Two tasks.",
+        )
+        model = TestModel()
+        orchestrator = Orchestrator(model=model, registry=registry)
+        state = OrchestratorState()
+        phases_seen: list[OrchestratorPhase] = []
+
+        original_execute = orchestrator.execute_task
+        original_synthesize = orchestrator.synthesize
+
+        async def fixed_plan(
+            user_request: str, state: OrchestratorState
+        ) -> DecompositionPlan:
+            phases_seen.append(state.phase)
+            return multi_plan
+
+        async def tracking_execute(
+            task: Task, user_request: str, state: OrchestratorState
+        ) -> Task:
+            phases_seen.append(state.phase)
+            return await original_execute(task, user_request, state)
+
+        async def tracking_synthesize(
+            user_request: str, tasks: list[Task], state: OrchestratorState
+        ) -> str:
+            phases_seen.append(state.phase)
+            return await original_synthesize(user_request, tasks, state)
+
+        orchestrator.plan = fixed_plan  # type: ignore[assignment]
+        orchestrator.execute_task = tracking_execute  # type: ignore[assignment]
+        orchestrator.synthesize = tracking_synthesize  # type: ignore[assignment]
+
+        await orchestrator.orchestrate("Do two things.", state)
+
+        assert OrchestratorPhase.PLANNING in phases_seen
+        assert OrchestratorPhase.EXECUTING in phases_seen
         assert OrchestratorPhase.SYNTHESIZING in phases_seen
+
+    async def test_orchestrate_skips_synthesis_for_single_task(
+        self, registry: SkillRegistry, allow_model_requests: None
+    ):
+        single_plan = DecompositionPlan(
+            tasks=[Task(id="1", description="Do it.", skills=["simple-skill"])],
+            reasoning="One task.",
+        )
+        model = TestModel()
+        orchestrator = Orchestrator(model=model, registry=registry)
+        state = OrchestratorState()
+        synthesize_called = False
+
+        async def fixed_plan(
+            user_request: str, state: OrchestratorState
+        ) -> DecompositionPlan:
+            return single_plan
+
+        async def tracking_synthesize(
+            user_request: str, tasks: list[Task], state: OrchestratorState
+        ) -> str:
+            nonlocal synthesize_called
+            synthesize_called = True
+            return "should not be used"
+
+        orchestrator.plan = fixed_plan  # type: ignore[assignment]
+        orchestrator.synthesize = tracking_synthesize  # type: ignore[assignment]
+
+        result = await orchestrator.orchestrate("Do something.", state)
+        assert not synthesize_called
+        assert len(state.tasks) == 1
+        assert state.tasks[0].status == TaskStatus.COMPLETED
+        assert result.answer == state.tasks[0].result
+
+    async def test_orchestrate_skips_synthesis_for_single_failed_task(
+        self, registry: SkillRegistry, allow_model_requests: None
+    ):
+        failed_plan = DecompositionPlan(
+            tasks=[Task(id="1", description="Do it.", skills=["nonexistent-skill"])],
+            reasoning="One task.",
+        )
+        model = TestModel()
+        orchestrator = Orchestrator(model=model, registry=registry)
+        state = OrchestratorState()
+        synthesize_called = False
+
+        async def fixed_plan(
+            user_request: str, state: OrchestratorState
+        ) -> DecompositionPlan:
+            return failed_plan
+
+        async def tracking_synthesize(
+            user_request: str, tasks: list[Task], state: OrchestratorState
+        ) -> str:
+            nonlocal synthesize_called
+            synthesize_called = True
+            return "should not be used"
+
+        orchestrator.plan = fixed_plan  # type: ignore[assignment]
+        orchestrator.synthesize = tracking_synthesize  # type: ignore[assignment]
+
+        result = await orchestrator.orchestrate("Do something.", state)
+        assert not synthesize_called
+        assert "nonexistent-skill" in result.answer
 
     async def test_state_resets_on_new_orchestration(
         self, registry: SkillRegistry, allow_model_requests: None
