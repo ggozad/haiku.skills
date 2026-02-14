@@ -6,7 +6,9 @@ from pydantic_ai.toolsets.function import FunctionToolset
 
 from haiku.skills.models import (
     DecompositionPlan,
+    OrchestratorPhase,
     OrchestratorResult,
+    OrchestratorState,
     Skill,
     SkillMetadata,
     SkillSource,
@@ -182,6 +184,34 @@ class TestDecompositionPlan:
         plan = DecompositionPlan(tasks=tasks, reasoning="Simple task.")
         assert len(plan.tasks) == 1
         assert plan.reasoning == "Simple task."
+
+
+class TestOrchestratorPhase:
+    def test_values(self):
+        assert OrchestratorPhase.IDLE.value == "idle"
+        assert OrchestratorPhase.PLANNING.value == "planning"
+        assert OrchestratorPhase.EXECUTING.value == "executing"
+        assert OrchestratorPhase.SYNTHESIZING.value == "synthesizing"
+
+
+class TestOrchestratorState:
+    def test_defaults(self):
+        state = OrchestratorState()
+        assert state.phase == OrchestratorPhase.IDLE
+        assert state.plan is None
+        assert state.tasks == []
+
+    def test_with_plan_and_tasks(self):
+        tasks = [Task(id="1", description="Do it.", skills=["a"])]
+        plan = DecompositionPlan(tasks=tasks, reasoning="Because.")
+        state = OrchestratorState(
+            phase=OrchestratorPhase.EXECUTING,
+            plan=plan,
+            tasks=tasks,
+        )
+        assert state.phase == OrchestratorPhase.EXECUTING
+        assert state.plan is plan
+        assert len(state.tasks) == 1
 
 
 class TestOrchestratorResult:

@@ -1,6 +1,6 @@
 import asyncio
 from collections.abc import Callable
-from typing import Any, cast
+from typing import Any
 
 from pydantic_ai import Agent, Tool
 from pydantic_ai.models import Model
@@ -8,7 +8,9 @@ from pydantic_ai.toolsets import AbstractToolset
 
 from haiku.skills.models import (
     DecompositionPlan,
+    OrchestratorPhase,
     OrchestratorResult,
+    OrchestratorState,
     Task,
     TaskStatus,
 )
@@ -33,18 +35,23 @@ class Orchestrator:
             lines.append(f"- **{meta.name}**: {meta.description}")
         return "\n".join(lines)
 
-    async def plan(self, user_request: str) -> DecompositionPlan:
+    async def plan(
+        self, user_request: str, state: OrchestratorState
+    ) -> DecompositionPlan:
         catalog = self._build_skill_catalog()
         system_prompt = PLAN_PROMPT.format(skill_catalog=catalog)
-        agent = Agent(
+        agent = Agent[OrchestratorState, DecompositionPlan](
             self._model,
             system_prompt=system_prompt,
             output_type=DecompositionPlan,
+            deps_type=OrchestratorState,
         )
-        result = await agent.run(user_request)
-        return cast(DecompositionPlan, result.output)
+        result = await agent.run(user_request, deps=state)
+        return result.output
 
-    async def execute_task(self, task: Task, user_request: str) -> Task:
+    async def execute_task(
+        self, task: Task, user_request: str, state: OrchestratorState
+    ) -> Task:
         task.status = TaskStatus.IN_PROGRESS
         try:
             skill_instructions = self._gather_skill_instructions(task.skills)
@@ -54,14 +61,15 @@ class Orchestrator:
                 task_description=task.description,
                 skill_instructions=skill_instructions,
             )
-            agent = Agent(
+            agent = Agent[OrchestratorState, str](
                 self._model,
                 system_prompt=system_prompt,
                 tools=skill_tools,
                 toolsets=skill_toolsets or None,
+                deps_type=OrchestratorState,
             )
             async with self._semaphore:
-                result = await agent.run(user_request)
+                result = await agent.run(user_request, deps=state)
             task.status = TaskStatus.COMPLETED
             task.result = result.output
         except Exception as e:
@@ -69,7 +77,9 @@ class Orchestrator:
             task.error = str(e)
         return task
 
-    async def synthesize(self, user_request: str, tasks: list[Task]) -> str:
+    async def synthesize(
+        self, user_request: str, tasks: list[Task], state: OrchestratorState
+    ) -> str:
         task_results = "\n\n".join(
             f"### Task {t.id}: {t.description}\n{t.result or t.error or 'No result.'}"
             for t in tasks
@@ -78,18 +88,37 @@ class Orchestrator:
             user_request=user_request,
             task_results=task_results,
         )
-        agent = Agent(self._model, system_prompt=system_prompt)
-        result = await agent.run(user_request)
+        agent = Agent[OrchestratorState, str](
+            self._model,
+            system_prompt=system_prompt,
+            deps_type=OrchestratorState,
+        )
+        result = await agent.run(user_request, deps=state)
         return result.output
 
-    async def orchestrate(self, user_request: str) -> OrchestratorResult:
-        decomposition = await self.plan(user_request)
+    async def orchestrate(
+        self, user_request: str, state: OrchestratorState
+    ) -> OrchestratorResult:
+        state.phase = OrchestratorPhase.IDLE
+        state.plan = None
+        state.tasks = []
+
+        state.phase = OrchestratorPhase.PLANNING
+        decomposition = await self.plan(user_request, state)
+        state.plan = decomposition
+        state.tasks = list(decomposition.tasks)
+
+        state.phase = OrchestratorPhase.EXECUTING
         executed = await asyncio.gather(
-            *(self.execute_task(t, user_request) for t in decomposition.tasks)
+            *(self.execute_task(t, user_request, state) for t in state.tasks)
         )
-        tasks = list(executed)
-        answer = await self.synthesize(user_request, tasks)
-        return OrchestratorResult(answer=answer, tasks=tasks)
+        state.tasks = list(executed)
+
+        state.phase = OrchestratorPhase.SYNTHESIZING
+        answer = await self.synthesize(user_request, state.tasks, state)
+
+        state.phase = OrchestratorPhase.IDLE
+        return OrchestratorResult(answer=answer, tasks=state.tasks)
 
     def _gather_skill_tools(
         self, skill_names: list[str]

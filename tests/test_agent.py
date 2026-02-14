@@ -4,7 +4,14 @@ import pytest
 from pydantic_ai.models.test import TestModel
 
 from haiku.skills.agent import create_agent
-from haiku.skills.models import Skill, SkillMetadata, SkillSource, TaskStatus
+from haiku.skills.models import (
+    OrchestratorPhase,
+    OrchestratorState,
+    Skill,
+    SkillMetadata,
+    SkillSource,
+    TaskStatus,
+)
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -62,8 +69,17 @@ class TestSkillAgent:
 
     async def test_run(self, allow_model_requests: None):
         agent = create_agent(model=TestModel(), skill_paths=[FIXTURES])
-        result = await agent.run("Do something with simple-skill.")
+        state = OrchestratorState()
+        result = await agent.run("Do something with simple-skill.", state)
         assert result.answer
         assert len(result.tasks) >= 1
         for task in result.tasks:
             assert task.status in (TaskStatus.COMPLETED, TaskStatus.FAILED)
+
+    async def test_run_updates_state(self, allow_model_requests: None):
+        agent = create_agent(model=TestModel(), skill_paths=[FIXTURES])
+        state = OrchestratorState()
+        result = await agent.run("Do something.", state)
+        assert state.phase == OrchestratorPhase.IDLE
+        assert state.plan is not None
+        assert state.tasks == result.tasks

@@ -2,7 +2,7 @@ from pathlib import Path
 
 from pydantic_ai.models import Model
 
-from haiku.skills.models import OrchestratorResult, Skill
+from haiku.skills.models import OrchestratorResult, OrchestratorState, Skill
 from haiku.skills.orchestrator import Orchestrator
 from haiku.skills.registry import SkillRegistry
 
@@ -20,8 +20,8 @@ class SkillAgent:
     def skills(self) -> list[str]:
         return self._registry.names
 
-    async def run(self, prompt: str) -> OrchestratorResult:
-        return await self._orchestrator.orchestrate(prompt)
+    async def run(self, prompt: str, state: OrchestratorState) -> OrchestratorResult:
+        return await self._orchestrator.orchestrate(prompt, state)
 
 
 def create_agent(

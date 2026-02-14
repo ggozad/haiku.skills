@@ -6,6 +6,8 @@ from pydantic_ai.toolsets.function import FunctionToolset
 
 from haiku.skills.models import (
     DecompositionPlan,
+    OrchestratorPhase,
+    OrchestratorState,
     Skill,
     SkillMetadata,
     SkillSource,
@@ -49,7 +51,8 @@ class TestOrchestrator:
         )
         model = TestModel(custom_output_args=plan.model_dump())
         orchestrator = Orchestrator(model=model, registry=registry)
-        result = await orchestrator.plan("Do something simple.")
+        state = OrchestratorState()
+        result = await orchestrator.plan("Do something simple.", state)
         assert len(result.tasks) >= 1
         assert result.reasoning
 
@@ -59,7 +62,8 @@ class TestOrchestrator:
         task = Task(id="1", description="Do the thing.", skills=["simple-skill"])
         model = TestModel(custom_output_text="Task completed successfully.")
         orchestrator = Orchestrator(model=model, registry=registry)
-        executed = await orchestrator.execute_task(task, "Do something.")
+        state = OrchestratorState()
+        executed = await orchestrator.execute_task(task, "Do something.", state)
         assert executed.status == TaskStatus.COMPLETED
         assert executed.result is not None
 
@@ -69,7 +73,8 @@ class TestOrchestrator:
         task = Task(id="1", description="Do the thing.", skills=["simple-skill"])
         model = TestModel(custom_output_text="Done.")
         orchestrator = Orchestrator(model=model, registry=registry)
-        await orchestrator.execute_task(task, "Do something.")
+        state = OrchestratorState()
+        await orchestrator.execute_task(task, "Do something.", state)
         skill = registry.get("simple-skill")
         assert skill is not None
         assert skill.instructions is not None
@@ -95,7 +100,8 @@ class TestOrchestrator:
         ]
         model = TestModel(custom_output_text="Combined answer.")
         orchestrator = Orchestrator(model=model, registry=registry)
-        answer = await orchestrator.synthesize("Do two things.", tasks)
+        state = OrchestratorState()
+        answer = await orchestrator.synthesize("Do two things.", tasks, state)
         assert answer
 
     async def test_execute_task_unknown_skill_fails(
@@ -104,7 +110,8 @@ class TestOrchestrator:
         task = Task(id="1", description="Do the thing.", skills=["nonexistent-skill"])
         model = TestModel()
         orchestrator = Orchestrator(model=model, registry=registry)
-        executed = await orchestrator.execute_task(task, "Do something.")
+        state = OrchestratorState()
+        executed = await orchestrator.execute_task(task, "Do something.", state)
         assert executed.status == TaskStatus.FAILED
         assert executed.error is not None
         assert "nonexistent-skill" in executed.error
@@ -114,7 +121,8 @@ class TestOrchestrator:
     ):
         model = TestModel()
         orchestrator = Orchestrator(model=model, registry=registry)
-        result = await orchestrator.orchestrate("Do something.")
+        state = OrchestratorState()
+        result = await orchestrator.orchestrate("Do something.", state)
         assert result.answer
         assert len(result.tasks) >= 1
         for task in result.tasks:
@@ -169,7 +177,8 @@ class TestOrchestrator:
         model = TestModel(custom_output_text="The answer is 42.")
         orchestrator = Orchestrator(model=model, registry=registry)
         task = Task(id="1", description="Greet Alice.", skills=["greeter"])
-        executed = await orchestrator.execute_task(task, "Greet Alice.")
+        state = OrchestratorState()
+        executed = await orchestrator.execute_task(task, "Greet Alice.", state)
         assert executed.error is None, f"Task failed: {executed.error}"
         assert executed.status == TaskStatus.COMPLETED
 
@@ -226,6 +235,69 @@ class TestOrchestrator:
         model = TestModel(custom_output_text="Hello!")
         orchestrator = Orchestrator(model=model, registry=registry)
         task = Task(id="1", description="Greet Alice.", skills=["greeter"])
-        executed = await orchestrator.execute_task(task, "Greet Alice.")
+        state = OrchestratorState()
+        executed = await orchestrator.execute_task(task, "Greet Alice.", state)
         assert executed.error is None, f"Task failed: {executed.error}"
         assert executed.status == TaskStatus.COMPLETED
+
+    async def test_state_after_orchestrate(
+        self, registry: SkillRegistry, allow_model_requests: None
+    ):
+        model = TestModel()
+        orchestrator = Orchestrator(model=model, registry=registry)
+        state = OrchestratorState()
+        result = await orchestrator.orchestrate("Do something.", state)
+        assert state.phase == OrchestratorPhase.IDLE
+        assert state.plan is not None
+        assert state.tasks == result.tasks
+
+    async def test_state_tracks_phase_transitions(
+        self, registry: SkillRegistry, allow_model_requests: None
+    ):
+        model = TestModel()
+        orchestrator = Orchestrator(model=model, registry=registry)
+        state = OrchestratorState()
+        phases_seen: list[OrchestratorPhase] = []
+
+        original_plan = orchestrator.plan
+        original_execute = orchestrator.execute_task
+        original_synthesize = orchestrator.synthesize
+
+        async def tracking_plan(
+            user_request: str, state: OrchestratorState
+        ) -> DecompositionPlan:
+            phases_seen.append(state.phase)
+            return await original_plan(user_request, state)
+
+        async def tracking_execute(
+            task: Task, user_request: str, state: OrchestratorState
+        ) -> Task:
+            phases_seen.append(state.phase)
+            return await original_execute(task, user_request, state)
+
+        async def tracking_synthesize(
+            user_request: str, tasks: list[Task], state: OrchestratorState
+        ) -> str:
+            phases_seen.append(state.phase)
+            return await original_synthesize(user_request, tasks, state)
+
+        orchestrator.plan = tracking_plan  # type: ignore[assignment]
+        orchestrator.execute_task = tracking_execute  # type: ignore[assignment]
+        orchestrator.synthesize = tracking_synthesize  # type: ignore[assignment]
+
+        await orchestrator.orchestrate("Do something.", state)
+
+        assert OrchestratorPhase.PLANNING in phases_seen
+        assert OrchestratorPhase.EXECUTING in phases_seen
+        assert OrchestratorPhase.SYNTHESIZING in phases_seen
+
+    async def test_state_resets_on_new_orchestration(
+        self, registry: SkillRegistry, allow_model_requests: None
+    ):
+        model = TestModel()
+        orchestrator = Orchestrator(model=model, registry=registry)
+        state = OrchestratorState()
+        await orchestrator.orchestrate("First request.", state)
+        await orchestrator.orchestrate("Second request.", state)
+        assert state.plan is not None
+        assert state.phase == OrchestratorPhase.IDLE

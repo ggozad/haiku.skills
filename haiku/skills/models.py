@@ -101,6 +101,19 @@ class DecompositionPlan(BaseModel):
     reasoning: str
 
 
+class OrchestratorPhase(StrEnum):
+    IDLE = "idle"
+    PLANNING = "planning"
+    EXECUTING = "executing"
+    SYNTHESIZING = "synthesizing"
+
+
+class OrchestratorState(BaseModel):
+    phase: OrchestratorPhase = OrchestratorPhase.IDLE
+    plan: DecompositionPlan | None = None
+    tasks: list[Task] = Field(default_factory=list)
+
+
 class OrchestratorResult(BaseModel):
     answer: str
     tasks: list[Task]

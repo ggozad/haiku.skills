@@ -7,7 +7,7 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from haiku.skills.agent import create_agent
-from haiku.skills.models import Skill, SkillMetadata, SkillSource
+from haiku.skills.models import OrchestratorState, Skill, SkillMetadata, SkillSource
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -26,13 +26,15 @@ async def test_single_skill_summarize(allow_model_requests: None):
         model=_ollama_model(),
         skill_paths=[FIXTURES],
     )
+    state = OrchestratorState()
     result = await agent.run(
         "Summarize the following: "
         "Python is a high-level programming language known for its readability "
         "and versatility. It supports multiple programming paradigms including "
         "procedural, object-oriented, and functional programming. Python has a "
         "large standard library and an active community that contributes "
-        "thousands of third-party packages."
+        "thousands of third-party packages.",
+        state,
     )
     assert result.answer
     assert len(result.answer) > 10
@@ -74,7 +76,8 @@ async def test_skill_with_tool(allow_model_requests: None):
         model=_ollama_model(),
         skills=[skill],
     )
-    result = await agent.run("What is 15 * 23 + 7?")
+    state = OrchestratorState()
+    result = await agent.run("What is 15 * 23 + 7?", state)
     assert result.answer
     assert "352" in result.answer
 
@@ -86,12 +89,14 @@ async def test_multi_skill_decomposition(allow_model_requests: None):
         model=_ollama_model(),
         skill_paths=[FIXTURES],
     )
+    state = OrchestratorState()
     result = await agent.run(
         "First summarize the following text, then translate the summary to French: "
         "Machine learning is a subset of artificial intelligence that enables "
         "systems to learn and improve from experience without being explicitly "
         "programmed. It focuses on developing algorithms that can access data "
-        "and use it to learn for themselves."
+        "and use it to learn for themselves.",
+        state,
     )
     assert result.answer
     assert len(result.tasks) >= 1
