@@ -9,6 +9,7 @@ A Python library for building skill-powered AI agents. Implements the [Agent Ski
 - **Progressive disclosure** — Lightweight metadata loaded at startup, full instructions loaded on activation
 - **In-process tools** — Attach pydantic-ai `Tool` functions or `AbstractToolset` instances to skills
 - **Script tools** — Python scripts in `scripts/` with a `main()` function, automatically discovered and executed via `uv run`
+- **MCP integration** — Wrap any MCP server (stdio, SSE, streamable HTTP) as a skill with `skill_from_mcp()`
 
 ## Installation
 
@@ -144,6 +145,46 @@ if __name__ == "__main__":
 ```
 
 Script tools are automatically discovered when a skill is activated and can use [PEP 723](https://peps.python.org/pep-0723/) inline dependencies.
+
+### MCP server skills
+
+Any [MCP](https://modelcontextprotocol.io/) server can be wrapped as a skill using `skill_from_mcp()`:
+
+```python
+from pydantic_ai.mcp import MCPServerStdio
+from haiku.skills import create_agent, skill_from_mcp
+
+server = MCPServerStdio("uvx", args=["my-mcp-server"])
+skill = skill_from_mcp(
+    server,
+    name="my-mcp-skill",
+    description="Tools from my MCP server.",
+    instructions="Use these tools when the user asks about...",
+)
+
+agent = create_agent(
+    model="anthropic:claude-sonnet-4-5-20250929",
+    skills=[skill],
+)
+```
+
+SSE and streamable HTTP servers work the same way:
+
+```python
+from pydantic_ai.mcp import MCPServerSSE, MCPServerStreamableHTTP
+
+sse_skill = skill_from_mcp(
+    MCPServerSSE("http://localhost:8000/sse"),
+    name="sse-skill",
+    description="Tools via SSE.",
+)
+
+http_skill = skill_from_mcp(
+    MCPServerStreamableHTTP("http://localhost:8000/mcp"),
+    name="http-skill",
+    description="Tools via streamable HTTP.",
+)
+```
 
 ### Using the registry directly
 
