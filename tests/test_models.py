@@ -200,6 +200,7 @@ class TestOrchestratorState:
         assert state.phase == OrchestratorPhase.IDLE
         assert state.plan is None
         assert state.tasks == []
+        assert state.result is None
 
     def test_with_plan_and_tasks(self):
         tasks = [Task(id="1", description="Do it.", skills=["a"])]
@@ -212,6 +213,21 @@ class TestOrchestratorState:
         assert state.phase == OrchestratorPhase.EXECUTING
         assert state.plan is plan
         assert len(state.tasks) == 1
+
+    def test_with_result(self):
+        tasks = [
+            Task(
+                id="1",
+                description="Step 1.",
+                skills=["a"],
+                status=TaskStatus.COMPLETED,
+                result="Done.",
+            )
+        ]
+        result = OrchestratorResult(answer="Final.", tasks=tasks)
+        state = OrchestratorState(result=result)
+        assert state.result is result
+        assert state.result.answer == "Final."
 
 
 class TestOrchestratorResult:

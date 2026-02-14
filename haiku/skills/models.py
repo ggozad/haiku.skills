@@ -112,6 +112,7 @@ class OrchestratorState(BaseModel):
     phase: OrchestratorPhase = OrchestratorPhase.IDLE
     plan: DecompositionPlan | None = None
     tasks: list[Task] = Field(default_factory=list)
+    result: "OrchestratorResult | None" = None
 
 
 class OrchestratorResult(BaseModel):

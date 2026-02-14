@@ -76,6 +76,7 @@ class TestSkillAgent:
         assert answer == "Hello there!"
         assert state.phase == OrchestratorPhase.IDLE
         assert state.plan is None
+        assert state.result is None
 
     async def test_run_with_orchestration(self, allow_model_requests: None):
         """Agent delegates to orchestrator when skills are needed."""
@@ -84,6 +85,8 @@ class TestSkillAgent:
         answer = await agent.run("Summarize something.", state)
         assert answer
         assert state.plan is not None
+        assert state.result is not None
+        assert answer == state.result.answer
         assert len(state.tasks) >= 1
         for task in state.tasks:
             assert task.status in (TaskStatus.COMPLETED, TaskStatus.FAILED)

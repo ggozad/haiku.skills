@@ -67,6 +67,8 @@ class SkillAgent:
         deps = AgentDeps(orchestrator=self._orchestrator, state=state)
         result = await self._agent.run(prompt, deps=deps, message_history=self._history)
         self._history = list(result.all_messages())
+        if state.result:
+            return state.result.answer
         return result.output
 
     def _build_skill_catalog(self) -> str:

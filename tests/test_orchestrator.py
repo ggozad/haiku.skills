@@ -250,6 +250,9 @@ class TestOrchestrator:
         assert state.phase == OrchestratorPhase.IDLE
         assert state.plan is not None
         assert state.tasks == result.tasks
+        assert state.result is not None
+        assert state.result.answer == result.answer
+        assert state.result.tasks == result.tasks
 
     async def test_state_tracks_phase_transitions(
         self, registry: SkillRegistry, allow_model_requests: None
@@ -297,7 +300,11 @@ class TestOrchestrator:
         model = TestModel()
         orchestrator = Orchestrator(model=model, registry=registry)
         state = OrchestratorState()
-        await orchestrator.orchestrate("First request.", state)
-        await orchestrator.orchestrate("Second request.", state)
+        first_result = await orchestrator.orchestrate("First request.", state)
+        assert state.result is not None
+        assert state.result.answer == first_result.answer
+        second_result = await orchestrator.orchestrate("Second request.", state)
+        assert state.result is not None
+        assert state.result.answer == second_result.answer
         assert state.plan is not None
         assert state.phase == OrchestratorPhase.IDLE

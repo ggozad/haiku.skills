@@ -102,6 +102,7 @@ class Orchestrator:
         state.phase = OrchestratorPhase.IDLE
         state.plan = None
         state.tasks = []
+        state.result = None
 
         state.phase = OrchestratorPhase.PLANNING
         decomposition = await self.plan(user_request, state)
@@ -118,7 +119,9 @@ class Orchestrator:
         answer = await self.synthesize(user_request, state.tasks, state)
 
         state.phase = OrchestratorPhase.IDLE
-        return OrchestratorResult(answer=answer, tasks=state.tasks)
+        result = OrchestratorResult(answer=answer, tasks=state.tasks)
+        state.result = result
+        return result
 
     def _gather_skill_tools(
         self, skill_names: list[str]

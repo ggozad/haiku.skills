@@ -2,7 +2,7 @@
 from typing import TYPE_CHECKING
 
 from textual.containers import Horizontal, Vertical, VerticalScroll
-from textual.widgets import LoadingIndicator, Markdown, Static
+from textual.widgets import Collapsible, LoadingIndicator, Markdown, Static
 
 from haiku.skills.models import Task, TaskStatus
 
@@ -42,6 +42,7 @@ class TaskWidget(Static):
     def __init__(self, task: Task, **kwargs) -> None:
         super().__init__(**kwargs)
         self.skill_task = task
+        self._collapsed = True
 
     def compose(self) -> "ComposeResult":
         icon = self.STATUS_ICONS.get(self.skill_task.status, "?")
@@ -50,6 +51,16 @@ class TaskWidget(Static):
             yield Static(icon, classes="task-status")
             yield Static(self.skill_task.description, classes="task-desc")
             yield Static(f"[{skills}]", classes="task-skills")
+        if self.skill_task.result:
+            with Collapsible(
+                title=f"Result: {self.skill_task.description}",
+                collapsed=self._collapsed,
+                classes="task-result",
+            ):
+                yield Markdown(self.skill_task.result)
+
+    def on_collapsible_toggled(self, event: Collapsible.Toggled) -> None:
+        self._collapsed = event.collapsible.collapsed
 
     def refresh_task(self, task: Task) -> None:
         self.skill_task = task
@@ -196,6 +207,17 @@ class ChatHistory(VerticalScroll):
         width: auto;
         color: $text-muted;
         text-style: italic;
+    }
+
+    .task-result {
+        margin: 0 0 0 2;
+        padding: 0;
+        height: auto;
+    }
+
+    .task-result Markdown {
+        margin: 0;
+        padding: 0 1;
     }
     """
 
