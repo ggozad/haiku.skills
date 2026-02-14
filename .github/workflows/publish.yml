@@ -1,0 +1,42 @@
+name: Publish to PyPI
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  publish-root:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyproject.toml"
+      - name: Build haiku.skills
+        run: uv build
+      - name: Publish haiku.skills
+        run: uvx twine upload -u __token__ -p ${{ secrets.PYPI_API_TOKEN }} dist/* --non-interactive
+
+  publish-skills:
+    needs: [publish-root]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        skill: [haiku-skills-brave-search, haiku-skills-image-generation, haiku-skills-code-execution]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyproject.toml"
+      - name: Build ${{ matrix.skill }}
+        run: uv build --package ${{ matrix.skill }}
+      - name: Publish ${{ matrix.skill }}
+        run: uvx twine upload -u __token__ -p ${{ secrets.PYPI_API_TOKEN }} dist/* --non-interactive

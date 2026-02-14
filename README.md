@@ -25,6 +25,14 @@ For the chat TUI:
 uv add "haiku.skills[tui]"
 ```
 
+Individual skills are available as extras:
+
+```bash
+uv add "haiku.skills[brave-search]"
+uv add "haiku.skills[image-generation]"
+uv add "haiku.skills[code-execution]"
+```
+
 ## Quick start
 
 ### Creating a skill
@@ -249,17 +257,19 @@ print(registry.list_metadata()) # Lightweight metadata for all skills
 registry.activate("my-skill")  # Loads full instructions on demand
 ```
 
-## Examples
+## Skill packages
 
-The `examples/` directory contains ready-to-use skills:
+Individual skills are distributed as separate packages under `skills/`:
 
-- **brave-search** — Web search via [Brave Search API](https://brave.com/search/api/) (requires `BRAVE_API_KEY`)
-- **image-generation** — Image generation via [Ollama](https://ollama.com/) (requires a running Ollama instance)
+- **[brave-search](skills/brave-search)** — Web search via [Brave Search API](https://brave.com/search/api/) (requires `BRAVE_API_KEY`)
+- **[image-generation](skills/image-generation)** — Image generation via [Ollama](https://ollama.com/) (requires a running Ollama instance)
+- **[code-execution](skills/code-execution)** — Sandboxed Python code execution via [pydantic-monty](https://github.com/pydantic/pydantic-monty)
 
-Try them with the chat TUI:
+Install via extras and use with entrypoint discovery:
 
 ```bash
-haiku-skills chat -s examples
+uv add "haiku.skills[brave-search]"
+haiku-skills chat --use-entrypoints
 ```
 
 ## License

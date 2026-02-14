@@ -36,6 +36,9 @@ tui = [
     "typer>=0.19.2",
     "python-dotenv>=1.1.0",
 ]
+brave-search = ["haiku-skills-brave-search"]
+image-generation = ["haiku-skills-image-generation"]
+code-execution = ["haiku-skills-code-execution"]
 
 [project.scripts]
 haiku-skills = "haiku.skills.cli:cli"
@@ -60,6 +63,11 @@ dev = [
     "pytest-recording>=0.13.4",
     "pydantic-ai-slim[openai]>=1.46.0",
     "ruff>=0.14.13",
+    "pydantic-monty>=0.0.4",
+    "textual>=7.5.0",
+    "textual-image>=0.8.5",
+    "typer>=0.23.1",
+    "python-dotenv>=1.2.1",
 ]
 
 [tool.ruff]
@@ -80,8 +88,13 @@ indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
 
-[tool.ty.src]
-exclude = ["examples/**"]
+[tool.uv.sources]
+haiku-skills-brave-search = { workspace = true }
+haiku-skills-image-generation = { workspace = true }
+haiku-skills-code-execution = { workspace = true }
+
+[tool.uv.workspace]
+members = ["skills/*"]
 
 [tool.ty.environment]
 python-version = "3.13"
@@ -95,7 +108,12 @@ norecursedirs = [".git", ".venv"]
 filterwarnings = ["error", "ignore::UserWarning", "ignore::DeprecationWarning"]
 
 [tool.coverage.run]
-source = ["haiku/skills"]
+source = [
+    "haiku/skills",
+    "skills/brave-search/haiku_skills_brave_search",
+    "skills/image-generation/haiku_skills_image_generation",
+    "skills/code-execution/haiku_skills_code_execution",
+]
 omit = ["haiku/skills/chat/*", "haiku/skills/cli.py"]
 
 [tool.coverage.report]

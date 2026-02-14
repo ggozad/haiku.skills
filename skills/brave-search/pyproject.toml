@@ -1,0 +1,16 @@
+[project]
+name = "haiku-skills-brave-search"
+version = "0.1.0"
+description = "Brave web search skill for haiku.skills"
+requires-python = ">=3.13"
+dependencies = ["haiku.skills>=0.1.0"]
+
+[project.entry-points."haiku.skills"]
+brave-search = "haiku_skills_brave_search:create_skill"
+
+[tool.uv.sources]
+haiku-skills = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
