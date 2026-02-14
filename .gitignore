@@ -20,3 +20,6 @@ wheels/
 TODO.md
 PLAN.md
 DEVNOTES.md
+
+# examples (local-only, not committed)
+examples/

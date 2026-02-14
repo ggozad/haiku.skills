@@ -4,17 +4,25 @@ A Python library for building skill-powered AI agents. Implements the [Agent Ski
 
 ## Features
 
+- **Conversational agent** — Chat directly or delegate to the skill orchestrator when specialized skills are needed
 - **Skill discovery** — Scan filesystem paths for [SKILL.md](https://agentskills.io/specification) directories or load skills from Python entrypoints
-- **Task decomposition** — Agents decompose requests into subtasks, spawn dynamic sub-agents with targeted skill subsets, and synthesize results
+- **Task decomposition** — The orchestrator decomposes requests into subtasks, spawns dynamic sub-agents with targeted skill subsets, and synthesizes results
 - **Progressive disclosure** — Lightweight metadata loaded at startup, full instructions loaded on activation
 - **In-process tools** — Attach pydantic-ai `Tool` functions or `AbstractToolset` instances to skills
 - **Script tools** — Python scripts in `scripts/` with a `main()` function, automatically discovered and executed via `uv run`
 - **MCP integration** — Wrap any MCP server (stdio, SSE, streamable HTTP) as a skill with `skill_from_mcp()`
+- **Chat TUI** — Interactive terminal UI powered by [Textual](https://textual.textualize.io/)
 
 ## Installation
 
 ```bash
 uv add haiku.skills
+```
+
+For the chat TUI:
+
+```bash
+uv add "haiku.skills[tui]"
 ```
 
 ## Quick start
@@ -46,17 +54,58 @@ See the [Agent Skills specification](https://agentskills.io/specification) for t
 ```python
 from pathlib import Path
 from haiku.skills import create_agent
+from haiku.skills.models import OrchestratorState
 
 agent = create_agent(
     model="anthropic:claude-sonnet-4-5-20250929",
     skill_paths=[Path("./skills")],
 )
 
-result = await agent.run("Analyze this dataset.")
-print(result.answer)
+state = OrchestratorState()
+answer = await agent.run("Analyze this dataset.", state)
+print(answer)
 ```
 
-`create_agent` discovers skills, builds a registry, and returns a `SkillAgent` that handles the full orchestration pipeline: decompose the request into subtasks, execute each with a targeted sub-agent, and synthesize the results.
+`create_agent` discovers skills, builds a registry, and returns a `SkillAgent`. The agent can respond directly to simple messages or delegate to the orchestrator when skills are needed. The orchestrator decomposes the request into subtasks, executes each with a targeted sub-agent, and synthesizes the results.
+
+The `OrchestratorState` object is observable — you can poll it to track the orchestrator's phase and task progress.
+
+### Conversation history
+
+The agent maintains conversation history across calls:
+
+```python
+state = OrchestratorState()
+await agent.run("Hello!", state)
+await agent.run("What did I just say?", state)  # remembers prior messages
+
+agent.clear_history()  # reset conversation
+```
+
+### Chat TUI
+
+Launch the interactive chat interface:
+
+```bash
+haiku-skills chat -s ./skills
+```
+
+Options:
+
+| Flag | Description |
+|---|---|
+| `-m`, `--model` | Model to use (e.g. `openai:gpt-4o`) |
+| `-s`, `--skill-path` | Path to directory containing skill subdirectories (repeatable) |
+| `--use-entrypoints` | Discover skills from Python entrypoints |
+
+Environment variables (or `.env` file):
+
+| Variable | Description | Default |
+|---|---|---|
+| `HAIKU_SKILLS_MODEL` | Model to use | `ollama:gpt-oss` |
+| `HAIKU_SKILLS_PATHS` | Colon-separated skill paths | — |
+| `HAIKU_SKILLS_USE_ENTRYPOINTS` | Enable entrypoint discovery (`1`/`true`/`yes`) | — |
+| `LOGFIRE_TOKEN` | [Pydantic Logfire](https://logfire.pydantic.dev/) token for tracing | — |
 
 ### Entrypoint skills
 

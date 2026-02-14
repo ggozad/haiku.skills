@@ -67,19 +67,51 @@ class TestSkillAgent:
         assert isinstance(agent.skills, list)
         assert all(isinstance(s, str) for s in agent.skills)
 
-    async def test_run(self, allow_model_requests: None):
+    async def test_direct_chat(self, allow_model_requests: None):
+        """Agent responds directly without orchestration for simple chat."""
+        model = TestModel(call_tools=[], custom_output_text="Hello there!")
+        agent = create_agent(model=model, skill_paths=[FIXTURES])
+        state = OrchestratorState()
+        answer = await agent.run("Hello", state)
+        assert answer == "Hello there!"
+        assert state.phase == OrchestratorPhase.IDLE
+        assert state.plan is None
+
+    async def test_run_with_orchestration(self, allow_model_requests: None):
+        """Agent delegates to orchestrator when skills are needed."""
         agent = create_agent(model=TestModel(), skill_paths=[FIXTURES])
         state = OrchestratorState()
-        result = await agent.run("Do something with simple-skill.", state)
-        assert result.answer
-        assert len(result.tasks) >= 1
-        for task in result.tasks:
+        answer = await agent.run("Summarize something.", state)
+        assert answer
+        assert state.plan is not None
+        assert len(state.tasks) >= 1
+        for task in state.tasks:
             assert task.status in (TaskStatus.COMPLETED, TaskStatus.FAILED)
 
     async def test_run_updates_state(self, allow_model_requests: None):
         agent = create_agent(model=TestModel(), skill_paths=[FIXTURES])
         state = OrchestratorState()
-        result = await agent.run("Do something.", state)
+        await agent.run("Do something.", state)
         assert state.phase == OrchestratorPhase.IDLE
         assert state.plan is not None
-        assert state.tasks == result.tasks
+
+    async def test_history_maintained(self, allow_model_requests: None):
+        """Conversation history persists across runs."""
+        model = TestModel(call_tools=[], custom_output_text="Response")
+        agent = create_agent(model=model, skill_paths=[FIXTURES])
+        state = OrchestratorState()
+        await agent.run("First message", state)
+        assert len(agent.history) > 0
+        history_after_first = len(agent.history)
+        await agent.run("Second message", state)
+        assert len(agent.history) > history_after_first
+
+    async def test_clear_history(self, allow_model_requests: None):
+        """History can be cleared."""
+        model = TestModel(call_tools=[], custom_output_text="Hi")
+        agent = create_agent(model=model, skill_paths=[FIXTURES])
+        state = OrchestratorState()
+        await agent.run("Hello", state)
+        assert len(agent.history) > 0
+        agent.clear_history()
+        assert len(agent.history) == 0

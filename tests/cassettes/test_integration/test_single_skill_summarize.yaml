@@ -8,7 +8,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '2262'
+      - '1540'
       content-type:
       - application/json
       host:
@@ -17,7 +17,7 @@ interactions:
     parsed_body:
       messages:
       - content: |-
-          You are a task planning agent. Your job is to analyze a user request and decompose it into subtasks that can be handled by available skills.
+          You are a helpful assistant with access to specialized skills.
 
           ## Available skills
 
@@ -28,17 +28,8 @@ interactions:
 
           ## Instructions
 
-          Given the user's request, create a plan by:
-          1. Identifying which skills are relevant to the request
-          2. Breaking the request into subtasks, each assigned to one or more skills
-          3. Keeping it simple: if the request can be handled by a single skill, create a single task
-
-          Each task must have:
-          - A unique id (starting from "1")
-          - A clear description of what needs to be done
-          - A list of skill names to use (from the available skills above)
-
-          Provide brief reasoning for your decomposition.
+          - For requests that require specialized skills, use the orchestrate tool to delegate the work
+          - For general conversation or questions that don't need skills, respond directly
         role: system
       - content: 'Summarize the following: Python is a high-level programming language known for its readability and versatility.
           It supports multiple programming paradigms including procedural, object-oriented, and functional programming. Python
@@ -46,154 +37,33 @@ interactions:
         role: user
       model: gpt-oss
       stream: false
-      tool_choice: required
+      tool_choice: auto
       tools:
       - function:
-          description: The final response which ends this conversation
-          name: final_result
+          description: |-
+            Delegate a request to the skill orchestrator.
+
+            Use this when the request requires specialized skills.
+            The orchestrator decomposes the request into subtasks,
+            executes them using the appropriate skills, and returns
+            the synthesized result.
+          name: _orchestrate
           parameters:
-            $defs:
-              Task:
-                additionalProperties: false
-                properties:
-                  description:
-                    type: string
-                  error:
-                    anyOf:
-                    - type: string
-                    - type: 'null'
-                    default: null
-                  id:
-                    type: string
-                  result:
-                    anyOf:
-                    - type: string
-                    - type: 'null'
-                    default: null
-                  skills:
-                    items:
-                      type: string
-                    type: array
-                  status:
-                    anyOf:
-                    - $ref: '#/$defs/TaskStatus'
-                    default: pending
-                required:
-                - id
-                - description
-                - skills
-                type: object
-              TaskStatus:
-                enum:
-                - pending
-                - in_progress
-                - completed
-                - failed
-                type: string
             additionalProperties: false
             properties:
-              reasoning:
+              request:
+                description: The request to process using available skills.
                 type: string
-              tasks:
-                items:
-                  $ref: '#/$defs/Task'
-                type: array
             required:
-            - tasks
-            - reasoning
+            - request
             type: object
+          strict: true
         type: function
     uri: http://localhost:11434/v1/chat/completions
   response:
     headers:
       content-length:
-      - '951'
-      content-type:
-      - application/json
-    parsed_body:
-      choices:
-      - finish_reason: tool_calls
-        index: 0
-        message:
-          content: ''
-          reasoning: 'The user says: "Summarize the following: Python is a high-level programming language...". So the user
-            wants a summary. The appropriate skill is summarizer. So we create a single task: id "1", description: Summarize
-            the provided text, using summarizer skill. Provide reasoning: just summarizer. Then call final.'
-          role: assistant
-          tool_calls:
-          - function:
-              arguments: '{"reasoning":"The user asks for a summary, which can be handled with the summarizer skill.","tasks":[{"description":"Summarize
-                the given paragraph about Python.","id":"1","skills":["summarizer"]}]}'
-              name: final_result
-            id: call_ijrqmfqr
-            index: 0
-            type: function
-      created: 1771023040
-      id: chatcmpl-426
-      model: gpt-oss
-      object: chat.completion
-      system_fingerprint: fp_ollama
-      usage:
-        completion_tokens: 136
-        prompt_tokens: 393
-        total_tokens: 529
-    status:
-      code: 200
-      message: OK
-- request:
-    headers:
-      accept:
-      - application/json
-      accept-encoding:
-      - gzip, deflate
-      connection:
-      - keep-alive
-      content-length:
-      - '1019'
-      content-type:
-      - application/json
-      host:
-      - localhost:11434
-    method: POST
-    parsed_body:
-      messages:
-      - content: |-
-          You are a focused execution agent. Complete the following task using the skills and instructions provided.
-
-          ## Task
-
-          Summarize the given paragraph about Python.
-
-          ## Skill instructions
-
-          ## summarizer
-
-          # Summarizer
-
-          You are a text summarization assistant. When given text:
-
-          1. Identify the key points
-          2. Condense them into concise bullet points
-          3. Preserve the essential meaning
-          4. Return a markdown bulleted list
-
-          ## Guidelines
-
-          - Follow the skill instructions carefully
-          - Stay focused on the specific task described above
-          - Provide a clear, complete result
-        role: system
-      - content: 'Summarize the following: Python is a high-level programming language known for its readability and versatility.
-          It supports multiple programming paradigms including procedural, object-oriented, and functional programming. Python
-          has a large standard library and an active community that contributes thousands of third-party packages.'
-        role: user
-      model: gpt-oss
-      stream: false
-    uri: http://localhost:11434/v1/chat/completions
-  response:
-    headers:
-      content-length:
-      - '1326'
+      - '680'
       content-type:
       - application/json
     parsed_body:
@@ -201,96 +71,21 @@ interactions:
       - finish_reason: stop
         index: 0
         message:
-          content: "- Python is a high‑level language celebrated for its readability and versatility.  \n- It supports multiple
-            paradigms: procedural, object‑oriented, and functional.  \n- The language ships with a large standard library.
-            \ \n- An active community continually adds thousands of third‑party packages."
-          reasoning: |+
-            Task: Summarize the given paragraph. I should identify key points, condense into concise bullet points, preserve meaning, return markdown bulleted list.
-
-            Paragraph: "Python is a high-level programming language known for its readability and versatility. It supports multiple programming paradigms including procedural, object-oriented, and functional programming. Python has a large standard library and an active community that contributes thousands of third-party packages."
-
-            Key points: high-level language; readability & versatility; supports procedural, OOP, functional; large standard library; active community with thousands of third-party packages.
-
-            Let's produce bullet points.
-
-            Return in markdown.
-
+          content: "- Python is a high‑level, readable, and versatile programming language.  \n- It supports several paradigms:
+            procedural, object‑oriented, and functional.  \n- The language comes with an extensive standard library and boasts
+            a vibrant community that continually develops thousands of third‑party packages."
+          reasoning: User wants summary. That's simple. No specialized skill. Just summarize.
           role: assistant
-      created: 1771023047
-      id: chatcmpl-450
+      created: 1771065513
+      id: chatcmpl-461
       model: gpt-oss
       object: chat.completion
       system_fingerprint: fp_ollama
       usage:
-        completion_tokens: 191
-        prompt_tokens: 244
-        total_tokens: 435
-    status:
-      code: 200
-      message: OK
-- request:
-    headers:
-      accept:
-      - application/json
-      accept-encoding:
-      - gzip, deflate
-      connection:
-      - keep-alive
-      content-length:
-      - '1536'
-      content-type:
-      - application/json
-      host:
-      - localhost:11434
-    method: POST
-    parsed_body:
-      messages:
-      - content: "You are a synthesis agent. Your job is to combine the results from multiple subtasks into a coherent final
-          answer for the user.\n\n## Original request\n\nSummarize the following: Python is a high-level programming language
-          known for its readability and versatility. It supports multiple programming paradigms including procedural, object-oriented,
-          and functional programming. Python has a large standard library and an active community that contributes thousands
-          of third-party packages.\n\n## Subtask results\n\n### Task 1: Summarize the given paragraph about Python.\n- Python
-          is a high‑level language celebrated for its readability and versatility.  \n- It supports multiple paradigms: procedural,
-          object‑oriented, and functional.  \n- The language ships with a large standard library.  \n- An active community
-          continually adds thousands of third‑party packages.\n\n## Instructions\n\nCombine the subtask results into a single,
-          coherent response that fully addresses the user's original request. Do not mention the subtasks or the decomposition
-          process — just provide the final answer."
-        role: system
-      - content: 'Summarize the following: Python is a high-level programming language known for its readability and versatility.
-          It supports multiple programming paradigms including procedural, object-oriented, and functional programming. Python
-          has a large standard library and an active community that contributes thousands of third-party packages.'
-        role: user
-      model: gpt-oss
-      stream: false
-    uri: http://localhost:11434/v1/chat/completions
-  response:
-    headers:
-      content-length:
-      - '714'
-      content-type:
-      - application/json
-    parsed_body:
-      choices:
-      - finish_reason: stop
-        index: 0
-        message:
-          content: Python is a high‑level language celebrated for its readability and versatility. It supports procedural,
-            object‑oriented, and functional programming, comes with a large standard library, and benefits from a vibrant
-            community that adds thousands of third‑party packages.
-          reasoning: We just need to give a concise summary. The subtask already did that. We should produce a single summary.
-            No mention of tasks. Let's produce.
-          role: assistant
-      created: 1771023050
-      id: chatcmpl-935
-      model: gpt-oss
-      object: chat.completion
-      system_fingerprint: fp_ollama
-      usage:
-        completion_tokens: 90
-        prompt_tokens: 329
-        total_tokens: 419
+        completion_tokens: 82
+        prompt_tokens: 339
+        total_tokens: 421
     status:
       code: 200
       message: OK
 version: 1
-...

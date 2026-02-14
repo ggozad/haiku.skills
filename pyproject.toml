@@ -25,9 +25,19 @@ classifiers = [
 
 dependencies = [
     "pydantic>=2.12.5",
-    "pydantic-ai-slim[mcp]>=1.46.0",
+    "pydantic-ai-slim[mcp,logfire]>=1.46.0",
     "pyyaml>=6.0.3",
 ]
+
+[project.optional-dependencies]
+tui = [
+    "textual>=3.2.0",
+    "typer>=0.19.2",
+    "python-dotenv>=1.1.0",
+]
+
+[project.scripts]
+haiku-skills = "haiku.skills.cli:cli"
 
 [build-system]
 requires = ["hatchling"]
@@ -82,6 +92,7 @@ filterwarnings = ["error", "ignore::UserWarning", "ignore::DeprecationWarning"]
 
 [tool.coverage.run]
 source = ["haiku/skills"]
+omit = ["haiku/skills/chat/*", "haiku/skills/cli.py"]
 
 [tool.coverage.report]
 fail_under = 100

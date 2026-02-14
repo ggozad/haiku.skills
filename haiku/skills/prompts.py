@@ -1,3 +1,17 @@
+MAIN_AGENT_PROMPT = """\
+You are a helpful assistant with access to specialized skills.
+
+## Available skills
+
+{skill_catalog}
+
+## Instructions
+
+- For requests that require specialized skills, use the orchestrate tool \
+to delegate the work
+- For general conversation or questions that don't need skills, respond directly\
+"""
+
 PLAN_PROMPT = """\
 You are a task planning agent. Your job is to analyze a user request and \
 decompose it into subtasks that can be handled by available skills.

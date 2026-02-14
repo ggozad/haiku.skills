@@ -27,7 +27,7 @@ async def test_single_skill_summarize(allow_model_requests: None):
         skill_paths=[FIXTURES],
     )
     state = OrchestratorState()
-    result = await agent.run(
+    answer = await agent.run(
         "Summarize the following: "
         "Python is a high-level programming language known for its readability "
         "and versatility. It supports multiple programming paradigms including "
@@ -36,8 +36,8 @@ async def test_single_skill_summarize(allow_model_requests: None):
         "thousands of third-party packages.",
         state,
     )
-    assert result.answer
-    assert len(result.answer) > 10
+    assert answer
+    assert len(answer) > 10
 
 
 @pytest.mark.vcr()
@@ -77,9 +77,9 @@ async def test_skill_with_tool(allow_model_requests: None):
         skills=[skill],
     )
     state = OrchestratorState()
-    result = await agent.run("What is 15 * 23 + 7?", state)
-    assert result.answer
-    assert "352" in result.answer
+    answer = await agent.run("What is 15 * 23 + 7?", state)
+    assert answer
+    assert "352" in answer
 
 
 @pytest.mark.vcr()
@@ -90,7 +90,7 @@ async def test_multi_skill_decomposition(allow_model_requests: None):
         skill_paths=[FIXTURES],
     )
     state = OrchestratorState()
-    result = await agent.run(
+    answer = await agent.run(
         "First summarize the following text, then translate the summary to French: "
         "Machine learning is a subset of artificial intelligence that enables "
         "systems to learn and improve from experience without being explicitly "
@@ -98,5 +98,5 @@ async def test_multi_skill_decomposition(allow_model_requests: None):
         "and use it to learn for themselves.",
         state,
     )
-    assert result.answer
-    assert len(result.tasks) >= 1
+    assert answer
+    assert len(state.tasks) >= 1
