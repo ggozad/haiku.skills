@@ -5,10 +5,7 @@ from pydantic import ValidationError
 from pydantic_ai.toolsets.function import FunctionToolset
 
 from haiku.skills.models import (
-    DecompositionPlan,
-    OrchestratorPhase,
-    OrchestratorResult,
-    OrchestratorState,
+    AgentState,
     Skill,
     SkillMetadata,
     SkillSource,
@@ -161,7 +158,7 @@ class TestTaskStatus:
 
 class TestTask:
     def test_defaults(self):
-        task = Task(id="1", description="Do something.", skills=["my-skill"])
+        task = Task(id="1", description="Do something.", skill="my-skill")
         assert task.status == TaskStatus.PENDING
         assert task.result is None
         assert task.error is None
@@ -170,7 +167,7 @@ class TestTask:
         task = Task(
             id="1",
             description="Do something.",
-            skills=["my-skill"],
+            skill="my-skill",
             status=TaskStatus.COMPLETED,
             result="Done.",
         )
@@ -178,69 +175,13 @@ class TestTask:
         assert task.result == "Done."
 
 
-class TestDecompositionPlan:
-    def test_plan(self):
-        tasks = [Task(id="1", description="Step 1.", skills=["a"])]
-        plan = DecompositionPlan(tasks=tasks, reasoning="Simple task.")
-        assert len(plan.tasks) == 1
-        assert plan.reasoning == "Simple task."
-
-
-class TestOrchestratorPhase:
-    def test_values(self):
-        assert OrchestratorPhase.IDLE.value == "idle"
-        assert OrchestratorPhase.PLANNING.value == "planning"
-        assert OrchestratorPhase.EXECUTING.value == "executing"
-        assert OrchestratorPhase.SYNTHESIZING.value == "synthesizing"
-
-
-class TestOrchestratorState:
+class TestAgentState:
     def test_defaults(self):
-        state = OrchestratorState()
-        assert state.phase == OrchestratorPhase.IDLE
-        assert state.plan is None
+        state = AgentState()
         assert state.tasks == []
-        assert state.result is None
 
-    def test_with_plan_and_tasks(self):
-        tasks = [Task(id="1", description="Do it.", skills=["a"])]
-        plan = DecompositionPlan(tasks=tasks, reasoning="Because.")
-        state = OrchestratorState(
-            phase=OrchestratorPhase.EXECUTING,
-            plan=plan,
-            tasks=tasks,
-        )
-        assert state.phase == OrchestratorPhase.EXECUTING
-        assert state.plan is plan
+    def test_with_tasks(self):
+        tasks = [Task(id="1", description="Do it.", skill="a")]
+        state = AgentState(tasks=tasks)
         assert len(state.tasks) == 1
-
-    def test_with_result(self):
-        tasks = [
-            Task(
-                id="1",
-                description="Step 1.",
-                skills=["a"],
-                status=TaskStatus.COMPLETED,
-                result="Done.",
-            )
-        ]
-        result = OrchestratorResult(answer="Final.", tasks=tasks)
-        state = OrchestratorState(result=result)
-        assert state.result is result
-        assert state.result.answer == "Final."
-
-
-class TestOrchestratorResult:
-    def test_result(self):
-        tasks = [
-            Task(
-                id="1",
-                description="Step 1.",
-                skills=["a"],
-                status=TaskStatus.COMPLETED,
-                result="Done.",
-            )
-        ]
-        result = OrchestratorResult(answer="Final answer.", tasks=tasks)
-        assert result.answer == "Final answer."
-        assert len(result.tasks) == 1
+        assert state.tasks[0].skill == "a"

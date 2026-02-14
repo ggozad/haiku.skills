@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 from pydantic_ai.models import Model
 
 from haiku.skills.agent import SkillAgent, create_agent
-from haiku.skills.models import OrchestratorPhase, OrchestratorState, Skill
+from haiku.skills.models import AgentState, Skill
 
 try:
     import logfire
@@ -33,14 +33,6 @@ try:
 except ImportError:
     TEXTUAL_AVAILABLE = False
     App = object  # type: ignore
-
-
-PHASE_LABELS = {
-    OrchestratorPhase.IDLE: "Thinking...",
-    OrchestratorPhase.PLANNING: "Planning...",
-    OrchestratorPhase.EXECUTING: "Executing tasks...",
-    OrchestratorPhase.SYNTHESIZING: "Synthesizing...",
-}
 
 
 class ChatApp(App):
@@ -79,14 +71,12 @@ class ChatApp(App):
         skill_paths: list[Path] | None = None,
         skills: list[Skill] | None = None,
         use_entrypoints: bool = False,
-        max_concurrency: int = 5,
     ) -> None:
         super().__init__()
         self._model = model
         self._skill_paths = skill_paths
         self._skills = skills
         self._use_entrypoints = use_entrypoints
-        self._max_concurrency = max_concurrency
         self._agent: SkillAgent | None = None
         self._is_processing = False
         self._current_worker: Worker[None] | None = None
@@ -111,7 +101,6 @@ class ChatApp(App):
             skill_paths=self._skill_paths,
             skills=self._skills,
             use_entrypoints=self._use_entrypoints,
-            max_concurrency=self._max_concurrency,
         )
         self.query_one(Input).focus()
 
@@ -138,7 +127,7 @@ class ChatApp(App):
         chat_history = self.query_one(ChatHistory)
         await chat_history.show_thinking()
 
-        state = OrchestratorState()
+        state = AgentState()
         poll_task = asyncio.create_task(self._poll_state(state))
 
         try:
@@ -166,27 +155,20 @@ class ChatApp(App):
             chat_input.disabled = False
             chat_input.focus()
 
-    async def _poll_state(self, state: OrchestratorState) -> None:
+    async def _poll_state(self, state: AgentState) -> None:
         chat_history = self.query_one(ChatHistory)
-        last_phase = OrchestratorPhase.IDLE
         tasks_container: TasksContainer | None = None
 
         while True:
             await asyncio.sleep(0.1)
 
-            if state.phase != last_phase:
-                last_phase = state.phase
-                label = PHASE_LABELS.get(state.phase, "Working...")
-                chat_history.update_thinking(label)
-
             if state.tasks and tasks_container is None:
                 chat_history.hide_thinking()
                 tasks_container = await chat_history.show_tasks(state.tasks)
-                await chat_history.show_thinking(
-                    PHASE_LABELS.get(state.phase, "Working...")
-                )
+                await chat_history.show_thinking("Executing tasks...")
 
             if state.tasks and tasks_container is not None:
+                await tasks_container.add_tasks(state.tasks)
                 tasks_container.update_tasks(state.tasks)
 
     def action_focus_input(self) -> None:

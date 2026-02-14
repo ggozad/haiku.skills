@@ -90,31 +90,11 @@ class TaskStatus(StrEnum):
 class Task(BaseModel):
     id: str
     description: str
-    skills: list[str]
+    skill: str
     status: TaskStatus = TaskStatus.PENDING
     result: str | None = None
     error: str | None = None
 
 
-class DecompositionPlan(BaseModel):
-    tasks: list[Task]
-    reasoning: str
-
-
-class OrchestratorPhase(StrEnum):
-    IDLE = "idle"
-    PLANNING = "planning"
-    EXECUTING = "executing"
-    SYNTHESIZING = "synthesizing"
-
-
-class OrchestratorState(BaseModel):
-    phase: OrchestratorPhase = OrchestratorPhase.IDLE
-    plan: DecompositionPlan | None = None
+class AgentState(BaseModel):
     tasks: list[Task] = Field(default_factory=list)
-    result: "OrchestratorResult | None" = None
-
-
-class OrchestratorResult(BaseModel):
-    answer: str
-    tasks: list[Task]

@@ -8,7 +8,7 @@ Skill-powered AI agents implementing the [Agent Skills specification](https://ag
 ## Features
 
 - **Skill discovery** — Scan filesystem paths for [SKILL.md](https://agentskills.io/specification) directories or load from Python entrypoints
-- **Task decomposition** — Orchestrator decomposes requests into subtasks, spawns sub-agents with targeted skill subsets, synthesizes results
+- **Skill execution** — Main agent delegates to focused sub-agents per skill, with task tracking via observable state
 - **Progressive disclosure** — Lightweight metadata at startup, full instructions on activation
 - **In-process tools** — Attach pydantic-ai `Tool` functions or `AbstractToolset` instances to skills
 - **Script tools** — Python scripts in `scripts/` with a `main()` function, discovered and executed via `uv run`
@@ -50,27 +50,26 @@ See the [Agent Skills specification](https://agentskills.io/specification) for t
 ```python
 from pathlib import Path
 from haiku.skills import create_agent
-from haiku.skills.models import OrchestratorState
+from haiku.skills.models import AgentState
 
 agent = create_agent(
     model="anthropic:claude-sonnet-4-5-20250929",
     skill_paths=[Path("./skills")],
 )
 
-state = OrchestratorState()
+state = AgentState()
 answer = await agent.run("Analyze this dataset.", state)
 ```
 
-The agent responds directly to simple messages or delegates to the orchestrator when skills are needed. The orchestrator decomposes requests into subtasks, executes each with a targeted sub-agent, and synthesizes results.
+The agent responds directly to simple messages or uses `execute_skill` to delegate to focused sub-agents when skills are needed.
 
-`OrchestratorState` is observable — poll it to track phase, task progress, and final result.
+`AgentState` is observable — poll it to track task progress.
 
 ### Conversation history
 
 ```python
-state = OrchestratorState()
-await agent.run("Hello!", state)
-await agent.run("What did I just say?", state)  # remembers prior messages
+await agent.run("Hello!")
+await agent.run("What did I just say?")  # remembers prior messages
 
 agent.clear_history()  # reset conversation
 ```

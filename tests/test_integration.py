@@ -7,7 +7,7 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from haiku.skills.agent import create_agent
-from haiku.skills.models import OrchestratorState, Skill, SkillMetadata, SkillSource
+from haiku.skills.models import AgentState, Skill, SkillMetadata, SkillSource
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -26,7 +26,7 @@ async def test_single_skill_summarize(allow_model_requests: None):
         model=_ollama_model(),
         skill_paths=[FIXTURES],
     )
-    state = OrchestratorState()
+    state = AgentState()
     answer = await agent.run(
         "Summarize the following: "
         "Python is a high-level programming language known for its readability "
@@ -76,7 +76,7 @@ async def test_skill_with_tool(allow_model_requests: None):
         model=_ollama_model(),
         skills=[skill],
     )
-    state = OrchestratorState()
+    state = AgentState()
     answer = await agent.run("What is 15 * 23 + 7?", state)
     assert answer
     assert "352" in answer
@@ -89,7 +89,7 @@ async def test_multi_skill_decomposition(allow_model_requests: None):
         model=_ollama_model(),
         skill_paths=[FIXTURES],
     )
-    state = OrchestratorState()
+    state = AgentState()
     answer = await agent.run(
         "First summarize the following text, then translate the summary to French: "
         "Machine learning is a subset of artificial intelligence that enables "

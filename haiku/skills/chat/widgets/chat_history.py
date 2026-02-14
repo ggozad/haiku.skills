@@ -62,7 +62,7 @@ class ChatMessage(Static):
 
 
 class TaskWidget(Static):
-    """Displays a single orchestrator task with status indicator."""
+    """Displays a single skill task with status indicator."""
 
     STATUS_ICONS = {
         TaskStatus.PENDING: "○",
@@ -78,7 +78,7 @@ class TaskWidget(Static):
 
     def compose(self) -> "ComposeResult":
         icon = self.STATUS_ICONS.get(self.skill_task.status, "?")
-        skills = ", ".join(self.skill_task.skills)
+        skills = self.skill_task.skill
         with Horizontal(classes="task-row"):
             yield Static(icon, classes="task-status")
             yield Static(self.skill_task.description, classes="task-desc")
