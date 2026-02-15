@@ -135,16 +135,21 @@ class ChatApp(App):
         poll_task = asyncio.create_task(self._poll_tasks())
 
         try:
-            result = await self._agent.run(user_message, message_history=self._history)
-            self._history = list(result.all_messages())
+            async with self._agent.run_stream(
+                user_message, message_history=self._history
+            ) as stream:
+                chat_history.hide_thinking()
+                message = await chat_history.add_message("assistant")
+                async for text in stream.stream_text():
+                    message.update_content(text)
+                    chat_history.scroll_end(animate=False)
+                self._history = list(stream.all_messages())
+
             poll_task.cancel()
             try:
                 await poll_task
             except asyncio.CancelledError:
                 pass
-
-            chat_history.hide_thinking()
-            await chat_history.add_message("assistant", result.output)
         except asyncio.CancelledError:
             poll_task.cancel()
             chat_history.hide_thinking()
