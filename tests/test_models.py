@@ -5,7 +5,6 @@ from pydantic import ValidationError
 from pydantic_ai.toolsets.function import FunctionToolset
 
 from haiku.skills.models import (
-    AgentState,
     Skill,
     SkillMetadata,
     SkillSource,
@@ -173,15 +172,3 @@ class TestTask:
         )
         assert task.status == TaskStatus.COMPLETED
         assert task.result == "Done."
-
-
-class TestAgentState:
-    def test_defaults(self):
-        state = AgentState()
-        assert state.tasks == []
-
-    def test_with_tasks(self):
-        tasks = [Task(id="1", description="Do it.", skill="a")]
-        state = AgentState(tasks=tasks)
-        assert len(state.tasks) == 1
-        assert state.tasks[0].skill == "a"

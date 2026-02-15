@@ -8,7 +8,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '963'
+      - '929'
       content-type:
       - application/json
       host:
@@ -36,7 +36,7 @@ interactions:
       tools:
       - function:
           description: Execute a skill by name.
-          name: _execute_skill
+          name: execute_skill
           parameters:
             additionalProperties: false
             properties:
@@ -44,7 +44,7 @@ interactions:
                 description: A clear description of what you need the skill to do.
                 type: string
               skill_name:
-                description: The exact name of the skill to use (from the available skills list).
+                description: The exact name of the skill to use.
                 type: string
             required:
             - skill_name
@@ -56,7 +56,7 @@ interactions:
   response:
     headers:
       content-length:
-      - '555'
+      - '667'
       content-type:
       - application/json
     parsed_body:
@@ -65,24 +65,25 @@ interactions:
         index: 0
         message:
           content: ''
-          reasoning: We need to calculate 15*23 + 7. We should use calculator skill.
+          reasoning: 'I need to calculate 15 * 23 + 7. Let''s do it: 15*23 = 345? Actually 15*23 = 15*20 + 15*3 = 300 + 45
+            = 345. Then +7 = 352. So answer 352. Use calculator skill for confirmation.'
           role: assistant
           tool_calls:
           - function:
               arguments: '{"request":"Calculate 15 * 23 + 7","skill_name":"calculator"}'
-              name: _execute_skill
-            id: call_wvbb409x
+              name: execute_skill
+            id: call_d86qhzf8
             index: 0
             type: function
-      created: 1771112593
-      id: chatcmpl-409
+      created: 1771148074
+      id: chatcmpl-484
       model: gpt-oss
       object: chat.completion
       system_fingerprint: fp_ollama
       usage:
-        completion_tokens: 56
-        prompt_tokens: 240
-        total_tokens: 296
+        completion_tokens: 105
+        prompt_tokens: 233
+        total_tokens: 338
     status:
       code: 200
       message: OK
@@ -144,7 +145,7 @@ interactions:
   response:
     headers:
       content-length:
-      - '466'
+      - '514'
       content-type:
       - application/json
     parsed_body:
@@ -153,24 +154,24 @@ interactions:
         index: 0
         message:
           content: ''
-          reasoning: Need to use tool.
+          reasoning: We need to use the calculate function. Then respond with result.
           role: assistant
           tool_calls:
           - function:
               arguments: '{"expression":"15 * 23 + 7"}'
               name: calculate
-            id: call_k52uyaq5
+            id: call_jwzrd8zb
             index: 0
             type: function
-      created: 1771112595
-      id: chatcmpl-55
+      created: 1771148075
+      id: chatcmpl-851
       model: gpt-oss
       object: chat.completion
       system_fingerprint: fp_ollama
       usage:
-        completion_tokens: 34
+        completion_tokens: 42
         prompt_tokens: 240
-        total_tokens: 274
+        total_tokens: 282
     status:
       code: 200
       message: OK
@@ -183,7 +184,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '1236'
+      - '1283'
       content-type:
       - application/json
       host:
@@ -211,17 +212,17 @@ interactions:
       - content: Calculate 15 * 23 + 7
         role: user
       - content: null
-        reasoning: Need to use tool.
+        reasoning: We need to use the calculate function. Then respond with result.
         role: assistant
         tool_calls:
         - function:
             arguments: '{"expression":"15 * 23 + 7"}'
             name: calculate
-          id: call_k52uyaq5
+          id: call_jwzrd8zb
           type: function
       - content: '352'
         role: tool
-        tool_call_id: call_k52uyaq5
+        tool_call_id: call_jwzrd8zb
       model: gpt-oss
       stream: false
       tool_choice: auto
@@ -254,15 +255,15 @@ interactions:
         message:
           content: The result is **352**.
           role: assistant
-      created: 1771112595
-      id: chatcmpl-974
+      created: 1771148075
+      id: chatcmpl-897
       model: gpt-oss
       object: chat.completion
       system_fingerprint: fp_ollama
       usage:
         completion_tokens: 11
-        prompt_tokens: 285
-        total_tokens: 296
+        prompt_tokens: 293
+        total_tokens: 304
     status:
       code: 200
       message: OK
@@ -275,7 +276,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '1317'
+      - '1394'
       content-type:
       - application/json
       host:
@@ -298,24 +299,25 @@ interactions:
       - content: What is 15 * 23 + 7?
         role: user
       - content: null
-        reasoning: We need to calculate 15*23 + 7. We should use calculator skill.
+        reasoning: 'I need to calculate 15 * 23 + 7. Let''s do it: 15*23 = 345? Actually 15*23 = 15*20 + 15*3 = 300 + 45 =
+          345. Then +7 = 352. So answer 352. Use calculator skill for confirmation.'
         role: assistant
         tool_calls:
         - function:
             arguments: '{"request":"Calculate 15 * 23 + 7","skill_name":"calculator"}'
-            name: _execute_skill
-          id: call_wvbb409x
+            name: execute_skill
+          id: call_d86qhzf8
           type: function
       - content: '352'
         role: tool
-        tool_call_id: call_wvbb409x
+        tool_call_id: call_d86qhzf8
       model: gpt-oss
       stream: false
       tool_choice: auto
       tools:
       - function:
           description: Execute a skill by name.
-          name: _execute_skill
+          name: execute_skill
           parameters:
             additionalProperties: false
             properties:
@@ -323,7 +325,7 @@ interactions:
                 description: A clear description of what you need the skill to do.
                 type: string
               skill_name:
-                description: The exact name of the skill to use (from the available skills list).
+                description: The exact name of the skill to use.
                 type: string
             required:
             - skill_name
@@ -345,15 +347,15 @@ interactions:
         message:
           content: The result is **352**.
           role: assistant
-      created: 1771112596
-      id: chatcmpl-910
+      created: 1771148076
+      id: chatcmpl-153
       model: gpt-oss
       object: chat.completion
       system_fingerprint: fp_ollama
       usage:
         completion_tokens: 11
-        prompt_tokens: 309
-        total_tokens: 320
+        prompt_tokens: 350
+        total_tokens: 361
     status:
       code: 200
       message: OK

@@ -8,7 +8,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '1490'
+      - '1456'
       content-type:
       - application/json
       host:
@@ -41,7 +41,7 @@ interactions:
       tools:
       - function:
           description: Execute a skill by name.
-          name: _execute_skill
+          name: execute_skill
           parameters:
             additionalProperties: false
             properties:
@@ -49,7 +49,7 @@ interactions:
                 description: A clear description of what you need the skill to do.
                 type: string
               skill_name:
-                description: The exact name of the skill to use (from the available skills list).
+                description: The exact name of the skill to use.
                 type: string
             required:
             - skill_name
@@ -61,7 +61,7 @@ interactions:
   response:
     headers:
       content-length:
-      - '835'
+      - '916'
       content-type:
       - application/json
     parsed_body:
@@ -70,7 +70,7 @@ interactions:
         index: 0
         message:
           content: ''
-          reasoning: We should use summarizer skill.
+          reasoning: We need a summary. We should use summarizer skill. Use execute_skill with request and skill_name "summarizer".
           role: assistant
           tool_calls:
           - function:
@@ -78,19 +78,19 @@ interactions:
                 and versatility. It supports multiple programming paradigms including procedural, object-oriented, and functional
                 programming. Python has a large standard library and an active community that contributes thousands of third-party
                 packages.","skill_name":"summarizer"}'
-              name: _execute_skill
-            id: call_vhe59jny
+              name: execute_skill
+            id: call_ztcaa4z9
             index: 0
             type: function
-      created: 1771112585
-      id: chatcmpl-537
+      created: 1771148069
+      id: chatcmpl-616
       model: gpt-oss
       object: chat.completion
       system_fingerprint: fp_ollama
       usage:
-        completion_tokens: 91
-        prompt_tokens: 336
-        total_tokens: 427
+        completion_tokens: 108
+        prompt_tokens: 329
+        total_tokens: 437
     status:
       code: 200
       message: OK
@@ -145,7 +145,7 @@ interactions:
   response:
     headers:
       content-length:
-      - '672'
+      - '625'
       content-type:
       - application/json
     parsed_body:
@@ -153,20 +153,20 @@ interactions:
       - finish_reason: stop
         index: 0
         message:
-          content: "- Python is a high‑level language famous for readability and versatility.  \n- It supports procedural,
-            object‑oriented, and functional programming styles.  \n- It comes with a comprehensive standard library and an
-            active community that adds thousands of third‑party packages."
-          reasoning: We need summarize into bullet points using markdown. Let's create concise bullet list. Good.
+          content: "- Python is a high‑level language renowned for readability and versatility.  \n- It supports procedural,
+            object‑oriented, and functional programming paradigms.  \n- The language comes with a large standard library and
+            a vibrant community that supplies thousands of third‑party packages."
+          reasoning: We generate concise bullet points.
           role: assistant
-      created: 1771112588
-      id: chatcmpl-608
+      created: 1771148071
+      id: chatcmpl-844
       model: gpt-oss
       object: chat.completion
       system_fingerprint: fp_ollama
       usage:
-        completion_tokens: 79
+        completion_tokens: 70
         prompt_tokens: 285
-        total_tokens: 364
+        total_tokens: 355
     status:
       code: 200
       message: OK
@@ -179,7 +179,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '2402'
+      - '2459'
       content-type:
       - application/json
       host:
@@ -207,7 +207,7 @@ interactions:
           has a large standard library and an active community that contributes thousands of third-party packages.'
         role: user
       - content: null
-        reasoning: We should use summarizer skill.
+        reasoning: We need a summary. We should use summarizer skill. Use execute_skill with request and skill_name "summarizer".
         role: assistant
         tool_calls:
         - function:
@@ -215,21 +215,21 @@ interactions:
               and versatility. It supports multiple programming paradigms including procedural, object-oriented, and functional
               programming. Python has a large standard library and an active community that contributes thousands of third-party
               packages.","skill_name":"summarizer"}'
-            name: _execute_skill
-          id: call_vhe59jny
+            name: execute_skill
+          id: call_ztcaa4z9
           type: function
-      - content: "- Python is a high‑level language famous for readability and versatility.  \n- It supports procedural, object‑oriented,
-          and functional programming styles.  \n- It comes with a comprehensive standard library and an active community that
-          adds thousands of third‑party packages."
+      - content: "- Python is a high‑level language renowned for readability and versatility.  \n- It supports procedural,
+          object‑oriented, and functional programming paradigms.  \n- The language comes with a large standard library and
+          a vibrant community that supplies thousands of third‑party packages."
         role: tool
-        tool_call_id: call_vhe59jny
+        tool_call_id: call_ztcaa4z9
       model: gpt-oss
       stream: false
       tool_choice: auto
       tools:
       - function:
           description: Execute a skill by name.
-          name: _execute_skill
+          name: execute_skill
           parameters:
             additionalProperties: false
             properties:
@@ -237,7 +237,7 @@ interactions:
                 description: A clear description of what you need the skill to do.
                 type: string
               skill_name:
-                description: The exact name of the skill to use (from the available skills list).
+                description: The exact name of the skill to use.
                 type: string
             required:
             - skill_name
@@ -249,7 +249,7 @@ interactions:
   response:
     headers:
       content-length:
-      - '552'
+      - '576'
       content-type:
       - application/json
     parsed_body:
@@ -257,19 +257,19 @@ interactions:
       - finish_reason: stop
         index: 0
         message:
-          content: "- Python is a high‑level, readable, and versatile programming language.  \n- It supports procedural, object‑oriented,
-            and functional paradigms.  \n- It comes with a rich standard library and a vibrant community that contributes
-            thousands of third‑party packages."
+          content: "- Python is a high‑level language renowned for readability and versatility.  \n- It supports procedural,
+            object‑oriented, and functional programming paradigms.  \n- The language comes with a large standard library and
+            a vibrant community that supplies thousands of third‑party packages."
           role: assistant
-      created: 1771112591
-      id: chatcmpl-273
+      created: 1771148072
+      id: chatcmpl-616
       model: gpt-oss
       object: chat.completion
       system_fingerprint: fp_ollama
       usage:
-        completion_tokens: 57
-        prompt_tokens: 491
-        total_tokens: 548
+        completion_tokens: 58
+        prompt_tokens: 502
+        total_tokens: 560
     status:
       code: 200
       message: OK

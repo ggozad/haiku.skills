@@ -49,6 +49,7 @@ class Skill(BaseModel):
     source: SkillSource
     path: Path | None = None
     instructions: str | None = None
+    model: str | None = None
     _tools: list = PrivateAttr(default_factory=list)
     _toolsets: list = PrivateAttr(default_factory=list)
 
@@ -94,7 +95,3 @@ class Task(BaseModel):
     status: TaskStatus = TaskStatus.PENDING
     result: str | None = None
     error: str | None = None
-
-
-class AgentState(BaseModel):
-    tasks: list[Task] = Field(default_factory=list)

@@ -4,10 +4,12 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from pydantic_ai import Agent
+from pydantic_ai.messages import ModelMessage
 from pydantic_ai.models import Model
 
-from haiku.skills.agent import SkillAgent, create_agent
-from haiku.skills.models import AgentState, Skill
+from haiku.skills.agent import SkillToolset
+from haiku.skills.models import Skill
 
 try:
     import logfire
@@ -74,10 +76,13 @@ class ChatApp(App):
     ) -> None:
         super().__init__()
         self._model = model
-        self._skill_paths = skill_paths
-        self._skills = skills
-        self._use_entrypoints = use_entrypoints
-        self._agent: SkillAgent | None = None
+        self._toolset = SkillToolset(
+            skill_paths=skill_paths,
+            skills=skills,
+            use_entrypoints=use_entrypoints,
+        )
+        self._agent: Agent[None, str] | None = None
+        self._history: list[ModelMessage] = []
         self._is_processing = False
         self._current_worker: Worker[None] | None = None
 
@@ -96,11 +101,10 @@ class ChatApp(App):
         )
 
     async def on_mount(self) -> None:
-        self._agent = create_agent(
-            model=self._model,
-            skill_paths=self._skill_paths,
-            skills=self._skills,
-            use_entrypoints=self._use_entrypoints,
+        self._agent = Agent(
+            self._model,
+            instructions=self._toolset.system_prompt,
+            toolsets=[self._toolset],
         )
         self.query_one(Input).focus()
 
@@ -127,11 +131,12 @@ class ChatApp(App):
         chat_history = self.query_one(ChatHistory)
         await chat_history.show_thinking()
 
-        state = AgentState()
-        poll_task = asyncio.create_task(self._poll_state(state))
+        self._toolset.clear_tasks()
+        poll_task = asyncio.create_task(self._poll_tasks())
 
         try:
-            answer = await self._agent.run(user_message, state)
+            result = await self._agent.run(user_message, message_history=self._history)
+            self._history = list(result.all_messages())
             poll_task.cancel()
             try:
                 await poll_task
@@ -139,7 +144,7 @@ class ChatApp(App):
                 pass
 
             chat_history.hide_thinking()
-            await chat_history.add_message("assistant", answer)
+            await chat_history.add_message("assistant", result.output)
         except asyncio.CancelledError:
             poll_task.cancel()
             chat_history.hide_thinking()
@@ -155,21 +160,22 @@ class ChatApp(App):
             chat_input.disabled = False
             chat_input.focus()
 
-    async def _poll_state(self, state: AgentState) -> None:
+    async def _poll_tasks(self) -> None:
         chat_history = self.query_one(ChatHistory)
         tasks_container: TasksContainer | None = None
 
         while True:
             await asyncio.sleep(0.1)
 
-            if state.tasks and tasks_container is None:
+            tasks = self._toolset.tasks
+            if tasks and tasks_container is None:
                 chat_history.hide_thinking()
-                tasks_container = await chat_history.show_tasks(state.tasks)
+                tasks_container = await chat_history.show_tasks(tasks)
                 await chat_history.show_thinking("Executing tasks...")
 
-            if state.tasks and tasks_container is not None:
-                await tasks_container.add_tasks(state.tasks)
-                tasks_container.update_tasks(state.tasks)
+            if tasks and tasks_container is not None:
+                await tasks_container.add_tasks(tasks)
+                tasks_container.update_tasks(tasks)
 
     def action_focus_input(self) -> None:
         if self._is_processing and self._current_worker:
@@ -177,7 +183,7 @@ class ChatApp(App):
         self.query_one(Input).focus()
 
     async def action_clear_chat(self) -> None:
-        if self._agent:
-            self._agent.clear_history()
+        self._history = []
+        self._toolset.clear_tasks()
         chat_history = self.query_one(ChatHistory)
         await chat_history.clear_messages()

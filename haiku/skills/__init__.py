@@ -1,7 +1,6 @@
-from haiku.skills.agent import SkillAgent, create_agent
+from haiku.skills.agent import SkillToolset
 from haiku.skills.mcp import skill_from_mcp
 from haiku.skills.models import (
-    AgentState,
     Skill,
     SkillMetadata,
     SkillSource,

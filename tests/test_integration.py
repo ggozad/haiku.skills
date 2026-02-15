@@ -3,11 +3,12 @@
 from pathlib import Path
 
 import pytest
+from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
-from haiku.skills.agent import create_agent
-from haiku.skills.models import AgentState, Skill, SkillMetadata, SkillSource
+from haiku.skills.agent import SkillToolset
+from haiku.skills.models import Skill, SkillMetadata, SkillSource
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -22,22 +23,22 @@ def _ollama_model() -> OpenAIChatModel:
 @pytest.mark.vcr()
 async def test_single_skill_summarize(allow_model_requests: None):
     """Single skill: summarize a paragraph."""
-    agent = create_agent(
-        model=_ollama_model(),
-        skill_paths=[FIXTURES],
+    toolset = SkillToolset(skill_paths=[FIXTURES])
+    agent = Agent(
+        _ollama_model(),
+        instructions=toolset.system_prompt,
+        toolsets=[toolset],
     )
-    state = AgentState()
-    answer = await agent.run(
+    result = await agent.run(
         "Summarize the following: "
         "Python is a high-level programming language known for its readability "
         "and versatility. It supports multiple programming paradigms including "
         "procedural, object-oriented, and functional programming. Python has a "
         "large standard library and an active community that contributes "
         "thousands of third-party packages.",
-        state,
     )
-    assert answer
-    assert len(answer) > 10
+    assert result.output
+    assert len(result.output) > 10
 
 
 @pytest.mark.vcr()
@@ -72,31 +73,32 @@ async def test_skill_with_tool(allow_model_requests: None):
         ),
         tools=[calculate],
     )
-    agent = create_agent(
-        model=_ollama_model(),
-        skills=[skill],
+    toolset = SkillToolset(skills=[skill])
+    agent = Agent(
+        _ollama_model(),
+        instructions=toolset.system_prompt,
+        toolsets=[toolset],
     )
-    state = AgentState()
-    answer = await agent.run("What is 15 * 23 + 7?", state)
-    assert answer
-    assert "352" in answer
+    result = await agent.run("What is 15 * 23 + 7?")
+    assert result.output
+    assert "352" in result.output
 
 
 @pytest.mark.vcr()
 async def test_multi_skill_decomposition(allow_model_requests: None):
     """Multi-skill: summarize then translate."""
-    agent = create_agent(
-        model=_ollama_model(),
-        skill_paths=[FIXTURES],
+    toolset = SkillToolset(skill_paths=[FIXTURES])
+    agent = Agent(
+        _ollama_model(),
+        instructions=toolset.system_prompt,
+        toolsets=[toolset],
     )
-    state = AgentState()
-    answer = await agent.run(
+    result = await agent.run(
         "First summarize the following text, then translate the summary to French: "
         "Machine learning is a subset of artificial intelligence that enables "
         "systems to learn and improve from experience without being explicitly "
         "programmed. It focuses on developing algorithms that can access data "
         "and use it to learn for themselves.",
-        state,
     )
-    assert answer
-    assert len(state.tasks) >= 1
+    assert result.output
+    assert len(toolset.tasks) >= 1

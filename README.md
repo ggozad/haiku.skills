@@ -5,14 +5,21 @@
 
 Skill-powered AI agents implementing the [Agent Skills specification](https://agentskills.io/specification) with [pydantic-ai](https://ai.pydantic.dev/).
 
+## How it works
+
+`SkillToolset` is a pydantic-ai `FunctionToolset` that you attach to your own agent. It exposes a single `execute_skill` tool. When the agent calls it, a **focused sub-agent** spins up with only that skill's instructions and tools — then returns the result. The main agent never sees the skill's internal tools, so its tool space stays clean no matter how many skills you load.
+
+This sub-agent architecture means each skill runs in isolation with its own system prompt, tools, and token budget. Skills don't interfere with each other, tool descriptions don't compete for attention, and failures in one skill can't confuse another.
+
 ## Features
 
+- **Sub-agent execution** — Each skill runs in its own agent with dedicated instructions and tools
 - **Skill discovery** — Scan filesystem paths for [SKILL.md](https://agentskills.io/specification) directories or load from Python entrypoints
-- **Skill execution** — Main agent delegates to focused sub-agents per skill, with task tracking via observable state
-- **Progressive disclosure** — Lightweight metadata at startup, full instructions on activation
+- **Progressive disclosure** — Lightweight metadata at startup, full instructions loaded on activation
 - **In-process tools** — Attach pydantic-ai `Tool` functions or `AbstractToolset` instances to skills
 - **Script tools** — Python scripts in `scripts/` with a `main()` function, discovered and executed via `uv run`
 - **MCP integration** — Wrap any MCP server (stdio, SSE, streamable HTTP) as a skill
+- **Task tracking** — Observable task list on the toolset, populated during runs
 
 ## Installation
 
@@ -45,39 +52,33 @@ Instructions for the agent go here...
 
 See the [Agent Skills specification](https://agentskills.io/specification) for the full format.
 
-### Creating an agent
+### Using SkillToolset
 
 ```python
 from pathlib import Path
-from haiku.skills import create_agent
-from haiku.skills.models import AgentState
+from pydantic_ai import Agent
+from haiku.skills import SkillToolset
 
-agent = create_agent(
-    model="anthropic:claude-sonnet-4-5-20250929",
-    skill_paths=[Path("./skills")],
+toolset = SkillToolset(skill_paths=[Path("./skills")])
+agent = Agent(
+    "anthropic:claude-sonnet-4-5-20250929",
+    instructions=toolset.system_prompt,
+    toolsets=[toolset],
 )
 
-state = AgentState()
-answer = await agent.run("Analyze this dataset.", state)
-```
+result = await agent.run("Analyze this dataset.")
+print(result.output)
 
-The agent responds directly to simple messages or uses `execute_skill` to delegate to focused sub-agents when skills are needed.
-
-`AgentState` is observable — poll it to track task progress.
-
-### Conversation history
-
-```python
-await agent.run("Hello!")
-await agent.run("What did I just say?")  # remembers prior messages
-
-agent.clear_history()  # reset conversation
+# Task tracking — populated during runs
+print(toolset.tasks)
+toolset.clear_tasks()
 ```
 
 ### Skills with tools
 
 ```python
-from haiku.skills import Skill, SkillMetadata, SkillSource, create_agent
+from haiku.skills import Skill, SkillMetadata, SkillSource, SkillToolset
+from pydantic_ai import Agent
 
 def calculate(expression: str) -> str:
     """Evaluate a mathematical expression."""
@@ -93,10 +94,15 @@ skill = Skill(
     tools=[calculate],
 )
 
-agent = create_agent(model="anthropic:claude-sonnet-4-5-20250929", skills=[skill])
+toolset = SkillToolset(skills=[skill])
+agent = Agent(
+    "anthropic:claude-sonnet-4-5-20250929",
+    instructions=toolset.system_prompt,
+    toolsets=[toolset],
+)
 ```
 
-For `AbstractToolset` instances, use the `toolsets` parameter instead.
+For `AbstractToolset` instances, use the `toolsets` parameter on `Skill` instead.
 
 ### Script tools
 
@@ -128,7 +134,8 @@ Any [MCP](https://modelcontextprotocol.io/) server can be wrapped as a skill:
 
 ```python
 from pydantic_ai.mcp import MCPServerStdio
-from haiku.skills import create_agent, skill_from_mcp
+from pydantic_ai import Agent
+from haiku.skills import SkillToolset, skill_from_mcp
 
 skill = skill_from_mcp(
     MCPServerStdio("uvx", args=["my-mcp-server"]),
@@ -137,7 +144,12 @@ skill = skill_from_mcp(
     instructions="Use these tools when the user asks about...",
 )
 
-agent = create_agent(model="anthropic:claude-sonnet-4-5-20250929", skills=[skill])
+toolset = SkillToolset(skills=[skill])
+agent = Agent(
+    "anthropic:claude-sonnet-4-5-20250929",
+    instructions=toolset.system_prompt,
+    toolsets=[toolset],
+)
 ```
 
 SSE and streamable HTTP servers work the same way via `MCPServerSSE` and `MCPServerStreamableHTTP`.
@@ -165,15 +177,14 @@ def create_my_skill() -> Skill:
 ### Using the registry directly
 
 ```python
-from haiku.skills import SkillRegistry
+from haiku.skills import SkillToolset
 
-registry = SkillRegistry()
-registry.discover(paths=[Path("./skills")])
+toolset = SkillToolset(skill_paths=[Path("./skills")])
 
-print(registry.names)           # Available skill names
-print(registry.list_metadata()) # Lightweight metadata
+print(toolset.registry.names)           # Available skill names
+print(toolset.registry.list_metadata()) # Lightweight metadata
 
-registry.activate("my-skill")   # Loads full instructions on demand
+toolset.registry.activate("my-skill")   # Loads full instructions on demand
 ```
 
 ## Skill packages
