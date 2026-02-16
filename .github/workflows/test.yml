@@ -9,6 +9,10 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ["3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
@@ -30,6 +34,14 @@ jobs:
   test:
     needs: [lint]
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ["3.12", "3.13", "3.14"]
+        include:
+            # Only run coverage on Python >= 3.13.
+            - python-version: "3.12"
+              pytest-args: "--no-cov"
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
