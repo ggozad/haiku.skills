@@ -17,10 +17,7 @@ _spec.loader.exec_module(_mod)
 
 get_current_version = _mod.get_current_version
 update_version_in_file = _mod.update_version_in_file
-update_skill_dependency = _mod.update_skill_dependency
 main = _mod.main
-
-SKILL_NAMES = ["brave-search", "image-generation", "code-execution"]
 
 
 @pytest.fixture
@@ -33,16 +30,6 @@ def workspace(tmp_path: Path) -> Path:
     (root / "pyproject.toml").write_text(
         '[project]\nname = "haiku.skills"\nversion = "0.1.0"\n'
     )
-
-    # Skill pyproject.toml files
-    for name in SKILL_NAMES:
-        skill_dir = root / "skills" / name
-        skill_dir.mkdir(parents=True)
-        (skill_dir / "pyproject.toml").write_text(
-            f'[project]\nname = "haiku-skills-{name}"\n'
-            f'version = "0.1.0"\n'
-            f'dependencies = ["haiku.skills>=0.1.0"]\n'
-        )
 
     return root
 
@@ -77,28 +64,6 @@ class TestUpdateVersionInFile:
         assert 'foo = "bar"' in result
 
 
-class TestUpdateSkillDependency:
-    def test_updates_dependency_version(self, tmp_path: Path):
-        f = tmp_path / "pyproject.toml"
-        f.write_text(
-            '[project]\nname = "skill"\n'
-            'version = "0.1.0"\n'
-            'dependencies = ["haiku.skills>=0.1.0"]\n'
-        )
-        update_skill_dependency(f, "0.2.0")
-        assert 'dependencies = ["haiku.skills>=0.2.0"]' in f.read_text()
-
-    def test_preserves_other_dependencies(self, tmp_path: Path):
-        f = tmp_path / "pyproject.toml"
-        f.write_text(
-            '[project]\ndependencies = ["haiku.skills>=0.1.0", "requests>=2.0"]\n'
-        )
-        update_skill_dependency(f, "0.3.0")
-        result = f.read_text()
-        assert "haiku.skills>=0.3.0" in result
-        assert "requests>=2.0" in result
-
-
 class TestMain:
     def test_invalid_version_format(self, workspace: Path):
         with pytest.raises(SystemExit, match="1"):
@@ -112,7 +77,7 @@ class TestMain:
                 with patch.object(_mod, "ROOT", workspace):
                     main()
 
-    def test_updates_all_files(self, workspace: Path):
+    def test_updates_root_pyproject(self, workspace: Path):
         with (
             patch("sys.argv", ["bump", "0.2.0"]),
             patch.object(_mod, "ROOT", workspace),
@@ -124,12 +89,6 @@ class TestMain:
         # Root version updated
         root_content = (workspace / "pyproject.toml").read_text()
         assert 'version = "0.2.0"' in root_content
-
-        # All skill versions and dependencies updated
-        for name in SKILL_NAMES:
-            content = (workspace / "skills" / name / "pyproject.toml").read_text()
-            assert 'version = "0.2.0"' in content
-            assert "haiku.skills>=0.2.0" in content
 
         # uv sync was called
         mock_run.assert_called_once_with(["uv", "sync"], check=True, cwd=workspace)
@@ -160,13 +119,12 @@ class TestMain:
             with pytest.raises(SystemExit, match="1"):
                 main()
 
-    def test_missing_skill_pyproject(self, workspace: Path):
-        # Remove one skill's pyproject.toml
-        (workspace / "skills" / "brave-search" / "pyproject.toml").unlink()
-
+    def test_missing_pyproject(self, tmp_path: Path):
+        root = tmp_path / "empty"
+        root.mkdir()
         with (
             patch("sys.argv", ["bump", "0.2.0"]),
-            patch.object(_mod, "ROOT", workspace),
+            patch.object(_mod, "ROOT", root),
         ):
             with pytest.raises(SystemExit, match="1"):
                 main()

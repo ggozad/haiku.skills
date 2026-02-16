@@ -26,7 +26,12 @@ def parse_skill_md(path: Path) -> tuple[SkillMetadata, str]:
         raise ValueError(f"SKILL.md at {path} is missing required field: description")
 
     allowed_tools_raw = frontmatter.pop("allowed-tools", None)
-    allowed_tools = allowed_tools_raw.split() if allowed_tools_raw else []
+    if isinstance(allowed_tools_raw, list):
+        allowed_tools = allowed_tools_raw
+    elif allowed_tools_raw:
+        allowed_tools = allowed_tools_raw.split()
+    else:
+        allowed_tools = []
 
     metadata = SkillMetadata(
         allowed_tools=allowed_tools,

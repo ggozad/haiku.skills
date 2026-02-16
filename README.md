@@ -27,12 +27,6 @@ This sub-agent architecture means each skill runs in isolation with its own syst
 uv add haiku.skills
 ```
 
-Individual skills are available as extras:
-
-```bash
-uv add "haiku.skills[brave-search,image-generation,code-execution]"
-```
-
 ## Quick start
 
 ### Creating a skill
@@ -80,9 +74,9 @@ toolset.clear_tasks()
 from haiku.skills import Skill, SkillMetadata, SkillSource, SkillToolset
 from pydantic_ai import Agent
 
-def calculate(expression: str) -> str:
-    """Evaluate a mathematical expression."""
-    return str(eval(expression))
+def add(a: float, b: float) -> float:
+    """Add two numbers."""
+    return a + b
 
 skill = Skill(
     metadata=SkillMetadata(
@@ -90,8 +84,8 @@ skill = Skill(
         description="Perform mathematical calculations.",
     ),
     source=SkillSource.ENTRYPOINT,
-    instructions="Use the calculate tool to evaluate expressions.",
-    tools=[calculate],
+    instructions="Use the add tool to add numbers.",
+    tools=[add],
 )
 
 toolset = SkillToolset(skills=[skill])
@@ -209,10 +203,9 @@ Point it at a directory of skills for filesystem discovery:
 haiku-skills chat -s ./skills -m openai:gpt-4o
 ```
 
-Or install bundled skill packages and use entrypoint discovery:
+Or use entrypoint discovery:
 
 ```bash
-uv add "haiku.skills[tui,brave-search,image-generation,code-execution]"
 haiku-skills chat --use-entrypoints -m openai:gpt-4o
 ```
 

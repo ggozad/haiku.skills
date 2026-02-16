@@ -3,11 +3,14 @@
 import ast
 import asyncio
 import json
+import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from pydantic_ai import Tool
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -93,7 +96,10 @@ def parse_script_metadata(path: Path) -> ScriptMetadata:
         default = None
         default_index = i - (num_args - num_defaults)
         if default_index >= 0:
-            default = ast.literal_eval(args.defaults[default_index])
+            try:
+                default = ast.literal_eval(args.defaults[default_index])
+            except ValueError:
+                pass
 
         parameters[arg.arg] = ParameterInfo(
             annotation=annotation,
@@ -143,6 +149,12 @@ def create_script_tool(path: Path) -> Tool:
             "float": "number",
             "bool": "boolean",
         }
+        if param.annotation not in type_map:
+            logger.warning(
+                "Unknown type annotation '%s' for parameter '%s', defaulting to string",
+                param.annotation,
+                name,
+            )
         prop["type"] = type_map.get(param.annotation, "string")
         if param.description:
             prop["description"] = param.description

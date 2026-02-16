@@ -404,21 +404,13 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "pydantic" },
-    { name = "pydantic-ai-slim", extra = ["logfire", "mcp"] },
+    { name = "pydantic-ai-slim", extra = ["mcp"] },
     { name = "pyyaml" },
 ]
 
 [package.optional-dependencies]
-brave-search = [
-    { name = "haiku-skills-brave-search" },
-]
-code-execution = [
-    { name = "haiku-skills-code-execution" },
-]
-image-generation = [
-    { name = "haiku-skills-image-generation" },
-]
 tui = [
+    { name = "pydantic-ai-slim", extra = ["logfire"] },
     { name = "python-dotenv" },
     { name = "textual" },
     { name = "textual-image" },
@@ -427,8 +419,11 @@ tui = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "haiku-skills-brave-search" },
+    { name = "haiku-skills-code-execution" },
+    { name = "haiku-skills-image-generation" },
     { name = "pre-commit" },
-    { name = "pydantic-ai-slim", extra = ["openai"] },
+    { name = "pydantic-ai-slim", extra = ["logfire", "openai"] },
     { name = "pydantic-monty" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -444,23 +439,24 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "haiku-skills-brave-search", marker = "extra == 'brave-search'", editable = "skills/brave-search" },
-    { name = "haiku-skills-code-execution", marker = "extra == 'code-execution'", editable = "skills/code-execution" },
-    { name = "haiku-skills-image-generation", marker = "extra == 'image-generation'", editable = "skills/image-generation" },
     { name = "pydantic", specifier = ">=2.12.5" },
-    { name = "pydantic-ai-slim", extras = ["mcp", "logfire"], specifier = ">=1.46.0" },
+    { name = "pydantic-ai-slim", extras = ["logfire"], marker = "extra == 'tui'", specifier = ">=1.46.0" },
+    { name = "pydantic-ai-slim", extras = ["mcp"], specifier = ">=1.46.0" },
     { name = "python-dotenv", marker = "extra == 'tui'", specifier = ">=1.1.0" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "textual", marker = "extra == 'tui'", specifier = ">=3.2.0" },
     { name = "textual-image", marker = "extra == 'tui'", specifier = ">=0.8.5" },
     { name = "typer", marker = "extra == 'tui'", specifier = ">=0.19.2" },
 ]
-provides-extras = ["tui", "brave-search", "image-generation", "code-execution"]
+provides-extras = ["tui"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "haiku-skills-brave-search", editable = "skills/brave-search" },
+    { name = "haiku-skills-code-execution", editable = "skills/code-execution" },
+    { name = "haiku-skills-image-generation", editable = "skills/image-generation" },
     { name = "pre-commit", specifier = ">=4.5.1" },
-    { name = "pydantic-ai-slim", extras = ["openai"], specifier = ">=1.46.0" },
+    { name = "pydantic-ai-slim", extras = ["openai", "logfire"], specifier = ">=1.46.0" },
     { name = "pydantic-monty", specifier = ">=0.0.4" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest-asyncio", specifier = ">=1.3.0" },

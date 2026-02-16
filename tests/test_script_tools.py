@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 import pytest
@@ -85,11 +86,44 @@ class TestParseScriptMetadata:
             "The input data that spans multiple lines."
         )
 
+    def test_non_literal_default_skipped(self, tmp_path: Path):
+        script = tmp_path / "tool.py"
+        script.write_text(
+            "import json, sys, os\n"
+            "def main(x: str, y: str = os.getcwd()) -> str:\n"
+            '    """Do stuff."""\n'
+            "    return x\n"
+            'if __name__ == "__main__":\n'
+            "    args = json.loads(sys.stdin.read())\n"
+            '    json.dump({"result": main(**args)}, sys.stdout)\n'
+        )
+        meta = parse_script_metadata(script)
+        assert meta.parameters["y"].default is None
+
     def test_missing_main_raises(self, tmp_path: Path):
         script = tmp_path / "no_main.py"
         script.write_text("x = 1\n")
         with pytest.raises(ValueError, match="main"):
             parse_script_metadata(script)
+
+    def test_unknown_annotation_warns_and_defaults_to_string(
+        self, tmp_path: Path, caplog
+    ):
+        script = tmp_path / "tool.py"
+        script.write_text(
+            "import json, sys\n"
+            "from pathlib import Path\n"
+            "def main(x: Path) -> str:\n"
+            '    """Do stuff."""\n'
+            "    return str(x)\n"
+            'if __name__ == "__main__":\n'
+            "    args = json.loads(sys.stdin.read())\n"
+            '    json.dump({"result": main(**args)}, sys.stdout)\n'
+        )
+        with caplog.at_level(logging.WARNING, logger="haiku.skills.script_tools"):
+            tool = create_script_tool(script)
+        assert tool.name == "tool"
+        assert any("Path" in r.message for r in caplog.records)
 
 
 class TestCreateScriptTool:

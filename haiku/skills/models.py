@@ -50,8 +50,8 @@ class Skill(BaseModel):
     path: Path | None = None
     instructions: str | None = None
     model: str | None = None
-    _tools: list = PrivateAttr(default_factory=list)
-    _toolsets: list = PrivateAttr(default_factory=list)
+    _tools: list[Tool | Callable[..., Any]] = PrivateAttr(default_factory=list)
+    _toolsets: list[AbstractToolset[Any]] = PrivateAttr(default_factory=list)
 
     def __init__(
         self,

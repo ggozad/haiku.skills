@@ -69,3 +69,12 @@ class TestParseSkillMd:
         )
         metadata, _ = parse_skill_md(skill_md)
         assert metadata.allowed_tools == ["Read", "Write"]
+
+    def test_allowed_tools_parsed_from_yaml_list(self, tmp_path: Path):
+        skill_md = tmp_path / "SKILL.md"
+        skill_md.write_text(
+            "---\nname: test\ndescription: Test.\n"
+            "allowed-tools:\n  - Read\n  - Write\n---\nBody.\n"
+        )
+        metadata, _ = parse_skill_md(skill_md)
+        assert metadata.allowed_tools == ["Read", "Write"]
