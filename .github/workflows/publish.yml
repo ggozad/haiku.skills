@@ -19,4 +19,4 @@ jobs:
       - name: Build haiku.skills
         run: uv build
       - name: Publish haiku.skills
-        run: uvx twine upload -u __token__ -p ${{ secrets.PYPI_API_TOKEN }} dist/* --non-interactive
+        run: uvx twine upload -u __token__ -p ${{ secrets.PYPI_API_TOKEN }} dist/* --non-interactive --skip-existing
