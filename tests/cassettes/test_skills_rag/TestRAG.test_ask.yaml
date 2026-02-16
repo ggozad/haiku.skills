@@ -1,0 +1,391 @@
+interactions:
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '2939'
+      content-type:
+      - application/json
+      host:
+      - localhost:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a knowledgeable assistant that answers questions using a document knowledge base.
+
+          Process:
+          1. Call search_documents with relevant keywords from the question
+          2. Review the results ordered by relevance
+          3. If needed, perform follow-up searches with different keywords (max 3 total)
+          4. Provide a concise answer based strictly on the retrieved content
+
+          The search tool returns results like:
+          [chunk_abc123] [rank 1 of 5]
+          Source: "Document Title" > Section > Subsection
+          Type: paragraph
+          Content:
+          The actual text content here...
+
+          [chunk_def456] [rank 2 of 5]
+          Source: "Another Document"
+          Type: table
+          Content:
+          | Column 1 | Column 2 |
+          ...
+
+          Each result includes:
+          - chunk_id in brackets and rank position (rank 1 = most relevant)
+          - Source: document title and section hierarchy (when available)
+          - Type: content type like paragraph, table, code, list_item (when available)
+          - Content: the actual text
+
+          In your response, include the chunk IDs you used in cited_chunks.
+
+          Guidelines:
+          - Base answers strictly on retrieved content - do not use external knowledge
+          - Use the Source and Type metadata to understand context
+          - If multiple results are relevant, synthesize them coherently
+          - If information is insufficient, say: "I cannot find enough information in the knowledge base to answer this question."
+          - Be concise and direct - avoid elaboration unless asked
+          - Results are ordered by relevance, with rank 1 being most relevant
+        role: system
+      - content: What is DocLayNet?
+        role: user
+      model: gpt-oss
+      reasoning_effort: low
+      stream: false
+      tool_choice: auto
+      tools:
+      - function:
+          description: |-
+            <summary>Search the knowledge base for relevant documents.</summary>
+            <returns>
+            <description>Formatted search results with content and metadata.</description>
+            </returns>
+          name: search_documents
+          parameters:
+            additionalProperties: false
+            properties:
+              filter:
+                anyOf:
+                - type: string
+                - type: 'null'
+                default: null
+                description: Optional SQL WHERE clause to filter documents.
+              limit:
+                anyOf:
+                - type: integer
+                - type: 'null'
+                default: null
+                description: 'Number of results to return (default: from config).'
+              query:
+                description: The search query (what to search for).
+                type: string
+            required:
+            - query
+            type: object
+        type: function
+      - function:
+          description: Answer to a search query with chunk references.
+          name: final_result
+          parameters:
+            additionalProperties: false
+            properties:
+              answer:
+                description: The answer to the question
+                type: string
+              cited_chunks:
+                description: IDs of chunks used to form the answer
+                items:
+                  type: string
+                type: array
+              confidence:
+                default: 1.0
+                description: Confidence score for this answer (0-1)
+                maximum: 1.0
+                minimum: 0.0
+                type: number
+              query:
+                description: The question that was answered
+                type: string
+            required:
+            - query
+            - answer
+            type: object
+        type: function
+    uri: http://localhost:11434/v1/chat/completions
+  response:
+    headers:
+      content-length:
+      - '490'
+      content-type:
+      - application/json
+    parsed_body:
+      choices:
+      - finish_reason: tool_calls
+        index: 0
+        message:
+          content: ''
+          reasoning: Need search.
+          role: assistant
+          tool_calls:
+          - function:
+              arguments: '{"query":"DocLayNet","limit":5,"filter":null}'
+              name: search_documents
+            id: call_iaurmqor
+            index: 0
+            type: function
+      created: 1771249090
+      id: chatcmpl-270
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 37
+        prompt_tokens: 593
+        total_tokens: 630
+    status:
+      code: 200
+      message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '79'
+      content-type:
+      - application/json
+      host:
+      - localhost:11434
+    method: POST
+    parsed_body:
+      encoding_format: base64
+      input:
+      - DocLayNet
+      model: qwen3-embedding:4b
+    uri: http://localhost:11434/v1/embeddings
+  response:
+    headers:
+      content-type:
+      - application/json
+      transfer-encoding:
+      - chunked
+    parsed_body:
+      data:
+      - embedding: qlDPuKsaQjw7P9A5CTKkPMfG0rh36JI90DNMPQ1hrjxaELw899waPIdqZrtilBU9M0CiOt+mkDynb5G8ITp7vZdDQT0aUVm8TvwcPJok+bvF83K8cSiPO/dBKz1M4Gs8O2/Lu2/IFLw3+ry88SUKvaKezjtBjDQ9sqX+O2hhoLyXBE49m6rQOq4moTtBRxq8H6MDvCOtJ7ykbtU8/BgfvceyxTwgnOm7BQZ8PKM+Zjv4F248ih/xvJxxvDtZMLA5qckUvQlsuLsJ1uc7EvEAPNJlz7zA87e8WxtlPcJYL7zs+us80uHHu3YVqbygfJg877bEu/18gbt+1rG89nHDvEeSCbye75u8pKkDu1nXxryk/Qw8XXEpvK4eRb2oK608xcczvKQuQTxOgAI7hPDbvCFnCrwwyPI8M+dmvH2zrDwC30A8x/nzu46l8rkXcPY81ETiOk/ZoDwnZfU8cl+LPKQRP72bZtc8KSUcPEhL5TsS1aK8GWxoO61lKbtuH7U7nrS3vPaqkLzyyku7C3dsOj1LHry+Fqi8IOAePaf8sbs8kZu81uGcvKJ2D7w0py685nJRuZE53blyHl278+w9u8V2TbwBbCA85SK1O503N7xEzxy81tctPYqKfDwc3QA9/WQ9vN29WTwEEdC7kYeDPKOIdjwjeiO9HJo6u8eTvbyaKYo8tsk+u/3b6TuJxq+80qyLPJoFm7xJ/QU80eZ3OzvRjjtpcIs7NErXu+zAvTzj4Zm8dmxquhZdIjyHwbs7gMlkvL2gP739nYC8mvONvJXprTwJ/Pu5Rw5NPEdNl7xVhq48BRO3O4eUDjwxVhI9LfGFvIkRybue7kI81T6JO5RHmrptOqk827QLvSl2kDysUEQ8AZQ/PAbs1Ti4Uiy7UUwyvGaABL3B6R88r7BUvJkA37sW3oa7kTKRvGVypbxZYWG8zz2OOs19Mrwufqs8Gok3PB605TxDOYu8Z9AKueZQhTs6XL67c3yHusXcS7yEY4s8cyJVPKRrZrtlvz88aQ+DvJ0enjt9qZO7xXMwu07jI7w9wWU76g5kux/pRDxrvLK72YBaPBU+tDxPshK8dakkvLijvLshioO74nV4vHF5djxPS4O8/C+ROw3CDL21icC8kw9uvOQTtzzWeI08amMDvXeIMry6HQc9fQSaPDOaUrtDZFe8/5xnvDVOMzznPqe8gATdugN57zvr5+q7vnNuPOmLPbxAkkE8s32zPAbTTrwXdcu730wSPKw6GTxVGaM7q6ZjvFuofjwj5zG8uznVPKGZlLw345m7fQ42PG/Qmbx0kcu767mruqWH2bxeWdG88wu4vJ3BU7yzXP47kSIHPTkeAL1ZrBa9k82VOc5RsrzuQ8K8GCILvFxcVDt38JI7nHM0vEU2GryNZgS8Z8gduyEj6jsmgUO7267wuwxNlrvkosE78k0aPaUnTzqfqky6nukxO5f77jwa7JK8j35dPGg0ITwWJ6i6WjsDPZS4UryNtMm7wXnFvFZ74LtOd4u8eFzDu1xJ+jzlS+E79GCGumUtTzxtUaE8PyvQvBbQcjyK2nW8yFmQvGrD7Dy7EUM8TceFO2HvBTyb8R68SJxSvFtEj7ubl5K7VweNPH5zNbyIaQ89QrHEObxCFLzc6008kOJsPLQAHDzbrjq8dtOouUethzsDTZA8ciDVvGq7NjsQFfO7YCsHvUYJnrzRG6C7sb58vfYy07xt+s+7cPAVu+hSRzxPUYQ8AVSiPGRvmDwtbCm86yeVOQuNAD2ApeG8TPSJu45+SLmZUP8765Hvurhz7DzDYy08MXYuPFUEzbzPrBE7D8YWPfOztbxRTyC9lX1hOS6xRbrIh6a4jwbhvCg/Qjvm2Vc7QPf8vGzkmLormJ+6o5KnvOhhDTvXWxy7V+hJPFSODjw0EGO8nJqAvHVjW7wFsQ+70xNhPH0UpLwMz4e8rrDVvAZfzDw3xQQ9ZrpJvI4ZKbuqyBI7ZLgDPZV2PTyv6um7fa+SvMV8U7y4SGu8lhkEvCeIXru/osw7VcQWPP4YuzsjG2A8hcsHvXZ+jDy7Jp26X2UYO4oOOLwNYvG7+WxfujGqED3YuFo8AbicO66SQr2H1Fc9bhh1uyYJizwCORk9oIg0vV4+vry4CQc8eUYHvcHBtbwA/qc83hYjva0V5Lx436g8kEv9O+gu2TUTU928mfKvO5+/hjzVres75ydcvYy7yzuxppM7cr37vNM2nbkcebi7oKykvNE8Gr0U8fI7JghovMyJozqdRXI8GXl1PLxeAj0URBm8YnYCvQIafLwXwqI8mUGouyWwKz0Kop68Cf++uIN/h7udv1O8akwPPMeG2rwCDj27IBfvOkkD9zmEcOA8y4hYvf+wJbzl7Sw814vJPC+bEz3wXQO9u31tvF1HyjtlX3K8Sv5FuoVnk7yF48i7RjNYO/aQLjxwQRa9LgEkPEhSvL00lvc8+eieu5FjWbyqIu86bNS8vApUKrzHRZi8aRnLvISjyTz3kqe8ctUqvGaAPrxJqzw82jJlO+MT2TyupVc8igRjPOJ7ZLwiNtQ8sxLwPLN1yTyw0mY8UwSXO7TD8jyR3wI9ml7yPDA5gDyvIjq8VvauvO//czyCpIy8Iha5vH3w4zsTvTE8/35aPIIH3jwpkAe9OHTsOTnY1TmMhHe8j20uvHFHXjtcvsa8Y6SIvPxByDv4NL473KgqPDTiHbw/Z2E8+K1yPAw6RTwKWge9PJsOvTZ1njwBPMa8Id16u0k3SDkpUKK7o2vYPDdwlbsWTmc6fXkQO24EIbxaTik864wLPF3H5TzmgBe8xxePPPp8Hjzi5rK7uuSEOokPbzyKXJO7Pj4HvRXKNzu7c1M8LVjCPI82Pzw0kuw8Tm48u+hRIDycp208I33TO1jUBLxQTty8j0o6u1uBWLwtuPC8quyguu6SBTwOv6m8xrAEPAOaNrzWqQc7Dd6RPB8jCb1QjzU9WAIyu1Y/GTwFoPe8Lff4Oy9qljxvrug7nmyYPGcHeLyk+mM8267Pu6fRhLxY+pw7TwWfvJWJ3Dv0KUG7kK5+vOf+szzJYQq8md0gugbtmTtI5/S8qXtVPNzfNjwOohU8eZu9vI0ThrwOtie7hd+4O1vOnju/PSE8r0IEPSVWgbyo/6y6JWsfPHtJeryDsBW8a5YYvGlLbDsbJoq8NsU1vbhfFrytuJi8jWBJPZ0miboyA9K8J/ucOxduMzqkfSG8k+QDPIKMyzshOsi7Y1ZYu5+kEzzZnO67nvygPKdvxDyaLk47ZZD5vBfQFrpwpAK8s29eu8HFJLvJM9G84xmtPKoVozhSS+I89xkPOBGbWb3azCa95/kBvSBl5jv+OjM73PM7uzautrwV/zw9latfvIZQZLy7kkK8vmh5vebZGT2B4o86vsedvE6+JD17J0Y8lloaPMon4jv+A1I93VjtvOdjSL08Tiq9zv+ZvAPujDtGZZI8v3n/PLxah7xJFOA74X37u/NkBLygL5g8HKAkvN18BDyrS+475mm6vDAo97rHjZi8Cwk9PVmBKbwA55o8S07SvBFPsrzbwzk8+COOvDB6RzsCxyI8zwHDPIItZLz1HAY9B/vevOOlRjxDqK07QSStPOotzLtD9FE8KzdmPNNz3DsF/uc7wXIPuzszhbx4pZ47+aZ9vNUiIbuKJlU8bS6pu6cMG71tjw283FYQPVu7+runxZI8i8JfPNsZvDxD56C8sPitvA+nKruVVcI7fnWru8VTHr2Hy+66hueFPFBVozxh1JW6I1USPS3b8DzMQUQ7+duGu952yLy9P1K8rtT3utszp7yJw8W8k2aTPBts7bswqhi8FvUdO7VgiDt7Tbe8TjsIPG6rs7wtY1c790zGO4snpDyLdJG7+9g9PU25+btyKRK8xW7suy7af7vVvJa8ytjlPA7GNzxgP348UdrSvHR+tzv+NL88MpHLOyUhIDx/rzw8j76IvL2tIzzzKem8tbIPPKps3TxXbpk8+4AvPCCYVTwMYic8k8+GvIMt3brApAs8RUJkO4HoQjtIgs88PmcXPMc3S7ySqAK9cocuvCuyGzyBRNO8FoYTO9xSTzyrXMY6h924vDhBersMktS8wxWAPCCEJjvqlni8uRVTPdqtpru3E627xcoMvEfZiDylSMK7Meinu+695bzEDFA8dtPXu/OqVjpDO4o6R7esO2ufL7yzVVm7qgtqvKbIUTvZGIW77LRcvOr/wzxpG1w7VC3VvD1RCT3Ne4k8nVTwvBZM6jp7lwE8rQbcu7gx+zyuIDI9dDCuvOFAFT0wFwY9QNl5vGIPlLxLfEc8zogbvE8WDr2qR3E8TBM2PJ0NybyMCm683cIBPdj9j7s56sW7HzsTPLVvGD35No48R2ulOmxIDjync0c84CFjO+mYxTy3AQK8OSUTPf4oHLwcnHu8HHuaPD64C7wEMbs8dUaeO8pYS7xOL2w8Tt84vXh9ML0ITIS8K8oau0GsLb3+RV49Us8uu5bEjjuyQGe6hN2KvJSDCTxbNwG8yyJtO3W54zzN2mc9OBw1PSlZWDywdZe7oE/tOytoBj14Brm7EG2NPJLgM7yVE748i/GuvDXyz7yuayG8RJ0ovIqfujxRvO268FMgvdEtqbwrA0294mLTPE28lrtEFW67Z/Jduzpq4jzkw9S79qGdvGMoAjwY0wc83Ze7uyoWHjpXPqq8p6NpPOPyxzyune28QReCPMxIDL1AKs67N/BOPCVk6bq4vIi8f86cOx4bE7ySpaY7LNYSvMpaEjybfBO8CsJkvE3R8Dx0FV+8WFbQu4MVVDw9A/Q7osIzPYHGCD2m7SU8avKjvOVlLbyWbbo86pkXvUAaB73Mov+8/sYpPJZpTzuqu3e9laMFPPNDoDtGLjO7HALvvDeIf7xVfFk8eye4ukSMw7zuK4085uIvPYOTAr10ahm8geTuvAPZJ71DHAI8k2v8vDqynzztl0i7UAUWPAs5sDzv52i6/o8fPCFnLTyod1s8fp/JvNCKJLzV6447E3/NPKyUJjx3oB067RMNPPmrkDs9aFO84eXTO1XwDb2LbAE8cUckvPdqzzuTmIC8ivT6O3WjSrzl4/c7HmNxOpurPruKJgS8NPg8vBJRsjx4w8y8ut3JOzqVTTsRNjQ7FS4tPEvErLyxzrO8Fb4xPFjDD7zLdRM8y4UXPDk2lTv1nr07CD4PPBhihzx+f9Q8u7mFPFOtTrwFYPC73u0evBRcqzzjWQs8shnOOlUR3bxBzhI8d0n2O1r63Ls2nc279ApbvMpuhjzbRHY8RmNLOix2JzwSvik9dK4dvNAwbzwAYcw89sOdOzNreb0+Vyk9+nYTO9zCsbzMMoW7Az7JvF5hwzyJPI48r/jCPHNHIb3Kgqa8iVtEvC875LrbiWK83vflvJbBt7x87Zq6C7u2PIi2mLyA8sE7ozsWvMfG1TtBLOQ7M7LtOvoF3zzlMUq7DDnzPHC4xjwSZI686CRBPS7IWzsyPo48XTQ9vW6rnzzvfrc8Izp3uzjC+LqRKiu80DWVPGYvSrwdDU67PgQTPXKAgTxXx6O80dVfvJYBqjxGNIg6vmzTuTE6pLyaA4g7qe9UOyIHkzwanxm7f3FuO1QM4bxR1ce8lzpwPOhK57ppXOk7dZn7PB2wDDzLlIu8/D4lPIUOI73byNi7PyNDvcdhc7tWwug7CPazOup/fDxYA228815PPfbkerz65Bm8faW/ufKruLzyu5K8bG5VvVrMwbylUya7Gx0OvcrAUrsJk667cKxdvJlG2zo3S7w6KkN8POKyLryAHiu8zk0PPWaXiTt71YU79sioPAxzIbxyHNs8CE5dvO7sBb2Fyqe88e83vIFbCDn/uQO8TVLsO0A+gbxoR067mx+6vCqYvbyMPRY8jb2FPBFsBzthk7A8aoMBvSBktDxffXm8KjOpPErElrq1jpI6r0SPvIPd17xXBh+7IgM+vViDFTyJYw47ibzbu/871zyil4u6KEREvMvZtjz2B3a7x7H/u2UXpTwqL868GxOkPBNkVDveXKK8njq2PFdlcTwUfIm8AVLEO0O6ED0kdKC8xZ7NvKv2vLyGbDs839oQvOi51DwYoR09PerIvLvBNj2S+Nk7CbMAPUnN5LxPFnU7a7Q4PL8jnjxRVoK75O1XPAmzRzy6Jg89EVaxPGCziblgII67TLmUPOhsCLynese8uA0jvE3rFTws7JK8HLKJu2PsUjoasA48lSz0uwK9zrwVlCk8dGPCPFedHjyPwZ48T8dCPJz+qrwmGjW8pYSpvNToF7oz6kG8RcogPbqoB734NNq8YyqlPBZZsjuauYQ8CV4uPBULDT0my6A8xAPUuRU3LTqJkKu8NA89PH4od7ySzOE7raVUvFoSk73iGee8bzVFu29aPr0Y0Qm8PEmNvCIio7s7jtw7j7qgvMhewzuAg6M8a+kuPbUREjwA10k8rYBcvP+wDDzJjR289hQ8PPV3ND3zzam7nDdUPIWUYbwpqv28+YkiPFqklLn0oZO8OJsDvRGVI7xFpwQ8UfQYPW61KT26hHQ6ZYVxPNj73Dwf3o27PnXnPCmGIb03NCM86eWOvNf+mryfTa48kImyOuColzrEi2M8e5bLPBek8bu2KVw9X7faOs3M2ztDjm08tfokOjcJgrxvijC9XUAJO7BSxLwP+4e8sjMsvBBEi7yAMdY70D8YvFm8u7y3Kjc9TB0bvehFHzwod5G8huqdOzUdsTstNoq8GRHIPDgkHjwWABe9pJFbPP+HEzwupae8a/JAPKWWTzwlzV68ngmgvNnXLTqD6Xo7z4uLvGSuL72ijG08IY6muAxF+jtWgYA8UMoCvDTsJjyRXB69RpQHPMoQlzvSowK9gaoqPARuKzw4/EO9j2rovIcW17wm4+c5V30wPFzLTbx9gDC89qzEO68+1bytpky7q6OJPPRgJDywS4s8iuIDvfs/ID2iV5Q8f8VKuwRUhjkj/gM8qn0nvZqO6buuSys7owm0OuuRdbxuKbS8AvcMvRcO+LvGrya8vMxhvH9B2TvQRGq8wHHDu2RP4TvdkLO7Ys4LO+B6mLutNYE7Y81MvByTojtb9bc8YFeEO6Fw3jydo1a8AN/QuxmoyDxWo3u7Om1BPfUxuLzWECq94nPbvEbW5LyyWGI8mplDPI4rEzvHtFm9fze4O0YGA70BvuO8NAz8OzzAmTu6CTA8r7LWOy+DdTwXP9M8Unl3PDQp5Tp9S+g5/44APApzsrqVTbS8mUEYPYxuh7xWYn67tx5/u+Lglzwamvg8CPjQvI7g7DwV4ZE8iF4hu2UrfbyLkp+8yRXyujumoTxJ24e8G5T4PGCdrLzHbaO82xTFOlhGpbmtqkQ8VI4FvOfV9DyXhSc9DV9CvUm9VTzD5gQ77vApPJHBKzrdvAa8RAP/vIZATj3642089/dHvU2XEz20Xcg7P07hu5fAS7kEH2y7mFmSu22WC719DC48mMKYu9Jpz7t1E8Y8hWLWO7av3bxckOW8v4WJvARbQj38IfS8hzR6vLJyQbobDQm9IHHrPIUzX7yIaUC8FkRNuybKBj2uj0i9/H3PvDa0YrynQwK7y2SJvBO9qzzE/FQ6zuUKO0sV2bt7hOy8G7Cku8hsAb37EcK8sLDgO3h9sDyIgdA7j6c/PNMosTwQzOk7bos0vH7Us7xj+Sk8RYoPvA6LRrtx7w88FPhIOWdiqbsIdI48qRGOPEwIW7wEhx+8MZMCPfAihDvqBiE7coi7POWgvLw3mQ694QbRPElAhLz2tDI8LDeUPFkk+bwa52U8BrNQPatAvbxzyaG8yKctvHhdZry5J768gjN+vHYonDzTtnE6txnNu1uMo7zivwU9049vPBzP3rwF5xa8QQLdvE/Y6jxRcuA5PC4UPYoKeLxvaY+8hY0HPdB/Drwb3kW8GsP0POaV2jvXB/07UB7Qu0QldTwK0e+8WFzCPBcdIroZdpm8eY2OvADV1zvimAy9b6G0PAdw07x2nno4ji8GPPWaSrwSksW7r0c/PAJ2B7xx7CQ71wq/PH0FS7wEgHu8rn1XPHGU2TzlRPu8zvdRvKERIzwAlLw74IokvKhkMDwaXyY8zZIuvfc7ozumEYu8MMvHurDFMzv2zDI9sYlQPEHHAzutXfs8vasWPfw5IDwXp+08atMGvPQ1FLymZYI75WYMusR2PbxmJUA9rLaFvFFHWjywb688Sj0CPH8ZU7rSbQ8854FAvM8+ijzO4Sm7HqMlOwR4wDyeype8pXF0vJ/0Cz1Dx6E7bFD3vI4qxjy2E6I87MNVu5HHjzxCkdQ7bZQxOo1JiD0q4z+9d92UO41FKLxGSOi7DJ8evJ01Hzx7YBM7i5vVPFvoFL1vzQO8jc0APE/zkbuOTFo77KYvPA4iibueEeQ7tYJUPDqJgTqhWGw8Xna3u4z8ojr+sOO71LFgPDZpRDqlBoU8UCniPA0OAbxEc367CgMgPCw2LzuscoO7LKcNPCm7P7sptJq8QZS7u5IHqDw4vcQ8cSy3PJIIXLzXBcG8m62rO+3HHD2NARu9iQUPPDec3Tte2ve8XCqCvJidRrxI7p2751m9vD1+FDzPscQ8TwQJvLFEU7xmVWA7BDk0PGEa6DxG2BQ86RYcPfwvCTxan368Mt9tvNBPxTvH9QE9kqwpu1fQFTz9CGW7aDolPE+cGT2SaoC8aH4qu+Pjn7w/qRG87LoLPF3UXryzrBE9zcAqPFU9HL2YgMc8n+D+vNz8ijz8ZFC9r4KDvO5zLr1ZaJI7I1gkPMC9CTuUQgo8a37iPBcA+DvqPhs9OcQ4PN/UkzxmkyQ8LtYAvD3ivTxDoWG8BhyjPM5tursxLly7SdH0PNJnSzwW24G8RbHhPE/qNLxcFYM8ABGIvPAVkTz9sfa7D8SbvMOJAz1MUuA7P72nPHJetbpl4dG8+bMOPI3IobxriAu8TRSoPDngzbxjjS2880zAPO1kdLxG/Ly8R3vBO++N67wP+la7OVKUO+Ev7zuKsNU83AytO6m3ozxLt+s7/wHqPL8EbzzxFie9fJvNu0bvljuaUJ67PZgBPDUrt7vaPem8ierWOy1JRju251G8ibzivBARe7t/Xhq8EHdQu3I4tDsY6Ly8EHb1vHlF2zvb+ew84j8xu3XUIzyWyX486tUIPTo3AD2Nfmc8RBLpvLtzjTvqrZW7HtebPAjZBj3FXDY8v48HvDw06Dxzt6A7DJFJvA61FDwWLbk7F7mdPDsL/bvcWhC8KOmDO3PmH7yXWQK97S6evKUiiLsu/0q8hs5bPK3hGTwJaQe8stolu50ACzxULNE8gMAXu6G5mbwLaj88VVsrOm2YkDs4E8K8p1+BOxBW5ztxxdk7lEj/u8Rn0Tuo5bg7MAewvNsdMbzcnbu8Jqa+u3E8mrwq7Bi9ErYKPFGsbLt0D4m8o8gFu4rK9jxrP/a7AS3tPLeWljoOEWO80u5eO9WmlDtR4328OkwHvQCUnLz1+Qe8WItPvaJBWjzmkzW700MkPKKyjLyowoy7BZJ6O9lxgrxEDlC9y1EdPH7nY7shDga9jCSqvNz9pTwsBBG9PgHeO1zi6bxCGQQ965r+uwHDmLtRwOC7+AbivEasyzzG+vE8x3EaPJaqe7yI/Lo8tmDVO7ATCz33B/06Ik8mPCuhcDplzMU8uj+MPCn01LwKqa26JvOgO3/eBTjK3N+8F+EVvFKVRr1GrQe6M2YHvaqvV7wVHda8+CkPvOkWBLyWO5m8Qzzeu9HmyjtSXNG8UHkBvZzepbqn6VI6sELOPMiyw7xW+RA9QNRcvJPMGjxTp428nXvxu4y3ijywquA7HSiWPHYLMrxzjaQ7gbAnvV/fCj24JKs8s/NYvKW0H7qWYw68BMVFur/KrDtwpsO7tlYePPLGhzsunMK8Z/aJvLNV77z5JwS8h5m7uxrl+Dwcskq8jkGIPHsQKzsbXAW9oNjPvDGedbxf5eM7VPESOjCATrwBg848NcMQPekivzyhFY67UlOOPNNmVDtgsLI7jrCWPI0i3LtXD+E8cbyxPD8Y+zsxdCM8ots8PSq+Qj3W1hW94NQcvGe5yDpiBck8HPr2OqWBBbwemiC8mZuiO6vDCz1PBZK8hksOPC2SJLpF3++83OEivZHvYTyU8Q876CMaPdw9vzyPz3Q8YWKnNwsNQLsnM5K72OXevG9ZADmuKKo7OVHKOgR14TzgH8y7VGTJPFQ5TDtXtxu9sMpzPM3joTvdbL48B+iBPHikszuZNPC7sGZcvByE9bt6qLy7phZbPEuIvjvh5RK9SwjzO68YqjsIL7M7M7WUPIzXgrxq7QU9etdfO9GZI7sBuYG7aNEXPcFvnTrPWeu6tuu2PMS5W7xaJDK7/fwBPCJHnzzM1US83H7rvFwcRLz0jsw7a2dPPMHrC7xcQhK8Xp1DuwF1+LzEF5m8xefKO1duKTypQvw6mH0vvZqYNr3Y5YK80P3DO1G7Mz21sBa98lvuO4rqp7wbKpc6N/qTO68ffDwPYyu8f6v3PBCpwLzVpYg8B7JaPFsBh7yBUEq9sfWiPBCDwbvbTeO6QOLTO00McDwl+a078KYbPeKb1bz9u6K8RYW0O1zENrv1Kx88Z1AjvOe+xrxyGKO7lIYLO5KOOj3YyrM8MV+1PKKvnjyoUYi8QUi6vA6w/Twhf4w7YohUvJSV/bp6M5+8VqqqOi1B37ziwgO8U0+wuxl1Qb16bbO7N8SlugRnSL0cUha89E5Nu/vIrTze5pM7bjy0uzl58Tut+FO7peaNPIMDTzzQHeU8fVXnvPZ5bjy3gGU6MBwWvAdZ3LqVHJK8/PRJvGeIO71gQa880pLmPMrnYTu1TVq94RMWvLV2yTz4jue8buQnvCqFBj0hV1w8hXq3PFRfIbxLtLm6gBPHO0eywjujqLI6soiEuzNX0Lxe4H88TL35vFb5Nrxb8Ti9TI0KvZVZBz2WCBS8A2U9PJULQDzlLrG8m44OPZMvMjtMtOq8WuH5PMXmF72Sa8S7ZvsoPDw2sjz1MWa7xMgTvINKX7vLUla89ngSvJ6fVLxx3qQ8aK7zvPP14zoFpVE8MeRBPEUT9DsR+rG7xpB0OweL9zykknc8dvbRuxNMJLyqsC48Pz7VuqEBFr1wF1a7MugFPU6zAT1n+wQ9g5P3PFaIJT3Gf0Y6lCr0uyKcG7xaQqS85Qy5u5YqWjwYDlA8H6TqPBw+brykhxa8HpizPKcq9rt8GbS7xPlhvCwRwbztV5O8eV4xvGwF/7s6/zy73HCfu+6JoDvwuHy8/FcNPGFIvrvfppA7f2WiPAFjhryAVwU97EtsO6hcELzRTJS7BkyXO7x2Dr0uyru8h6WEu8Y417rP8gy8ITP6uudqZjyHrKO80umrPKdMOz1+s7I8djBgO2M2Qjz4mIq8tM4WPMuHI7vb+Yi5XTi0PGRsr7lSTig9ivOkPEIU9TtwbdK8rQ/EPPvxUbygLJe89ILMvO1VObxGHxk9c1yjuxYzPr0nYAG8I6SYPHdZFLu/P1s8/Xd1vC2oVbrDzIW7uVQOvevRS729Z3u8i430u18F0LrUJ0e8DfDIPKTgvjp+5QA8dNeGvAlVJzv30IW7xADQvMxHvDzv0t+6ziCpOyUkK735vKQ8RWuEvGTqBr3UMGQ7iQSgu7JMijwF+z49mwSBu15h9jsUQR89hmWXvN3GmTyL5Na7TyduPHfhTL3UXTi8wcTIvMK4FL2hPvo8w6i3vNTNpTzcysq7bMR0vDHlXD1+3oC8H/h1PCmkgDyvhnG8SGnlPGX2wLxmW708NFaXuxwvFT2HI986J20avGPX8zqAt8M7rw00PUQGNDwNJjE896HFvDY7yjyiC5o8hqyYPDOHBD2OiCe8B1wJPIRtZDtxwxi8n1DuOnGcerzZw9w86gbKuhUsC70F9Ik7pzAavIWUjDvaBpS8aFeeu3x1Jb2o6R68u/YovAvIQrypcum82XKhO5imPrug/YU7o3ajvM8NPryhb7y72u8qPDSP2DxchWI82avovNEgCzzJ0o66MMPFux9ekDw8n5y8pwyHPDDygD3JJxa8XNUbOex1PT1xXmI8kVb+u775h7zhTRe86iz/uxY71LyObwa8tWGpPCm2aLuoOQi9kPiDul0Cxjsri947C01wPJyCDrtIxMo84bZfu/LFVzz+CyG9wDDkvChXvLy825o8FU3aPDCci7tYyT09ZaIoPIlDPDxp6YE8GcrMvFn9BT1q/ry8eFTmuITakjxDepE7h+l+u9/uUju6dtG8/ALcO/wjwTyzId286ZwTPK09k7y010w8NS2vPO59JDx/6Ww8h+wRvdHbwLyv0Bk8jgsWPMnf4DxMRYk7ylnUO79uFLwaogg9I3VNu+e4RLqqU5S8NBWfu2SSJrxg60M8cVZ2u4MA4rs6GBS9s+AavJYPCrzkvF47zsYrOwwtkTzaU6I8sVh0vKVr/TwjYke8jIyKO8uyHzwjjOq7ksKDOgbZlbyN3A08U0IlvULL5LuGdP+8YYo3u7mcLLwoFDI8awPJPI3Xg7w9VDG8tkvCu9FnsTv9Cta8j53pPNylmLxdqaK87Q+3PE5cHjv9UJy8O8KZPNZZx7sM0Rg810AEPVwEt7toUJi7Wh/ePJ5XtzuC7OW8oCFFPPn9NLxwJyU8ynX9PFUaYLzvC0E9Y3KcPOccmDyWPO48faAxPJQjcjvCq0W8mQCuO+6KFz20BE+8SIz3O3YWSzolEgw9dhAevBBFOryn8jI8vqUJPXHnmjw5ijU9ijCBvMiNsrwReYS7ac0NPQqyKjwcRok8Z4wFPNaBgLz8pRA8k8YUPJAWaTzJUjc8xUCdvAAWoDzVEbm8+w6EvAcbnbwoysu8wcARu00CuzszzTE8p669vOsF+zsnewK82EBavD+rPbxOWAc9GutAvC2y27zQ3ya8AkVVvAnqFrwuWs281pSiusgsuryd1TQ9CBYFvSdT7jssBiS8uKOtN/K2C7yuQ6k7ModIPbYWnbs4nzS8U34fvIKyArw65Rm89n0qPMdWEryxn3s8NZHTvMqPITxL41q8+vwgPZ5W5LqQ5yi7sPtOPPEtHbwR7F886nijvIDnJj1wc3K8PCSRPBK8hbvQ6uA8aZcMPMErzDuAF9k7BAVcOvO87LvmtQc73XiVuwaZfDr88QM9sbA6vdA3jrqRLgy9djqeOhDRxDy4Fdy8PrwZvcPUDj2Fqow8D8rrPFOYB7uRwly8EGmGO+1ByrwF/Y28zxvOvON3FjzOtOi8bvmiPCKOrry1xzM95PpiPAM0FrzvE0w8TCKWu9QEMby8icI8gcbhPASM4LzqSII8mPbEu90cazy8vRy82WiyvNtf8bqsNxy9vUGbPGydezusbGa6A8/9PAoPXrvAUs07vkFDvEgHjjwKdqw6i83/u+mQsLytiF87Mxo6O9o52bvb6iw7bTfOu6zb6zpPhGk82KkgvE7AzTwxlF+69ZgxPEJ4Kjxj0288uYRdOocVTLzkK3M8/CI3OswDgjvjDKw8m5OuvAzAlbtHpCm8Iv2wvB2Xkzv8Wr04eHhzvD1AeDxwZTO7U5hGuT7JCzwezDW8OR3oOHmFljzq1ik8Dc2bvEYmzDtml+47LAWUO+t8DL1fly28Mo3jOg==
+        index: 0
+        object: embedding
+      model: qwen3-embedding:4b
+      object: list
+      usage:
+        prompt_tokens: 5
+        total_tokens: 5
+    status:
+      code: 200
+      message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '11135'
+      content-type:
+      - application/json
+      host:
+      - localhost:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a knowledgeable assistant that answers questions using a document knowledge base.
+
+          Process:
+          1. Call search_documents with relevant keywords from the question
+          2. Review the results ordered by relevance
+          3. If needed, perform follow-up searches with different keywords (max 3 total)
+          4. Provide a concise answer based strictly on the retrieved content
+
+          The search tool returns results like:
+          [chunk_abc123] [rank 1 of 5]
+          Source: "Document Title" > Section > Subsection
+          Type: paragraph
+          Content:
+          The actual text content here...
+
+          [chunk_def456] [rank 2 of 5]
+          Source: "Another Document"
+          Type: table
+          Content:
+          | Column 1 | Column 2 |
+          ...
+
+          Each result includes:
+          - chunk_id in brackets and rank position (rank 1 = most relevant)
+          - Source: document title and section hierarchy (when available)
+          - Type: content type like paragraph, table, code, list_item (when available)
+          - Content: the actual text
+
+          In your response, include the chunk IDs you used in cited_chunks.
+
+          Guidelines:
+          - Base answers strictly on retrieved content - do not use external knowledge
+          - Use the Source and Type metadata to understand context
+          - If multiple results are relevant, synthesize them coherently
+          - If information is insufficient, say: "I cannot find enough information in the knowledge base to answer this question."
+          - Be concise and direct - avoid elaboration unless asked
+          - Results are ordered by relevance, with rank 1 being most relevant
+        role: system
+      - content: What is DocLayNet?
+        role: user
+      - content: null
+        reasoning: Need search.
+        role: assistant
+        tool_calls:
+        - function:
+            arguments: '{"query":"DocLayNet","limit":5,"filter":null}'
+            name: search_documents
+          id: call_iaurmqor
+          type: function
+      - content: |-
+          [222242e1-7859-421e-96d7-83cf95c2c064] [rank 1 of 2]
+          Type: table
+          Content:
+          Table 1: DocLayNet dataset overview. Along with the frequency of each class label, we present the relative occurrence (as % of row 'Total') in the train, test and validation sets. The inter-annotator agreement is computed as the mAP@0.5-0.95 metric between pairwise annotations from the triple-annotated pages, from which we obtain accuracy ranges.
+
+          |                |         | % of Total   | % of Total   | % of Total   | triple inter-annotator mAP @0.5-0.95 (%)   | triple inter-annotator mAP @0.5-0.95 (%)   | triple inter-annotator mAP @0.5-0.95 (%)   | triple inter-annotator mAP @0.5-0.95 (%)   | triple inter-annotator mAP @0.5-0.95 (%)   | triple inter-annotator mAP @0.5-0.95 (%)   | triple inter-annotator mAP @0.5-0.95 (%)   |
+          |----------------|---------|--------------|--------------|--------------|--------------------------------------------|--------------------------------------------|--------------------------------------------|--------------------------------------------|--------------------------------------------|--------------------------------------------|--------------------------------------------|
+          | class label    | Count   | Train        | Test         | Val          | All                                        | Fin                                        | Man                                        | Sci                                        | Law                                        | Pat                                        | Ten                                        |
+          | Caption        | 22524   | 2.04         | 1.77         | 2.32         | 84-89                                      | 40-61                                      | 86-92                                      | 94-99                                      | 95-99                                      | 69-78                                      | n/a                                        |
+          | Footnote       | 6318    | 0.60         | 0.31         | 0.58         | 83-91                                      | n/a                                        | 100                                        | 62-88                                      | 85-94                                      | n/a                                        | 82-97                                      |
+          | Formula        | 25027   | 2.25         | 1.90         | 2.96         | 83-85                                      | n/a                                        | n/a                                        | 84-87                                      | 86-96                                      | n/a                                        | n/a                                        |
+          | List-item      | 185660  | 17.19        | 13.34        | 15.82        | 87-88                                      | 74-83                                      | 90-92                                      | 97-97                                      | 81-85                                      | 75-88                                      | 93-95                                      |
+          | Page-footer    | 70878   | 6.51         | 5.58         | 6.00         | 93-94                                      | 88-90                                      | 95-96                                      | 100                                        | 92-97                                      | 100                                        | 96-98                                      |
+          | Page-header    | 58022   | 5.10         | 6.70         | 5.06         | 85-89                                      | 66-76                                      | 90-94                                      | 98-100                                     | 91-92                                      | 97-99                                      | 81-86                                      |
+          | Picture        | 45976   | 4.21         | 2.78         | 5.31         | 69-71                                      | 56-59                                      | 82-86                                      | 69-82                                      | 80-95                                      | 66-71                                      | 59-76                                      |
+          | Section-header | 142884  | 12.60        | 15.77        | 12.85        | 83-84                                      | 76-81                                      | 90-92                                      | 94-95                                      | 87-94                                      | 69-73                                      | 78-86                                      |
+          | Table          | 34733   | 3.20         | 2.27         | 3.60         | 77-81                                      | 75-80                                      | 83-86                                      | 98-99                                      | 58-80                                      | 79-84                                      | 70-85                                      |
+          | Text           | 510377  | 45.82        | 49.28        | 45.00        | 84-86                                      | 81-86                                      | 88-93                                      | 89-93                                      | 87-92                                      | 71-79                                      | 87-95                                      |
+          | Title          | 5071    | 0.47         | 0.30         | 0.50         | 60-72                                      | 24-63                                      | 50-63                                      | 94-100                                     | 82-96                                      | 68-79                                      | 24-56                                      |
+          | Total          | 1107470 | 941123       | 99816        | 66531        | 82-83                                      | 71-74                                      | 79-81                                      | 89-94                                      | 86-91                                      | 71-76                                      | 68-85                                      |
+
+          Table 1: DocLayNet dataset overview. Along with the frequency of each class label, we present the relative occurrence (as % of row 'Total') in the train, test and validation sets. The inter-annotator agreement is computed as the mAP@0.5-0.95 metric between pairwise annotations from the triple-annotated pages, from which we obtain accuracy ranges.
+
+          [6d2fd954-0dfc-4c20-9ffd-6c9df595b37c] [rank 2 of 2]
+          Type: footnote
+          Content:
+          Phase 2: Label selection and guideline. We reviewed the collected documents and identi fi ed the most common structural features they exhibit. This was achieved by identifying recurrent layout elements and lead us to the de fi nition of 11 distinct class labels. These 11 class labels are Caption , Footnote , Formula , List-item , Pagefooter , Page-header , Picture , Section-header , Table , Text , and Title . Critical factors that were considered for the choice of these class labels were (1) the overall occurrence of the label, (2) the speci fi city of the label, (3) recognisability on a single page (i.e. no need for context from previous or next page) and (4) overall coverage of the page. Speci fi city ensures that the choice of label is not ambiguous, while coverage ensures that all meaningful items on a page can be annotated. We refrained from class labels that are very speci fi c to a document category, such as Abstract in the Scienti fi c Articles category. We also avoided class labels that are tightly linked to the semantics of the text. Labels such as Author and A ffi liation , as seen in DocBank, are often only distinguishable by discriminating on
+
+          3 https://arxiv.org/
+        role: tool
+        tool_call_id: call_iaurmqor
+      model: gpt-oss
+      reasoning_effort: low
+      stream: false
+      tool_choice: auto
+      tools:
+      - function:
+          description: |-
+            <summary>Search the knowledge base for relevant documents.</summary>
+            <returns>
+            <description>Formatted search results with content and metadata.</description>
+            </returns>
+          name: search_documents
+          parameters:
+            additionalProperties: false
+            properties:
+              filter:
+                anyOf:
+                - type: string
+                - type: 'null'
+                default: null
+                description: Optional SQL WHERE clause to filter documents.
+              limit:
+                anyOf:
+                - type: integer
+                - type: 'null'
+                default: null
+                description: 'Number of results to return (default: from config).'
+              query:
+                description: The search query (what to search for).
+                type: string
+            required:
+            - query
+            type: object
+        type: function
+      - function:
+          description: Answer to a search query with chunk references.
+          name: final_result
+          parameters:
+            additionalProperties: false
+            properties:
+              answer:
+                description: The answer to the question
+                type: string
+              cited_chunks:
+                description: IDs of chunks used to form the answer
+                items:
+                  type: string
+                type: array
+              confidence:
+                default: 1.0
+                description: Confidence score for this answer (0-1)
+                maximum: 1.0
+                minimum: 0.0
+                type: number
+              query:
+                description: The question that was answered
+                type: string
+            required:
+            - query
+            - answer
+            type: object
+        type: function
+    uri: http://localhost:11434/v1/chat/completions
+  response:
+    headers:
+      content-length:
+      - '1168'
+      content-type:
+      - application/json
+    parsed_body:
+      choices:
+      - finish_reason: stop
+        index: 0
+        message:
+          content: '{"answer":"DocLayNet is a large-scale layout‑aware document dataset designed for training and evaluating
+            models that detect structural elements on a page. It contains 1.1 million pages split into training, validation
+            and test sets. Each page is annotated with one of eleven fine‑grained layout classes: Caption, Footnote, Formula,
+            List‑item, Page‑footer, Page‑header, Picture, Section‑header, Table, Text, and Title. The annotations were produced
+            by a triple‑annotation process and include inter‑annotator agreement metrics. The dataset includes statistics
+            of class frequencies and agreement scores, making it suitable for benchmarking layout‑aware document understanding
+            tasks.","cited_chunks":["222242e1-7859-421e-96d7-83cf95c2c064","6d2fd954-0dfc-4c20-9ffd-6c9df595b37c"],"confidence":0.95,"query":"What
+            is DocLayNet?"}'
+          reasoning: Explain.
+          role: assistant
+      created: 1771249099
+      id: chatcmpl-318
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 229
+        prompt_tokens: 2174
+        total_tokens: 2403
+    status:
+      code: 200
+      message: OK
+version: 1
