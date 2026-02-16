@@ -49,6 +49,7 @@ class Skill(BaseModel):
     source: SkillSource
     path: Path | None = None
     instructions: str | None = None
+    resources: list[str] = Field(default_factory=list)
     model: str | None = None
     _tools: list[Tool | Callable[..., Any]] = PrivateAttr(default_factory=list)
     _toolsets: list[AbstractToolset[Any]] = PrivateAttr(default_factory=list)

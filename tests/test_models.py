@@ -130,6 +130,17 @@ class TestSkill:
         assert len(skill.tools) == 2
         assert len(skill.toolsets) == 1
 
+    def test_resources_default_empty(self):
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(metadata=meta, source=SkillSource.FILESYSTEM)
+        assert skill.resources == []
+
+    def test_resources_settable(self):
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(metadata=meta, source=SkillSource.FILESYSTEM)
+        skill.resources = ["references/REFERENCE.md", "assets/template.txt"]
+        assert skill.resources == ["references/REFERENCE.md", "assets/template.txt"]
+
     def test_tools_and_toolsets_excluded_from_serialization(self):
         def my_tool(x: int) -> int:
             return x * 2

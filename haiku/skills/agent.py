@@ -1,4 +1,5 @@
 import os
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -22,16 +23,50 @@ def _last_tool_result(messages: list[ModelMessage]) -> str | None:
     return None
 
 
+def _create_read_resource(skill: Skill) -> Callable[..., Any]:
+    """Create a read_resource tool bound to a specific skill."""
+    assert skill.path is not None
+
+    async def read_resource(path: str) -> str:
+        """Read a resource file from the skill directory.
+
+        Args:
+            path: Relative path to the resource file.
+        """
+        if path not in skill.resources:
+            raise ValueError(f"'{path}' is not an available resource")
+        resolved = (skill.path / path).resolve()  # type: ignore[operator]
+        if not resolved.is_relative_to(skill.path.resolve()):  # type: ignore[union-attr]
+            raise ValueError(f"'{path}' is not an available resource")
+        try:
+            return resolved.read_text()
+        except UnicodeDecodeError:
+            raise ValueError(f"'{path}' is not a text file")
+
+    return read_resource
+
+
 async def _run_skill(model: str | Model, skill: Skill, request: str) -> str:
     instructions = skill.instructions or "No specific instructions."
+    resource_section = ""
+    tools = list(skill.tools)
+    if skill.resources:
+        resource_list = "\n".join(f"- {r}" for r in skill.resources)
+        resource_section = (
+            f"## Available resources\n\n"
+            f"{resource_list}\n\n"
+            f"Use the `read_resource` tool to read any of these files.\n\n"
+        )
+        tools.append(_create_read_resource(skill))
     system_prompt = SKILL_PROMPT.format(
         task_description=request,
         skill_instructions=instructions,
+        resource_section=resource_section,
     )
     agent = Agent[None, str](
         model,
         system_prompt=system_prompt,
-        tools=skill.tools,
+        tools=tools,
         toolsets=skill.toolsets or None,
     )
     result = await agent.run(

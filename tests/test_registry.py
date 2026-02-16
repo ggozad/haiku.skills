@@ -82,6 +82,19 @@ class TestSkillRegistry:
         tool = skill.tools[0]
         assert hasattr(tool, "name") and tool.name == "greet"
 
+    def test_activate_discovers_resources(self):
+        registry = SkillRegistry()
+        skill = _make_skill(
+            "skill-with-refs",
+            "A skill with references, metadata, and all optional fields.",
+            path=FIXTURES / "skill-with-refs",
+        )
+        registry.register(skill)
+        assert skill.resources == []
+        registry.activate("skill-with-refs")
+        assert "references/REFERENCE.md" in skill.resources
+        assert "assets/template.txt" in skill.resources
+
     def test_activate_unknown_raises(self):
         registry = SkillRegistry()
         with pytest.raises(KeyError, match="unknown"):

@@ -5,7 +5,12 @@ from pydantic_ai import Agent
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.toolsets.function import FunctionToolset
 
-from haiku.skills.agent import SkillToolset, _last_tool_result, _run_skill
+from haiku.skills.agent import (
+    SkillToolset,
+    _create_read_resource,
+    _last_tool_result,
+    _run_skill,
+)
 from haiku.skills.models import (
     Skill,
     SkillMetadata,
@@ -132,10 +137,95 @@ class TestLastToolResult:
         assert _last_tool_result(messages) is None
 
 
+class TestCreateReadResource:
+    def _make_skill_with_resources(self) -> Skill:
+        return Skill(
+            metadata=SkillMetadata(
+                name="skill-with-refs",
+                description="A skill with references.",
+            ),
+            source=SkillSource.FILESYSTEM,
+            path=FIXTURES / "skill-with-refs",
+            resources=["references/REFERENCE.md", "assets/template.txt"],
+        )
+
+    async def test_reads_valid_resource(self):
+        skill = self._make_skill_with_resources()
+        read_resource = _create_read_resource(skill)
+        content = await read_resource(path="references/REFERENCE.md")
+        assert "Reference Guide" in content
+
+    async def test_unknown_path_raises(self):
+        skill = self._make_skill_with_resources()
+        read_resource = _create_read_resource(skill)
+        with pytest.raises(ValueError, match="not an available resource"):
+            await read_resource(path="unknown.txt")
+
+    async def test_path_traversal_raises(self):
+        skill = self._make_skill_with_resources()
+        read_resource = _create_read_resource(skill)
+        with pytest.raises(ValueError, match="not an available resource"):
+            await read_resource(path="../../../etc/passwd")
+
+    async def test_path_traversal_via_symlink_raises(self, tmp_path: Path):
+        skill_dir = tmp_path / "my-skill"
+        skill_dir.mkdir()
+        link = skill_dir / "escape.txt"
+        link.symlink_to(tmp_path / "secret.txt")
+        (tmp_path / "secret.txt").write_text("secret")
+        skill = Skill(
+            metadata=SkillMetadata(name="my-skill", description="Test."),
+            source=SkillSource.FILESYSTEM,
+            path=skill_dir,
+            resources=["escape.txt"],
+        )
+        read_resource = _create_read_resource(skill)
+        with pytest.raises(ValueError, match="not an available resource"):
+            await read_resource(path="escape.txt")
+
+    async def test_binary_file_raises(self, tmp_path: Path):
+        skill_dir = tmp_path / "my-skill"
+        skill_dir.mkdir()
+        binary_file = skill_dir / "data.bin"
+        binary_file.write_bytes(b"\x00\x01\x02\xff\xfe")
+        skill = Skill(
+            metadata=SkillMetadata(name="my-skill", description="Test."),
+            source=SkillSource.FILESYSTEM,
+            path=skill_dir,
+            resources=["data.bin"],
+        )
+        read_resource = _create_read_resource(skill)
+        with pytest.raises(ValueError, match="not a text file"):
+            await read_resource(path="data.bin")
+
+
 class TestPrompts:
     def test_skill_prompt_has_placeholders(self):
         assert "{task_description}" in SKILL_PROMPT
         assert "{skill_instructions}" in SKILL_PROMPT
+        assert "{resource_section}" in SKILL_PROMPT
+
+
+class TestRunSkillWithResources:
+    async def test_prompt_includes_resource_list(self, allow_model_requests: None):
+        skill = Skill(
+            metadata=SkillMetadata(name="r", description="Has resources."),
+            source=SkillSource.FILESYSTEM,
+            path=FIXTURES / "skill-with-refs",
+            instructions="Use references.",
+            resources=["references/REFERENCE.md", "assets/template.txt"],
+        )
+        result = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
+        assert result
+
+    async def test_no_resources_no_section(self, allow_model_requests: None):
+        skill = Skill(
+            metadata=SkillMetadata(name="r", description="No resources."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do things.",
+        )
+        result = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
+        assert result
 
 
 class TestAgent:

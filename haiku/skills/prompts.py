@@ -24,6 +24,7 @@ skills and instructions provided.
 
 {skill_instructions}
 
+{resource_section}\
 ## Guidelines
 
 - Follow the skill instructions carefully
