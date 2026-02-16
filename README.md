@@ -189,7 +189,16 @@ Distributable skills under `skills/`:
 - **[image-generation](skills/image-generation)** — Image generation via [Ollama](https://ollama.com/)
 - **[code-execution](skills/code-execution)** — Sandboxed Python execution via [pydantic-monty](https://github.com/pydantic/pydantic-monty)
 
-## Chat TUI
+## CLI
+
+### Listing skills
+
+```bash
+haiku-skills list --use-entrypoints
+haiku-skills list -s ./skills
+```
+
+### Chat TUI
 
 A debug/development chat interface is included:
 
@@ -207,6 +216,12 @@ Or use entrypoint discovery:
 
 ```bash
 haiku-skills chat --use-entrypoints -m openai:gpt-4o
+```
+
+Filter to specific skills by name:
+
+```bash
+haiku-skills chat --use-entrypoints -k brave-search -k code-execution -m openai:gpt-4o
 ```
 
 ## License
