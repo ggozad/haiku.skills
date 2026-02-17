@@ -3,7 +3,7 @@ name = "haiku-skills-rag"
 version = "0.1.0"
 description = "RAG skill for haiku.skills powered by haiku.rag"
 requires-python = ">=3.13"
-dependencies = ["haiku.skills>=0.1.0", "haiku.rag-slim>=0.25.0"]
+dependencies = ["haiku.skills>=0.1.0", "haiku.rag-slim>=0.30.1"]
 
 [project.entry-points."haiku.skills"]
 rag = "haiku_skills_rag:create_skill"
