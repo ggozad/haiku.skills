@@ -185,7 +185,7 @@ toolset.registry.activate("my-skill")   # Loads full instructions on demand
 
 Distributable skills under `skills/`:
 
-- **[brave-search](skills/brave-search)** — Web search via [Brave Search API](https://brave.com/search/api/) (requires `BRAVE_API_KEY`)
+- **[web](skills/web)** — Web search via [Brave Search API](https://brave.com/search/api/) and page content extraction via [trafilatura](https://trafilatura.readthedocs.io/) (requires `BRAVE_API_KEY` for search)
 - **[image-generation](skills/image-generation)** — Image generation via [Ollama](https://ollama.com/)
 - **[code-execution](skills/code-execution)** — Sandboxed Python execution via [pydantic-monty](https://github.com/pydantic/pydantic-monty)
 - **[rag](skills/rag)** — Search, retrieve and analyze documents via [haiku.rag](https://github.com/ggozad/haiku.rag)
@@ -222,7 +222,7 @@ haiku-skills chat --use-entrypoints -m openai:gpt-4o
 Filter to specific skills by name:
 
 ```bash
-haiku-skills chat --use-entrypoints -k brave-search -k code-execution -m openai:gpt-4o
+haiku-skills chat --use-entrypoints -k web -k code-execution -m openai:gpt-4o
 ```
 
 ## License

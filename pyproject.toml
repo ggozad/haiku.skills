@@ -70,7 +70,7 @@ dev = [
     "textual-image>=0.8.5",
     "typer>=0.19.2,<0.20.0",
     "python-dotenv>=1.2.1",
-    "haiku-skills-brave-search",
+    "haiku-skills-web",
     "haiku-skills-image-generation",
     "haiku-skills-code-execution",
     "haiku-skills-rag",
@@ -95,7 +95,7 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.uv.sources]
-haiku-skills-brave-search = { workspace = true }
+haiku-skills-web = { workspace = true }
 haiku-skills-image-generation = { workspace = true }
 haiku-skills-code-execution = { workspace = true }
 haiku-skills-rag = { workspace = true }
@@ -117,7 +117,7 @@ filterwarnings = ["error", "ignore::UserWarning", "ignore::DeprecationWarning"]
 [tool.coverage.run]
 source = [
     "haiku/skills",
-    "skills/brave-search/haiku_skills_brave_search",
+    "skills/web/haiku_skills_web",
     "skills/image-generation/haiku_skills_image_generation",
     "skills/code-execution/haiku_skills_code_execution",
     "skills/rag/haiku_skills_rag",

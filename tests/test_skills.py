@@ -21,49 +21,93 @@ def vcr_config():
     }
 
 
-class TestBraveSearch:
+class TestWeb:
     def test_create_skill(self):
-        from haiku_skills_brave_search import create_skill
+        from haiku_skills_web import create_skill
 
         skill = create_skill()
-        assert skill.metadata.name == "brave-search"
-        assert skill.metadata.description == "Search the web using Brave Search."
+        assert skill.metadata.name == "web"
+        assert skill.metadata.description == "Search the web and fetch page content."
         assert skill.source == SkillSource.ENTRYPOINT
         assert skill.path is not None
 
     @pytest.mark.vcr()
-    def test_web_search(self, monkeypatch: pytest.MonkeyPatch):
+    def test_search(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("BRAVE_API_KEY", "test-key-for-vcr-playback")
-        from haiku_skills_brave_search.scripts.brave_web_search import main
+        from haiku_skills_web.scripts.search import main
 
         result = main("pydantic ai framework", count=2)
         assert "URL:" in result
         assert "---" in result
 
-    def test_web_search_no_api_key(self, monkeypatch: pytest.MonkeyPatch):
+    def test_search_no_api_key(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.delenv("BRAVE_API_KEY", raising=False)
-        from haiku_skills_brave_search.scripts.brave_web_search import main
+        from haiku_skills_web.scripts.search import main
 
         result = main("test")
         assert result == "Error: BRAVE_API_KEY not set."
 
-    def test_main_entry(self, monkeypatch: pytest.MonkeyPatch):
+    def test_search_main_entry(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("BRAVE_API_KEY", "")
         monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps({"query": "test"})))
         captured = io.StringIO()
         monkeypatch.setattr("sys.stdout", captured)
 
-        script = (
-            SKILLS_ROOT
-            / "brave-search"
-            / "haiku_skills_brave_search"
-            / "scripts"
-            / "brave_web_search.py"
-        )
+        script = SKILLS_ROOT / "web" / "haiku_skills_web" / "scripts" / "search.py"
         runpy.run_path(str(script), run_name="__main__")
 
         output = json.loads(captured.getvalue())
         assert "BRAVE_API_KEY not set" in output["result"]
+
+    def test_fetch_page(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_web.scripts.fetch_page as fp
+
+        html = (
+            "<html><body>"
+            "<article><p>Pydantic AI is a Python agent framework.</p></article>"
+            "</body></html>"
+        )
+        monkeypatch.setattr(fp.trafilatura, "fetch_url", lambda url: html)
+        from haiku_skills_web.scripts.fetch_page import main
+
+        result = main("https://ai.pydantic.dev/")
+        assert "pydantic" in result.lower()
+
+    def test_fetch_page_invalid_url(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_web.scripts.fetch_page as fp
+
+        monkeypatch.setattr(fp.trafilatura, "fetch_url", lambda url: None)
+        from haiku_skills_web.scripts.fetch_page import main
+
+        result = main("https://invalid.example.com")
+        assert result == "Error: could not fetch the page."
+
+    def test_fetch_page_no_content(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_web.scripts.fetch_page as fp
+
+        monkeypatch.setattr(fp.trafilatura, "fetch_url", lambda url: "<html></html>")
+        monkeypatch.setattr(fp, "extract", lambda *a, **kw: None)
+        from haiku_skills_web.scripts.fetch_page import main
+
+        result = main("https://example.com")
+        assert result == "Error: could not extract content from the page."
+
+    def test_fetch_page_main_entry(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_web.scripts.fetch_page as fp
+
+        monkeypatch.setattr(fp.trafilatura, "fetch_url", lambda url: None)
+        monkeypatch.setattr(
+            "sys.stdin",
+            io.StringIO(json.dumps({"url": "https://invalid.example.com"})),
+        )
+        captured = io.StringIO()
+        monkeypatch.setattr("sys.stdout", captured)
+
+        script = SKILLS_ROOT / "web" / "haiku_skills_web" / "scripts" / "fetch_page.py"
+        runpy.run_path(str(script), run_name="__main__")
+
+        output = json.loads(captured.getvalue())
+        assert "could not fetch" in output["result"]
 
 
 class TestImageGeneration:

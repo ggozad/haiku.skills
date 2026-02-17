@@ -7,6 +7,11 @@
 - **`haiku-skills list` command**: List discovered skills with name and description, supports `-s`/`--skill-path` and `--use-entrypoints`
 - **`--skill` / `-k` option for `chat`**: Filter which skills to activate by name (repeatable)
 - **RAG skill package** (`haiku-skills-rag`): Search, retrieve and analyze documents via haiku.rag with tools for hybrid search, document listing/retrieval, QA with citations, and code-execution analysis
+- **Web skill package** (`haiku-skills-web`): Web search via Brave Search API and page content extraction via trafilatura (replaces `haiku-skills-brave-search`)
+
+### Removed
+
+- **Brave Search skill package** (`haiku-skills-brave-search`): Replaced by `haiku-skills-web`
 
 ## [0.1.0] - 2026-02-16
 
