@@ -188,6 +188,7 @@ Distributable skills under `skills/`:
 - **[brave-search](skills/brave-search)** — Web search via [Brave Search API](https://brave.com/search/api/) (requires `BRAVE_API_KEY`)
 - **[image-generation](skills/image-generation)** — Image generation via [Ollama](https://ollama.com/)
 - **[code-execution](skills/code-execution)** — Sandboxed Python execution via [pydantic-monty](https://github.com/pydantic/pydantic-monty)
+- **[rag](skills/rag)** — Search, retrieve and analyze documents via [haiku.rag](https://github.com/ggozad/haiku.rag)
 
 ## CLI
 

@@ -34,7 +34,7 @@ tui = [
     "pydantic-ai-slim[logfire]>=1.46.0",
     "textual>=3.2.0",
     "textual-image>=0.8.5",
-    "typer>=0.19.2",
+    "typer>=0.19.2,<0.20.0",
     "python-dotenv>=1.1.0",
 ]
 [project.urls]
@@ -68,11 +68,12 @@ dev = [
     "pydantic-monty>=0.0.4",
     "textual>=7.5.0",
     "textual-image>=0.8.5",
-    "typer>=0.23.1",
+    "typer>=0.19.2,<0.20.0",
     "python-dotenv>=1.2.1",
     "haiku-skills-brave-search",
     "haiku-skills-image-generation",
     "haiku-skills-code-execution",
+    "haiku-skills-rag",
 ]
 
 [tool.ruff]
@@ -97,6 +98,7 @@ line-ending = "auto"
 haiku-skills-brave-search = { workspace = true }
 haiku-skills-image-generation = { workspace = true }
 haiku-skills-code-execution = { workspace = true }
+haiku-skills-rag = { workspace = true }
 
 [tool.uv.workspace]
 members = ["skills/*"]
@@ -118,6 +120,7 @@ source = [
     "skills/brave-search/haiku_skills_brave_search",
     "skills/image-generation/haiku_skills_image_generation",
     "skills/code-execution/haiku_skills_code_execution",
+    "skills/rag/haiku_skills_rag",
 ]
 omit = ["haiku/skills/chat/*", "haiku/skills/cli.py"]
 

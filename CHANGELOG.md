@@ -6,6 +6,7 @@
 
 - **`haiku-skills list` command**: List discovered skills with name and description, supports `-s`/`--skill-path` and `--use-entrypoints`
 - **`--skill` / `-k` option for `chat`**: Filter which skills to activate by name (repeatable)
+- **RAG skill package** (`haiku-skills-rag`): Search, retrieve and analyze documents via haiku.rag with tools for hybrid search, document listing/retrieval, QA with citations, and code-execution analysis
 
 ## [0.1.0] - 2026-02-16
 
