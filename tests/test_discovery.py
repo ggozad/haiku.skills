@@ -100,6 +100,21 @@ class TestDiscoverResources:
         resources = discover_resources(FIXTURES / "simple-skill")
         assert resources == []
 
+    def test_excludes_python_files_and_pycache(self, tmp_path: Path):
+        skill_dir = tmp_path / "my-skill"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text(
+            "---\nname: my-skill\ndescription: Test.\n---\nBody.\n"
+        )
+        (skill_dir / "__init__.py").write_text("# code")
+        (skill_dir / "tools.py").write_text("# code")
+        pycache = skill_dir / "__pycache__"
+        pycache.mkdir()
+        (pycache / "__init__.cpython-313.pyc").write_bytes(b"\x00")
+        (skill_dir / "config.yaml").write_text("key: value")
+        resources = discover_resources(skill_dir)
+        assert resources == ["config.yaml"]
+
     def test_handles_nested_subdirectories(self, tmp_path: Path):
         skill_dir = tmp_path / "my-skill"
         skill_dir.mkdir()

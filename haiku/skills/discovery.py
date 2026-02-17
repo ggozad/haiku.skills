@@ -32,7 +32,7 @@ def discover_from_paths(paths: list[Path]) -> list[Skill]:
 
 
 def discover_resources(skill_path: Path) -> list[str]:
-    """Scan skill directory for resource files, excluding SKILL.md and scripts/."""
+    """Scan skill directory for resource files, excluding implementation artifacts."""
     resources: list[str] = []
     for file in skill_path.rglob("*"):
         if not file.is_file():
@@ -40,7 +40,9 @@ def discover_resources(skill_path: Path) -> list[str]:
         relative = file.relative_to(skill_path)
         if relative.name == "SKILL.md" and relative.parent == Path("."):
             continue
-        if relative.parts[0] == "scripts":
+        if relative.parts[0] in ("scripts", "__pycache__"):
+            continue
+        if relative.suffix in (".py", ".pyc"):
             continue
         resources.append(str(relative))
     return sorted(resources)
