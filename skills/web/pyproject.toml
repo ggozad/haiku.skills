@@ -1,12 +1,12 @@
 [project]
-name = "haiku-skills-brave-search"
+name = "haiku-skills-web"
 version = "0.1.0"
-description = "Brave web search skill for haiku.skills"
+description = "Web search and page fetching skill for haiku.skills"
 requires-python = ">=3.13"
-dependencies = ["haiku.skills>=0.1.0"]
+dependencies = ["haiku.skills>=0.1.0", "trafilatura>=2.0.0"]
 
 [project.entry-points."haiku.skills"]
-brave-search = "haiku_skills_brave_search:create_skill"
+web = "haiku_skills_web:create_skill"
 
 [tool.uv.sources]
 haiku-skills = { workspace = true }
