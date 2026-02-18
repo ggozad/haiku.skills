@@ -102,19 +102,3 @@ class Skill(BaseModel):
     @state_namespace.setter
     def state_namespace(self, value: str | None) -> None:
         self._state_namespace = value
-
-
-class TaskStatus(StrEnum):
-    PENDING = "pending"
-    IN_PROGRESS = "in_progress"
-    COMPLETED = "completed"
-    FAILED = "failed"
-
-
-class Task(BaseModel):
-    id: str
-    description: str
-    skill: str
-    status: TaskStatus = TaskStatus.PENDING
-    result: str | None = None
-    error: str | None = None

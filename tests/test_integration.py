@@ -101,4 +101,3 @@ async def test_multi_skill_decomposition(allow_model_requests: None):
         "and use it to learn for themselves.",
     )
     assert result.output
-    assert len(toolset.tasks) >= 1

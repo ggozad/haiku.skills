@@ -8,8 +8,6 @@ from haiku.skills.models import (
     Skill,
     SkillMetadata,
     SkillSource,
-    Task,
-    TaskStatus,
 )
 
 
@@ -202,30 +200,3 @@ class TestSkill:
         data = skill.model_dump()
         assert "state_type" not in data
         assert "state_namespace" not in data
-
-
-class TestTaskStatus:
-    def test_values(self):
-        assert TaskStatus.PENDING.value == "pending"
-        assert TaskStatus.IN_PROGRESS.value == "in_progress"
-        assert TaskStatus.COMPLETED.value == "completed"
-        assert TaskStatus.FAILED.value == "failed"
-
-
-class TestTask:
-    def test_defaults(self):
-        task = Task(id="1", description="Do something.", skill="my-skill")
-        assert task.status == TaskStatus.PENDING
-        assert task.result is None
-        assert task.error is None
-
-    def test_completed_task(self):
-        task = Task(
-            id="1",
-            description="Do something.",
-            skill="my-skill",
-            status=TaskStatus.COMPLETED,
-            result="Done.",
-        )
-        assert task.status == TaskStatus.COMPLETED
-        assert task.result == "Done."

@@ -303,6 +303,5 @@ class ChatApp(App):
     async def action_clear_chat(self) -> None:
         self._messages = []
         self._state = {}
-        self._toolset.clear_tasks()
         chat_history = self.query_one(ChatHistory)
         await chat_history.clear_messages()

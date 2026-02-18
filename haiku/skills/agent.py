@@ -9,7 +9,7 @@ from pydantic_ai.messages import ModelMessage, ModelRequest, ToolReturnPart
 from pydantic_ai.models import Model
 from pydantic_ai.toolsets import FunctionToolset
 
-from haiku.skills.models import Skill, Task, TaskStatus
+from haiku.skills.models import Skill
 from haiku.skills.prompts import MAIN_AGENT_PROMPT, SKILL_PROMPT
 from haiku.skills.registry import SkillRegistry
 from haiku.skills.state import SkillRunDeps, compute_state_delta
@@ -110,7 +110,6 @@ class SkillToolset(FunctionToolset[Any]):
             for skill in skills:
                 self._registry.register(skill)
                 self._register_skill_state(skill)
-        self._tasks: list[Task] = []
         self._register_tools()
 
     def _register_skill_state(self, skill: Skill) -> None:
@@ -145,13 +144,6 @@ class SkillToolset(FunctionToolset[Any]):
         return MAIN_AGENT_PROMPT.format(skill_catalog=self.skill_catalog)
 
     @property
-    def tasks(self) -> list[Task]:
-        return self._tasks
-
-    def clear_tasks(self) -> None:
-        self._tasks.clear()
-
-    @property
     def state_schemas(self) -> dict[str, dict[str, Any]]:
         """JSON Schema per namespace, keyed by namespace string."""
         return {ns: state.model_json_schema() for ns, state in self._namespaces.items()}
@@ -175,7 +167,6 @@ class SkillToolset(FunctionToolset[Any]):
 
     def _register_tools(self) -> None:
         registry = self._registry
-        tasks = self._tasks
 
         @self.tool
         async def execute_skill(
@@ -187,38 +178,30 @@ class SkillToolset(FunctionToolset[Any]):
                 skill_name: The exact name of the skill to use.
                 request: A clear description of what you need the skill to do.
             """
-            task = Task(id=str(len(tasks) + 1), description=request, skill=skill_name)
-            tasks.append(task)
-            task.status = TaskStatus.IN_PROGRESS
+            skill = registry.get(skill_name)
+            if skill is None:
+                return f"Error: Skill '{skill_name}' not found in registry"
+            skill_model = (
+                skill.model or os.environ.get("HAIKU_SKILL_MODEL") or ctx.model
+            )
+
+            namespace = skill.state_namespace
+            state = self._namespaces.get(namespace) if namespace else None
+            old_snapshot = (
+                {namespace: state.model_dump(mode="json")}
+                if namespace and state
+                else None
+            )
 
             try:
-                skill = registry.get(skill_name)
-                if skill is None:
-                    raise KeyError(f"Skill '{skill_name}' not found in registry")
-                skill_model = (
-                    skill.model or os.environ.get("HAIKU_SKILL_MODEL") or ctx.model
-                )
-
-                namespace = skill.state_namespace
-                state = self._namespaces.get(namespace) if namespace else None
-                old_snapshot = (
-                    {namespace: state.model_dump(mode="json")}
-                    if namespace and state
-                    else None
-                )
-
                 result = await _run_skill(skill_model, skill, request, state=state)
-                task.status = TaskStatus.COMPLETED
-                task.result = result
-
-                if old_snapshot is not None and namespace and state:
-                    new_snapshot = {namespace: state.model_dump(mode="json")}
-                    delta = compute_state_delta(old_snapshot, new_snapshot)
-                    if delta is not None:
-                        return ToolReturn(return_value=result, metadata=[delta])
-
-                return result
             except Exception as e:
-                task.status = TaskStatus.FAILED
-                task.error = str(e)
                 return f"Error: {e}"
+
+            if old_snapshot is not None and namespace and state:
+                new_snapshot = {namespace: state.model_dump(mode="json")}
+                delta = compute_state_delta(old_snapshot, new_snapshot)
+                if delta is not None:
+                    return ToolReturn(return_value=result, metadata=[delta])
+
+            return result

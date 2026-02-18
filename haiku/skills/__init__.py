@@ -4,8 +4,6 @@ from haiku.skills.models import (
     Skill,
     SkillMetadata,
     SkillSource,
-    Task,
-    TaskStatus,
 )
 from haiku.skills.registry import SkillRegistry
 from haiku.skills.state import SkillRunDeps, compute_state_delta

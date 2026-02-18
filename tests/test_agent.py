@@ -16,8 +16,6 @@ from haiku.skills.models import (
     Skill,
     SkillMetadata,
     SkillSource,
-    Task,
-    TaskStatus,
 )
 from haiku.skills.prompts import SKILL_PROMPT
 from haiku.skills.state import SkillRunDeps
@@ -73,17 +71,6 @@ class TestSkillToolset:
         prompt = toolset.system_prompt
         assert "simple-skill" in prompt
         assert "Available skills" in prompt
-
-    def test_tasks_empty_initially(self):
-        toolset = SkillToolset(skill_paths=[FIXTURES])
-        assert toolset.tasks == []
-
-    def test_clear_tasks(self):
-        toolset = SkillToolset(skill_paths=[FIXTURES])
-        toolset._tasks.append(Task(id="1", description="test", skill="a"))
-        assert len(toolset.tasks) == 1
-        toolset.clear_tasks()
-        assert toolset.tasks == []
 
 
 class TestRunSkill:
@@ -237,10 +224,9 @@ class TestAgent:
         agent = Agent(model, instructions=toolset.system_prompt, toolsets=[toolset])
         result = await agent.run("Hello")
         assert result.output == "Hello there!"
-        assert toolset.tasks == []
 
     async def test_run_with_skill_execution(self, allow_model_requests: None):
-        """Agent delegates to skills and tracks tasks on toolset."""
+        """Agent delegates to skills."""
         skill = Skill(
             metadata=SkillMetadata(name="a", description="Test skill."),
             source=SkillSource.ENTRYPOINT,
@@ -252,23 +238,47 @@ class TestAgent:
         )
         result = await agent.run("Do something.")
         assert result.output
-        assert len(toolset.tasks) >= 1
-        for task in toolset.tasks:
-            assert task.status == TaskStatus.COMPLETED
 
-    async def test_run_with_unknown_skill_records_failure(
-        self, allow_model_requests: None
-    ):
-        """Unknown skill in execute_skill records task failure."""
+    async def test_run_with_unknown_skill(self, allow_model_requests: None):
+        """Unknown skill in execute_skill returns error message."""
         toolset = SkillToolset(skill_paths=[FIXTURES])
         agent = Agent(
             TestModel(), instructions=toolset.system_prompt, toolsets=[toolset]
         )
-        await agent.run("Do something.")
-        assert len(toolset.tasks) >= 1
-        for task in toolset.tasks:
-            assert task.status == TaskStatus.FAILED
-            assert task.error is not None
+        result = await agent.run("Do something.")
+        assert result.output
+
+    async def test_run_skill_exception_returns_error(
+        self, monkeypatch: pytest.MonkeyPatch, allow_model_requests: None
+    ):
+        """Exception during _run_skill returns an error string."""
+        from pydantic_ai.messages import ModelRequest, ToolReturnPart
+
+        def exploding_tool() -> str:
+            """Always raises."""
+            raise RuntimeError("boom")
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test skill."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use exploding_tool.",
+            tools=[exploding_tool],
+        )
+        toolset = SkillToolset(skills=[skill])
+        agent = Agent(
+            TestModel(), instructions=toolset.system_prompt, toolsets=[toolset]
+        )
+        result = await agent.run("Do something.")
+        assert result.output
+        tool_returns = [
+            part
+            for msg in result.all_messages()
+            if isinstance(msg, ModelRequest)
+            for part in msg.parts
+            if isinstance(part, ToolReturnPart)
+            and "Error:" in part.model_response_str()
+        ]
+        assert tool_returns
 
     async def test_skill_model_fallback_to_env(
         self, monkeypatch: pytest.MonkeyPatch, allow_model_requests: None
@@ -286,7 +296,6 @@ class TestAgent:
         )
         result = await agent.run("Do something.")
         assert result.output
-        assert len(toolset.tasks) >= 1
 
     async def test_skill_model_from_skill(self, allow_model_requests: None):
         """Skill's own model field takes priority."""
@@ -302,7 +311,6 @@ class TestAgent:
         )
         result = await agent.run("Do something.")
         assert result.output
-        assert len(toolset.tasks) >= 1
 
 
 class CounterState(BaseModel):
@@ -532,7 +540,7 @@ class TestExecuteSkillWithState:
         assert ns.count == 0
 
     async def test_skill_without_state_works_normally(self, allow_model_requests: None):
-        """Skills without states still work as before."""
+        """Skills without states still work."""
         skill = Skill(
             metadata=SkillMetadata(name="a", description="Plain skill."),
             source=SkillSource.ENTRYPOINT,
@@ -544,6 +552,3 @@ class TestExecuteSkillWithState:
         )
         result = await agent.run("Do something.")
         assert result.output
-        assert len(toolset.tasks) >= 1
-        for task in toolset.tasks:
-            assert task.status == TaskStatus.COMPLETED
