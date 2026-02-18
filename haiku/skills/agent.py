@@ -102,6 +102,10 @@ class SkillToolset(FunctionToolset[Any]):
             self._registry.discover(paths=skill_paths)
         if use_entrypoints:
             self._registry.discover(use_entrypoints=True)
+        for name in self._registry.names:
+            skill = self._registry.get(name)
+            if skill:
+                self._register_skill_state(skill)
         if skills:
             for skill in skills:
                 self._registry.register(skill)

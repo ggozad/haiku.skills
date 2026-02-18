@@ -40,6 +40,8 @@ ag-ui = [
 ]
 tui = [
     "pydantic-ai-slim[logfire]>=1.46.0",
+    "ag-ui-protocol>=0.1.11",
+    "jsonpatch>=1.33",
     "textual>=3.2.0",
     "textual-image>=0.8.5",
     "typer>=0.21.2",

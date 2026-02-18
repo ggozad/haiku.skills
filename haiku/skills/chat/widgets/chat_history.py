@@ -1,12 +1,11 @@
 # pragma: no cover
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from textual.containers import Horizontal, Vertical, VerticalScroll
-from textual.widgets import Collapsible, LoadingIndicator, Markdown, Static
-
-from haiku.skills.models import Task, TaskStatus
+from rich.markup import escape
+from textual.containers import Horizontal, VerticalScroll
+from textual.widgets import LoadingIndicator, Markdown, Static
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
@@ -30,6 +29,26 @@ def _extract_images(content: str) -> tuple[str, list[str]]:
             paths.append(image_path)
     text = _IMAGE_RE.sub("", content).strip() if paths else content
     return text, paths
+
+
+_OP_COLORS = {
+    "add": "green",
+    "replace": "yellow",
+    "remove": "red",
+    "move": "cyan",
+    "copy": "cyan",
+}
+
+
+def _summarize_delta(delta: list[dict[str, Any]]) -> str:
+    """Summarize JSON patch operations into a compact Rich-markup description."""
+    parts = []
+    for op in delta:
+        path = escape(op.get("path", ""))
+        action = op.get("op", "?")
+        color = _OP_COLORS.get(action, "white")
+        parts.append(f"[{color}]{action}[/{color}] {path}")
+    return "\n".join(parts) if parts else "state updated"
 
 
 class ChatMessage(Static):
@@ -61,66 +80,42 @@ class ChatMessage(Static):
                 self.mount(Image(path, classes="chat-image"))
 
 
-class TaskWidget(Static):
-    """Displays a single skill task with status indicator."""
+class ToolCallWidget(Static):
+    """Displays a single tool call with status indicator."""
 
-    STATUS_ICONS = {
-        TaskStatus.PENDING: "○",
-        TaskStatus.IN_PROGRESS: "◌",
-        TaskStatus.COMPLETED: "✓",
-        TaskStatus.FAILED: "✗",
-    }
-
-    def __init__(self, task: Task, **kwargs) -> None:
+    def __init__(self, tool_call_id: str, tool_name: str, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.skill_task = task
-        self._collapsed = True
+        self.tool_call_id = tool_call_id
+        self.tool_name = tool_name
+        self._completed = False
 
     def compose(self) -> "ComposeResult":
-        icon = self.STATUS_ICONS.get(self.skill_task.status, "?")
-        skills = self.skill_task.skill
+        icon = "✓" if self._completed else "◌"
         with Horizontal(classes="task-row"):
-            yield Static(icon, classes="task-status")
-            yield Static(self.skill_task.description, classes="task-desc")
-            yield Static(f"[{skills}]", classes="task-skills")
-        if self.skill_task.result:
-            text, image_paths = _extract_images(self.skill_task.result)
-            with Collapsible(
-                title=f"Result: {self.skill_task.description}",
-                collapsed=self._collapsed,
-                classes="task-result",
-            ):
-                yield Markdown(text)
-                if TEXTUAL_IMAGE_AVAILABLE:
-                    for path in image_paths:
-                        yield Image(path, classes="chat-image")
+            yield Static(icon, classes="task-status", id="tool-status")
+            yield Static(self.tool_name, classes="task-desc")
 
-    def on_collapsible_toggled(self, event: Collapsible.Toggled) -> None:
-        self._collapsed = event.collapsible.collapsed
-
-    def refresh_task(self, task: Task) -> None:
-        self.skill_task = task
-        self.refresh(recompose=True)
+    def mark_completed(self) -> None:
+        self._completed = True
+        try:
+            status = self.query_one("#tool-status", Static)
+            status.update("✓")
+            self.add_class("task-completed")
+        except Exception:
+            pass
 
 
-class TasksContainer(Vertical):
-    """Groups TaskWidgets for a single orchestration request."""
+class StateDeltaWidget(Static):
+    """Compact inline display of a state change."""
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, summary: str, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._task_widgets: dict[str, TaskWidget] = {}
+        self._summary = summary
 
-    def update_tasks(self, tasks: list[Task]) -> None:
-        for task in tasks:
-            if task.id in self._task_widgets:
-                self._task_widgets[task.id].refresh_task(task)
-
-    async def add_tasks(self, tasks: list[Task]) -> None:
-        for task in tasks:
-            if task.id not in self._task_widgets:
-                widget = TaskWidget(task, classes=f"task-{task.status.value}")
-                self._task_widgets[task.id] = widget
-                await self.mount(widget)
+    def compose(self) -> "ComposeResult":
+        with Horizontal(classes="state-delta-row"):
+            yield Static("↳", classes="state-delta-icon")
+            yield Static(self._summary, classes="state-delta-text")
 
 
 class ThinkingWidget(Static):
@@ -145,7 +140,7 @@ class ThinkingWidget(Static):
 
 
 class ChatHistory(VerticalScroll):
-    """Scrollable container for chat messages and task progress."""
+    """Scrollable container for chat messages, tool calls, and state."""
 
     can_focus = True
 
@@ -210,17 +205,12 @@ class ChatHistory(VerticalScroll):
         text-style: italic;
     }
 
-    TasksContainer {
+    ToolCallWidget {
         margin: 0 0 0 4;
         padding: 0 1;
         height: auto;
         background: $surface;
         border-left: thick $warning;
-    }
-
-    TaskWidget {
-        height: auto;
-        padding: 0 1;
     }
 
     .task-row {
@@ -237,32 +227,39 @@ class ChatHistory(VerticalScroll):
         color: $success;
     }
 
-    .task-failed .task-status {
-        color: $error;
-    }
-
     .task-desc {
         width: 1fr;
         color: $text;
     }
 
-    .task-skills {
-        width: auto;
+    StateDeltaWidget {
+        margin: 0 0 0 4;
+        padding: 0 1;
+        height: auto;
+        background: $surface;
+        border-left: thick $accent;
+    }
+
+    .state-delta-row {
+        height: auto;
+        width: 100%;
+    }
+
+    .state-delta-icon {
+        width: 2;
+        color: $accent;
+    }
+
+    .state-delta-text {
+        width: 1fr;
         color: $text-muted;
         text-style: italic;
     }
-
-    .task-result {
-        margin: 0 0 0 2;
-        padding: 0;
-        height: auto;
-    }
-
-    .task-result Markdown {
-        margin: 0;
-        padding: 0 1;
-    }
     """
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._tool_widgets: dict[str, ToolCallWidget] = {}
 
     async def add_message(self, role: str, content: str = "") -> ChatMessage:
         message = ChatMessage(role, content, classes=role)
@@ -271,14 +268,11 @@ class ChatHistory(VerticalScroll):
         return message
 
     async def show_thinking(self, text: str = "Thinking...") -> None:
-        await self.mount(ThinkingWidget(text, id="thinking"))
-        self.scroll_end(animate=False)
-
-    def update_thinking(self, text: str) -> None:
         try:
             self.query_one("#thinking", ThinkingWidget).update_text(text)
         except Exception:
-            pass
+            await self.mount(ThinkingWidget(text, id="thinking"))
+        self.scroll_end(animate=False)
 
     def hide_thinking(self) -> None:
         try:
@@ -286,12 +280,26 @@ class ChatHistory(VerticalScroll):
         except Exception:
             pass
 
-    async def show_tasks(self, tasks: list[Task]) -> TasksContainer:
-        container = TasksContainer()
-        await self.mount(container)
-        await container.add_tasks(tasks)
+    async def show_tool_call(self, tool_call_id: str, tool_name: str) -> None:
+        widget = ToolCallWidget(tool_call_id, tool_name)
+        self._tool_widgets[tool_call_id] = widget
+        await self.mount(widget)
         self.scroll_end(animate=False)
-        return container
+
+    def update_tool_call(self, tool_call_id: str, completed: bool = False) -> None:
+        widget = self._tool_widgets.get(tool_call_id)
+        if widget and completed:
+            widget.mark_completed()
+
+    async def show_state_delta(self, delta: list[dict[str, Any]]) -> None:
+        summary = _summarize_delta(delta)
+        await self.mount(StateDeltaWidget(summary))
+        self.scroll_end(animate=False)
+
+    async def show_state_snapshot(self) -> None:
+        await self.mount(StateDeltaWidget("state snapshot received"))
+        self.scroll_end(animate=False)
 
     async def clear_messages(self) -> None:
+        self._tool_widgets.clear()
         await self.remove_children()

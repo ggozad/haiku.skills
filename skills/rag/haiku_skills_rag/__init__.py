@@ -82,9 +82,9 @@ def create_skill(
             for r in result_dicts:
                 rag_results.append(
                     RAGSearchResult(
-                        chunk_id=str(r.get("id", "")),
-                        document_title=str(r.get("document_title", "")),
-                        content=str(r.get("text", "")),
+                        chunk_id=str(r.get("chunk_id") or ""),
+                        document_title=str(r.get("document_title") or ""),
+                        content=str(r.get("content") or ""),
                         score=float(r.get("score", 0.0)),
                     )
                 )
