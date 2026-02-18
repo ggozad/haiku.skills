@@ -3,7 +3,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from pydantic_ai import Agent, RunContext, UsageLimits
+from pydantic import BaseModel
+from pydantic_ai import Agent, RunContext, ToolReturn, UsageLimits
 from pydantic_ai.messages import ModelMessage, ModelRequest, ToolReturnPart
 from pydantic_ai.models import Model
 from pydantic_ai.toolsets import FunctionToolset
@@ -11,6 +12,7 @@ from pydantic_ai.toolsets import FunctionToolset
 from haiku.skills.models import Skill, Task, TaskStatus
 from haiku.skills.prompts import MAIN_AGENT_PROMPT, SKILL_PROMPT
 from haiku.skills.registry import SkillRegistry
+from haiku.skills.state import SkillRunDeps, compute_state_delta
 
 
 def _last_tool_result(messages: list[ModelMessage]) -> str | None:
@@ -46,7 +48,12 @@ def _create_read_resource(skill: Skill) -> Callable[..., Any]:
     return read_resource
 
 
-async def _run_skill(model: str | Model, skill: Skill, request: str) -> str:
+async def _run_skill(
+    model: str | Model,
+    skill: Skill,
+    request: str,
+    state: BaseModel | None = None,
+) -> str:
     instructions = skill.instructions or "No specific instructions."
     resource_section = ""
     tools = list(skill.tools)
@@ -63,7 +70,8 @@ async def _run_skill(model: str | Model, skill: Skill, request: str) -> str:
         skill_instructions=instructions,
         resource_section=resource_section,
     )
-    agent = Agent[None, str](
+    deps = SkillRunDeps(state=state) if state else None
+    agent = Agent[SkillRunDeps | None, str](
         model,
         system_prompt=system_prompt,
         tools=tools,
@@ -71,6 +79,7 @@ async def _run_skill(model: str | Model, skill: Skill, request: str) -> str:
     )
     result = await agent.run(
         request,
+        deps=deps,
         usage_limits=UsageLimits(request_limit=10),
     )
     return _last_tool_result(result.all_messages()) or result.output
@@ -88,6 +97,7 @@ class SkillToolset(FunctionToolset[Any]):
     ) -> None:
         super().__init__()
         self._registry = SkillRegistry()
+        self._namespaces: dict[str, BaseModel] = {}
         if skill_paths:
             self._registry.discover(paths=skill_paths)
         if use_entrypoints:
@@ -95,8 +105,25 @@ class SkillToolset(FunctionToolset[Any]):
         if skills:
             for skill in skills:
                 self._registry.register(skill)
+                self._register_skill_state(skill)
         self._tasks: list[Task] = []
         self._register_tools()
+
+    def _register_skill_state(self, skill: Skill) -> None:
+        """Register the state namespace for a skill."""
+        if skill.state_type is None or skill.state_namespace is None:
+            return
+        namespace = skill.state_namespace
+        if namespace in self._namespaces:
+            existing = type(self._namespaces[namespace])
+            if existing is not skill.state_type:
+                raise TypeError(
+                    f"Namespace '{namespace}' registered with type "
+                    f"{existing.__name__}, cannot re-register with "
+                    f"{skill.state_type.__name__}"
+                )
+        else:
+            self._namespaces[namespace] = skill.state_type()
 
     @property
     def registry(self) -> SkillRegistry:
@@ -120,6 +147,28 @@ class SkillToolset(FunctionToolset[Any]):
     def clear_tasks(self) -> None:
         self._tasks.clear()
 
+    @property
+    def state_schemas(self) -> dict[str, dict[str, Any]]:
+        """JSON Schema per namespace, keyed by namespace string."""
+        return {ns: state.model_json_schema() for ns, state in self._namespaces.items()}
+
+    def build_state_snapshot(self) -> dict[str, Any]:
+        """Build a snapshot of all namespace states."""
+        return {
+            ns: state.model_dump(mode="json") for ns, state in self._namespaces.items()
+        }
+
+    def restore_state_snapshot(self, data: dict[str, Any]) -> None:
+        """Restore namespace states from a snapshot."""
+        for ns, state_data in data.items():
+            if ns in self._namespaces:
+                model_type = type(self._namespaces[ns])
+                self._namespaces[ns] = model_type.model_validate(state_data)
+
+    def get_namespace(self, namespace: str) -> BaseModel | None:
+        """Get state instance for a namespace."""
+        return self._namespaces.get(namespace)
+
     def _register_tools(self) -> None:
         registry = self._registry
         tasks = self._tasks
@@ -127,7 +176,7 @@ class SkillToolset(FunctionToolset[Any]):
         @self.tool
         async def execute_skill(
             ctx: RunContext[Any], skill_name: str, request: str
-        ) -> str:
+        ) -> str | ToolReturn:
             """Execute a skill by name.
 
             Args:
@@ -146,9 +195,25 @@ class SkillToolset(FunctionToolset[Any]):
                 skill_model = (
                     skill.model or os.environ.get("HAIKU_SKILL_MODEL") or ctx.model
                 )
-                result = await _run_skill(skill_model, skill, request)
+
+                namespace = skill.state_namespace
+                state = self._namespaces.get(namespace) if namespace else None
+                old_snapshot = (
+                    {namespace: state.model_dump(mode="json")}
+                    if namespace and state
+                    else None
+                )
+
+                result = await _run_skill(skill_model, skill, request, state=state)
                 task.status = TaskStatus.COMPLETED
                 task.result = result
+
+                if old_snapshot is not None and namespace and state:
+                    new_snapshot = {namespace: state.model_dump(mode="json")}
+                    delta = compute_state_delta(old_snapshot, new_snapshot)
+                    if delta is not None:
+                        return ToolReturn(return_value=result, metadata=[delta])
+
                 return result
             except Exception as e:
                 task.status = TaskStatus.FAILED

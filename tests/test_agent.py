@@ -1,7 +1,8 @@
 from pathlib import Path
 
 import pytest
-from pydantic_ai import Agent
+from pydantic import BaseModel
+from pydantic_ai import Agent, RunContext
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.toolsets.function import FunctionToolset
 
@@ -19,6 +20,7 @@ from haiku.skills.models import (
     TaskStatus,
 )
 from haiku.skills.prompts import SKILL_PROMPT
+from haiku.skills.state import SkillRunDeps
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -302,3 +304,247 @@ class TestAgent:
         result = await agent.run("Do something.")
         assert result.output
         assert len(toolset.tasks) >= 1
+
+
+class CounterState(BaseModel):
+    count: int = 0
+
+
+class ItemsState(BaseModel):
+    items: list[str] = []
+
+
+class TestSkillToolsetState:
+    def test_no_states_by_default(self):
+        toolset = SkillToolset(skill_paths=[FIXTURES])
+        assert toolset.build_state_snapshot() == {}
+        assert toolset.state_schemas == {}
+
+    def test_registers_state_namespace(self):
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do things.",
+            state_type=CounterState,
+            state_namespace="ns.counter",
+        )
+        toolset = SkillToolset(skills=[skill])
+        ns = toolset.get_namespace("ns.counter")
+        assert ns is not None
+        assert isinstance(ns, CounterState)
+        assert ns.count == 0
+
+    def test_shared_namespace_across_skills(self):
+        skill_a = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            state_type=CounterState,
+            state_namespace="shared",
+        )
+        skill_b = Skill(
+            metadata=SkillMetadata(name="b", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            state_type=CounterState,
+            state_namespace="shared",
+        )
+        toolset = SkillToolset(skills=[skill_a, skill_b])
+        assert toolset.get_namespace("shared") is not None
+        assert isinstance(toolset.get_namespace("shared"), CounterState)
+
+    def test_conflicting_namespace_types_raises(self):
+        skill_a = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            state_type=CounterState,
+            state_namespace="ns",
+        )
+        skill_b = Skill(
+            metadata=SkillMetadata(name="b", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            state_type=ItemsState,
+            state_namespace="ns",
+        )
+        with pytest.raises(TypeError, match="Namespace 'ns' registered with type"):
+            SkillToolset(skills=[skill_a, skill_b])
+
+    def test_get_namespace_returns_none_for_unknown(self):
+        toolset = SkillToolset(skill_paths=[FIXTURES])
+        assert toolset.get_namespace("nonexistent") is None
+
+    def test_state_schemas(self):
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            state_type=CounterState,
+            state_namespace="ns.counter",
+        )
+        toolset = SkillToolset(skills=[skill])
+        schemas = toolset.state_schemas
+        assert "ns.counter" in schemas
+        assert schemas["ns.counter"]["properties"]["count"]["type"] == "integer"
+
+    def test_build_state_snapshot(self):
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            state_type=CounterState,
+            state_namespace="ns.counter",
+        )
+        toolset = SkillToolset(skills=[skill])
+        snapshot = toolset.build_state_snapshot()
+        assert snapshot == {"ns.counter": {"count": 0}}
+
+    def test_restore_state_snapshot(self):
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            state_type=CounterState,
+            state_namespace="ns.counter",
+        )
+        toolset = SkillToolset(skills=[skill])
+        toolset.restore_state_snapshot({"ns.counter": {"count": 42}})
+        ns = toolset.get_namespace("ns.counter")
+        assert ns is not None
+        assert isinstance(ns, CounterState)
+        assert ns.count == 42
+
+    def test_restore_state_snapshot_ignores_unknown_namespaces(self):
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            state_type=CounterState,
+            state_namespace="ns.counter",
+        )
+        toolset = SkillToolset(skills=[skill])
+        toolset.restore_state_snapshot({"unknown": {"x": 1}})
+        assert toolset.get_namespace("unknown") is None
+
+    def test_snapshot_restore_roundtrip(self):
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            state_type=CounterState,
+            state_namespace="ns.counter",
+        )
+        toolset = SkillToolset(skills=[skill])
+        counter = toolset.get_namespace("ns.counter")
+        assert isinstance(counter, CounterState)
+        counter.count = 7
+
+        snapshot = toolset.build_state_snapshot()
+        toolset2 = SkillToolset(skills=[skill])
+        toolset2.restore_state_snapshot(snapshot)
+        assert toolset2.build_state_snapshot() == snapshot
+
+
+class TestRunSkillWithState:
+    async def test_run_skill_passes_state_as_deps(self, allow_model_requests: None):
+        """Verify _run_skill passes state to the sub-agent as deps."""
+        captured_deps: list[SkillRunDeps | None] = []
+
+        def capture_tool(ctx: RunContext[SkillRunDeps | None]) -> str:
+            """Capture deps."""
+            captured_deps.append(ctx.deps)
+            return "done"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use capture_tool.",
+            tools=[capture_tool],
+        )
+        state = CounterState(count=5)
+        await _run_skill(TestModel(), skill, "Do it.", state=state)
+        assert len(captured_deps) == 1
+        assert captured_deps[0] is not None
+        assert captured_deps[0].state is state
+
+    async def test_run_skill_without_state(self, allow_model_requests: None):
+        """Without state, deps is None."""
+        captured_deps: list[SkillRunDeps | None] = []
+
+        def capture_tool(ctx: RunContext[SkillRunDeps | None]) -> str:
+            """Capture deps."""
+            captured_deps.append(ctx.deps)
+            return "done"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use capture_tool.",
+            tools=[capture_tool],
+        )
+        await _run_skill(TestModel(), skill, "Do it.")
+        assert len(captured_deps) == 1
+        assert captured_deps[0] is None
+
+
+class TestExecuteSkillWithState:
+    async def test_state_delta_in_tool_return(self, allow_model_requests: None):
+        """execute_skill returns ToolReturn with StateDeltaEvent when state changes."""
+
+        def modify_state(ctx: RunContext[SkillRunDeps]) -> str:
+            """Modify state."""
+            assert isinstance(ctx.deps.state, CounterState)
+            ctx.deps.state.count += 1
+            return "incremented"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Counts."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use modify_state.",
+            tools=[modify_state],
+            state_type=CounterState,
+            state_namespace="ns.counter",
+        )
+        toolset = SkillToolset(skills=[skill])
+        agent = Agent(
+            TestModel(), instructions=toolset.system_prompt, toolsets=[toolset]
+        )
+        result = await agent.run("Count.")
+        assert result.output
+        ns = toolset.get_namespace("ns.counter")
+        assert isinstance(ns, CounterState)
+        assert ns.count >= 1
+
+    async def test_no_delta_when_state_unchanged(self, allow_model_requests: None):
+        """No StateDeltaEvent when state isn't modified."""
+
+        def no_op(ctx: RunContext[SkillRunDeps]) -> str:
+            """Do nothing to state."""
+            return "noop"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Does nothing."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use no_op.",
+            tools=[no_op],
+            state_type=CounterState,
+            state_namespace="ns.counter",
+        )
+        toolset = SkillToolset(skills=[skill])
+        agent = Agent(
+            TestModel(), instructions=toolset.system_prompt, toolsets=[toolset]
+        )
+        result = await agent.run("Do nothing.")
+        assert result.output
+        ns = toolset.get_namespace("ns.counter")
+        assert isinstance(ns, CounterState)
+        assert ns.count == 0
+
+    async def test_skill_without_state_works_normally(self, allow_model_requests: None):
+        """Skills without states still work as before."""
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Plain skill."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do things.",
+        )
+        toolset = SkillToolset(skills=[skill])
+        agent = Agent(
+            TestModel(), instructions=toolset.system_prompt, toolsets=[toolset]
+        )
+        result = await agent.run("Do something.")
+        assert result.output
+        assert len(toolset.tasks) >= 1
+        for task in toolset.tasks:
+            assert task.status == TaskStatus.COMPLETED

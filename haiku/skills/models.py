@@ -53,17 +53,23 @@ class Skill(BaseModel):
     model: str | None = None
     _tools: list[Tool | Callable[..., Any]] = PrivateAttr(default_factory=list)
     _toolsets: list[AbstractToolset[Any]] = PrivateAttr(default_factory=list)
+    _state_type: type[BaseModel] | None = PrivateAttr(default=None)
+    _state_namespace: str | None = PrivateAttr(default=None)
 
     def __init__(
         self,
         *,
         tools: list[Tool | Callable[..., Any]] | None = None,
         toolsets: list[AbstractToolset[Any]] | None = None,
+        state_type: type[BaseModel] | None = None,
+        state_namespace: str | None = None,
         **data: Any,
     ) -> None:
         super().__init__(**data)
         self._tools = tools or []
         self._toolsets = toolsets or []
+        self._state_type = state_type
+        self._state_namespace = state_namespace
 
     @property
     def tools(self) -> list[Tool | Callable[..., Any]]:
@@ -80,6 +86,22 @@ class Skill(BaseModel):
     @toolsets.setter
     def toolsets(self, value: list[AbstractToolset[Any]]) -> None:
         self._toolsets = value
+
+    @property
+    def state_type(self) -> type[BaseModel] | None:
+        return self._state_type
+
+    @state_type.setter
+    def state_type(self, value: type[BaseModel] | None) -> None:
+        self._state_type = value
+
+    @property
+    def state_namespace(self) -> str | None:
+        return self._state_namespace
+
+    @state_namespace.setter
+    def state_namespace(self, value: str | None) -> None:
+        self._state_namespace = value
 
 
 class TaskStatus(StrEnum):

@@ -8,3 +8,4 @@ from haiku.skills.models import (
     TaskStatus,
 )
 from haiku.skills.registry import SkillRegistry
+from haiku.skills.state import SkillRunDeps, compute_state_delta

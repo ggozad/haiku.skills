@@ -698,6 +698,10 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+ag-ui = [
+    { name = "ag-ui-protocol" },
+    { name = "jsonpatch" },
+]
 tui = [
     { name = "pydantic-ai-slim", extra = ["logfire"] },
     { name = "python-dotenv" },
@@ -708,10 +712,12 @@ tui = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "ag-ui-protocol" },
     { name = "haiku-skills-code-execution" },
     { name = "haiku-skills-image-generation" },
     { name = "haiku-skills-rag" },
     { name = "haiku-skills-web" },
+    { name = "jsonpatch" },
     { name = "pre-commit" },
     { name = "pydantic-ai-slim", extra = ["logfire", "openai"] },
     { name = "pydantic-monty" },
@@ -729,6 +735,8 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "ag-ui-protocol", marker = "extra == 'ag-ui'", specifier = ">=0.1.11" },
+    { name = "jsonpatch", marker = "extra == 'ag-ui'", specifier = ">=1.33" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pydantic-ai-slim", extras = ["logfire"], marker = "extra == 'tui'", specifier = ">=1.46.0" },
     { name = "pydantic-ai-slim", extras = ["mcp"], specifier = ">=1.46.0" },
@@ -738,14 +746,16 @@ requires-dist = [
     { name = "textual-image", marker = "extra == 'tui'", specifier = ">=0.8.5" },
     { name = "typer", marker = "extra == 'tui'", specifier = ">=0.21.2" },
 ]
-provides-extras = ["tui"]
+provides-extras = ["ag-ui", "tui"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "ag-ui-protocol", specifier = ">=0.1.11" },
     { name = "haiku-skills-code-execution", editable = "skills/code-execution" },
     { name = "haiku-skills-image-generation", editable = "skills/image-generation" },
     { name = "haiku-skills-rag", editable = "skills/rag" },
     { name = "haiku-skills-web", editable = "skills/web" },
+    { name = "jsonpatch", specifier = ">=1.33" },
     { name = "pre-commit", specifier = ">=4.5.1" },
     { name = "pydantic-ai-slim", extras = ["openai", "logfire"], specifier = ">=1.46.0" },
     { name = "pydantic-monty", specifier = ">=0.0.4" },

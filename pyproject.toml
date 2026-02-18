@@ -34,6 +34,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+ag-ui = [
+    "ag-ui-protocol>=0.1.11",
+    "jsonpatch>=1.33",
+]
 tui = [
     "pydantic-ai-slim[logfire]>=1.46.0",
     "textual>=3.2.0",
@@ -78,6 +82,8 @@ dev = [
     "haiku-skills-image-generation",
     "haiku-skills-code-execution",
     "haiku-skills-rag",
+    "ag-ui-protocol>=0.1.11",
+    "jsonpatch>=1.33",
 ]
 
 [tool.ruff]
