@@ -3,11 +3,8 @@ from pathlib import Path
 from haiku.skills.discovery import (
     discover_from_entrypoints,
     discover_from_paths,
-    discover_resources,
 )
 from haiku.skills.models import Skill, SkillMetadata
-from haiku.skills.parser import parse_skill_md
-from haiku.skills.script_tools import discover_script_tools
 
 
 class SkillRegistry:
@@ -31,22 +28,6 @@ class SkillRegistry:
 
     def list_metadata(self) -> list[SkillMetadata]:
         return [skill.metadata for skill in self._skills.values()]
-
-    def activate(self, name: str) -> None:
-        """Load full instructions for a skill (progressive disclosure step 2)."""
-        skill = self._skills.get(name)
-        if skill is None:
-            raise KeyError(f"Skill '{name}' is not registered")
-        if skill.instructions is not None:
-            return
-        if skill.path is None:
-            return
-        _, instructions = parse_skill_md(skill.path / "SKILL.md")
-        skill.instructions = instructions
-        script_tools = discover_script_tools(skill.path)
-        if script_tools:
-            skill.tools = list(skill.tools) + script_tools
-        skill.resources = discover_resources(skill.path)
 
     def discover(
         self,

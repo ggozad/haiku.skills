@@ -89,7 +89,6 @@ class TestSkillToolset:
 class TestRunSkill:
     async def test_run_skill(self, allow_model_requests: None):
         toolset = SkillToolset(skill_paths=[FIXTURES])
-        toolset.registry.activate("simple-skill")
         skill = toolset.registry.get("simple-skill")
         assert skill is not None
         result = await _run_skill(TestModel(), skill, "Do something.")

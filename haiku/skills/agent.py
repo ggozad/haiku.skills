@@ -191,7 +191,6 @@ class SkillToolset(FunctionToolset[Any]):
                 skill = registry.get(skill_name)
                 if skill is None:
                     raise KeyError(f"Skill '{skill_name}' not found in registry")
-                registry.activate(skill_name)
                 skill_model = (
                     skill.model or os.environ.get("HAIKU_SKILL_MODEL") or ctx.model
                 )

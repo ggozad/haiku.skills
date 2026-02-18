@@ -3,6 +3,7 @@ from pathlib import Path
 
 from haiku.skills.models import Skill, SkillSource
 from haiku.skills.parser import parse_skill_md
+from haiku.skills.script_tools import discover_script_tools
 
 
 def discover_from_paths(paths: list[Path]) -> list[Skill]:
@@ -15,7 +16,7 @@ def discover_from_paths(paths: list[Path]) -> list[Skill]:
             skill_md = child / "SKILL.md"
             if not child.is_dir() or not skill_md.exists():
                 continue
-            metadata, _ = parse_skill_md(skill_md)
+            metadata, instructions = parse_skill_md(skill_md)
             if metadata.name != child.name:
                 raise ValueError(
                     f"Skill name '{metadata.name}' does not match "
@@ -26,6 +27,9 @@ def discover_from_paths(paths: list[Path]) -> list[Skill]:
                     metadata=metadata,
                     source=SkillSource.FILESYSTEM,
                     path=child,
+                    instructions=instructions,
+                    tools=discover_script_tools(child),
+                    resources=discover_resources(child),
                 )
             )
     return skills

@@ -30,10 +30,21 @@ class TestDiscoverFromPaths:
         by_name = {s.metadata.name: s for s in skills}
         assert by_name["simple-skill"].path == FIXTURES / "simple-skill"
 
-    def test_instructions_not_loaded(self):
+    def test_instructions_loaded(self):
         skills = discover_from_paths([FIXTURES])
         for skill in skills:
-            assert skill.instructions is None
+            assert skill.instructions is not None
+
+    def test_script_tools_loaded(self):
+        skills = discover_from_paths([FIXTURES])
+        by_name = {s.metadata.name: s for s in skills}
+        assert len(by_name["simple-skill"].tools) == 1
+
+    def test_resources_loaded(self):
+        skills = discover_from_paths([FIXTURES])
+        by_name = {s.metadata.name: s for s in skills}
+        assert "references/REFERENCE.md" in by_name["skill-with-refs"].resources
+        assert "assets/template.txt" in by_name["skill-with-refs"].resources
 
     def test_name_must_match_directory(self, tmp_path: Path):
         skill_dir = tmp_path / "my-skill"
