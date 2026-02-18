@@ -3,7 +3,7 @@ name = "haiku-skills-code-execution"
 version = "0.1.0"
 description = "Code execution skill for haiku.skills"
 requires-python = ">=3.13"
-dependencies = ["haiku.skills>=0.1.0"]
+dependencies = ["haiku.skills>=0.1.0", "pydantic-monty>=0.0.4"]
 
 [project.entry-points."haiku.skills"]
 code-execution = "haiku_skills_code_execution:create_skill"

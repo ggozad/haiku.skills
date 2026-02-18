@@ -1,5 +1,5 @@
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Any
@@ -59,15 +59,15 @@ class Skill(BaseModel):
     def __init__(
         self,
         *,
-        tools: list[Tool | Callable[..., Any]] | None = None,
-        toolsets: list[AbstractToolset[Any]] | None = None,
+        tools: Sequence[Tool | Callable[..., Any]] | None = None,
+        toolsets: Sequence[AbstractToolset[Any]] | None = None,
         state_type: type[BaseModel] | None = None,
         state_namespace: str | None = None,
         **data: Any,
     ) -> None:
         super().__init__(**data)
-        self._tools = tools or []
-        self._toolsets = toolsets or []
+        self._tools = list(tools) if tools else []
+        self._toolsets = list(toolsets) if toolsets else []
         self._state_type = state_type
         self._state_namespace = state_namespace
 
