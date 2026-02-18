@@ -8,10 +8,21 @@
 - **`--skill` / `-k` option for `chat`**: Filter which skills to activate by name (repeatable)
 - **RAG skill package** (`haiku-skills-rag`): Search, retrieve and analyze documents via haiku.rag with tools for hybrid search, document listing/retrieval, QA with citations, and code-execution analysis
 - **Web skill package** (`haiku-skills-web`): Web search via Brave Search API and page content extraction via trafilatura (replaces `haiku-skills-brave-search`)
+- **Per-skill state**: Skills can declare a `state_type` (Pydantic `BaseModel`) and `state_namespace`; state is passed to tool functions via `RunContext[SkillRunDeps]` and tracked per namespace on the toolset
+- **AG-UI protocol**: `SkillToolset` emits `StateDeltaEvent` (JSON Patch) when skill execution changes state, compatible with the [AG-UI protocol](https://docs.ag-ui.com)
+- **State API on `SkillToolset`**: `build_state_snapshot()`, `restore_state_snapshot()`, `get_namespace()`, `state_schemas`
+- **In-process tools with state**: Distributable skills (web, image-generation, code-execution, rag) converted from script-based to in-process tool functions that can read and write per-skill state
+
+### Changed
+
+- **Skills fully loaded at discovery**: Instructions, script tools, and resources are loaded when skills are discovered, removing the separate activation step
+- **Chat TUI rewritten as AG-UI client**: Uses `AGUIAdapter` event stream instead of polling; inline state delta display and a "View state" modal via the command palette
 
 ### Removed
 
 - **Brave Search skill package** (`haiku-skills-brave-search`): Replaced by `haiku-skills-web`
+- **`SkillRegistry.activate()`**: Skills are fully loaded at discovery time; progressive disclosure removed
+- **`Task` / `TaskStatus`**: Task tracking removed from `SkillToolset`; the AG-UI adapter provides tool call progress via events
 
 ## [0.1.0] - 2026-02-16
 

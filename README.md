@@ -15,11 +15,11 @@ This sub-agent architecture means each skill runs in isolation with its own syst
 
 - **Sub-agent execution** — Each skill runs in its own agent with dedicated instructions and tools
 - **Skill discovery** — Scan filesystem paths for [SKILL.md](https://agentskills.io/specification) directories or load from Python entrypoints
-- **Progressive disclosure** — Lightweight metadata at startup, full instructions loaded on activation
 - **In-process tools** — Attach pydantic-ai `Tool` functions or `AbstractToolset` instances to skills
+- **Per-skill state** — Skills declare a Pydantic state model and namespace; state is passed to tools via `RunContext` and tracked on the toolset
+- **AG-UI protocol** — State changes emit `StateDeltaEvent` (JSON Patch), compatible with the [AG-UI protocol](https://docs.ag-ui.com)
 - **Script tools** — Python scripts in `scripts/` with a `main()` function, discovered and executed via `uv run`
 - **MCP integration** — Wrap any MCP server (stdio, SSE, streamable HTTP) as a skill
-- **Task tracking** — Observable task list on the toolset, populated during runs
 
 ## Installation
 
@@ -62,10 +62,6 @@ agent = Agent(
 
 result = await agent.run("Analyze this dataset.")
 print(result.output)
-
-# Task tracking — populated during runs
-print(toolset.tasks)
-toolset.clear_tasks()
 ```
 
 ### Skills with tools
@@ -97,6 +93,46 @@ agent = Agent(
 ```
 
 For `AbstractToolset` instances, use the `toolsets` parameter on `Skill` instead.
+
+### Skills with state
+
+Skills can declare a Pydantic state model. State is passed to tool functions via `RunContext[SkillRunDeps]` and tracked per namespace on the toolset:
+
+```python
+from pydantic import BaseModel
+from pydantic_ai import RunContext
+from haiku.skills import Skill, SkillMetadata, SkillSource, SkillToolset
+from haiku.skills.state import SkillRunDeps
+
+class CalculatorState(BaseModel):
+    history: list[str] = []
+
+def add(ctx: RunContext[SkillRunDeps], a: float, b: float) -> float:
+    """Add two numbers."""
+    result = a + b
+    if ctx.deps and ctx.deps.state and isinstance(ctx.deps.state, CalculatorState):
+        ctx.deps.state.history.append(f"{a} + {b} = {result}")
+    return result
+
+skill = Skill(
+    metadata=SkillMetadata(
+        name="calculator",
+        description="Perform mathematical calculations.",
+    ),
+    source=SkillSource.ENTRYPOINT,
+    instructions="Use the add tool to add numbers.",
+    tools=[add],
+    state_type=CalculatorState,
+    state_namespace="calculator",
+)
+
+toolset = SkillToolset(skills=[skill])
+
+# State is accessible via the toolset
+print(toolset.build_state_snapshot())  # {"calculator": {"history": []}}
+```
+
+When `execute_skill` runs a skill whose tools modify state, the toolset computes a JSON Patch delta and returns it as a `StateDeltaEvent` — compatible with the [AG-UI protocol](https://docs.ag-ui.com).
 
 ### Script tools
 
@@ -177,8 +213,6 @@ toolset = SkillToolset(skill_paths=[Path("./skills")])
 
 print(toolset.registry.names)           # Available skill names
 print(toolset.registry.list_metadata()) # Lightweight metadata
-
-toolset.registry.activate("my-skill")   # Loads full instructions on demand
 ```
 
 ## Skill packages
