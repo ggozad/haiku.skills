@@ -51,6 +51,18 @@ class TestSkillMetadata:
         with pytest.raises(ValidationError):
             SkillMetadata(name="bad--name", description="Bad name.")
 
+    def test_name_unicode_lowercase_accepted(self):
+        meta = SkillMetadata(name="données", description="French skill.")
+        assert meta.name == "données"
+
+    def test_name_unicode_uppercase_rejected(self):
+        with pytest.raises(ValidationError):
+            SkillMetadata(name="Données", description="Bad name.")
+
+    def test_name_special_characters_rejected(self):
+        with pytest.raises(ValidationError):
+            SkillMetadata(name="my_skill!", description="Bad name.")
+
     def test_name_validation_too_long_rejected(self):
         with pytest.raises(ValidationError):
             SkillMetadata(name="a" * 65, description="Too long name.")

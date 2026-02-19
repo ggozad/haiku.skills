@@ -1,4 +1,4 @@
-import re
+import unicodedata
 from collections.abc import Callable, Sequence
 from enum import StrEnum
 from pathlib import Path
@@ -8,16 +8,18 @@ from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator
 from pydantic_ai import Tool
 from pydantic_ai.toolsets import AbstractToolset
 
-_NAME_PATTERN = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$")
-
 
 def _validate_skill_name(name: str) -> str:
+    name = unicodedata.normalize("NFKC", name)
+    if name != name.lower():
+        raise ValueError("name must be lowercase")
+    if name.startswith("-") or name.endswith("-"):
+        raise ValueError("name must not start or end with a hyphen")
     if "--" in name:
         raise ValueError("name must not contain consecutive hyphens")
-    if not _NAME_PATTERN.match(name):
+    if not all(c.isalnum() or c == "-" for c in name):
         raise ValueError(
-            "name must be lowercase alphanumeric with hyphens, "
-            "not starting or ending with a hyphen"
+            "name must contain only lowercase alphanumeric characters and hyphens"
         )
     return name
 
