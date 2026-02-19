@@ -43,7 +43,6 @@ tui = [
     "ag-ui-protocol>=0.1.11",
     "jsonpatch>=1.33",
     "textual>=3.2.0",
-    "textual-image>=0.8.5",
     "typer>=0.21.2",
     "python-dotenv>=1.1.0",
 ]
@@ -77,7 +76,6 @@ dev = [
     "ruff>=0.14.13",
     "pydantic-monty>=0.0.4",
     "textual>=7.5.0",
-    "textual-image>=0.8.5",
     "typer>=0.21.2",
     "python-dotenv>=1.2.1",
     "haiku-skills-web",

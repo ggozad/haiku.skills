@@ -24,7 +24,6 @@ if TYPE_CHECKING:
 try:
     import json
 
-    import textual_image.widget  # noqa: F401
     from ag_ui.core import (
         AssistantMessage,
         BaseEvent,

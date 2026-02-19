@@ -1,6 +1,4 @@
 # pragma: no cover
-import re
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from rich.markup import escape
@@ -9,26 +7,6 @@ from textual.widgets import LoadingIndicator, Markdown, Static
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
-
-_IMAGE_RE = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)")
-
-try:
-    from textual_image.widget import Image
-
-    TEXTUAL_IMAGE_AVAILABLE = True
-except ImportError:
-    TEXTUAL_IMAGE_AVAILABLE = False
-
-
-def _extract_images(content: str) -> tuple[str, list[str]]:
-    """Extract image paths from markdown, returning cleaned text and paths."""
-    paths = []
-    for match in _IMAGE_RE.finditer(content):
-        image_path = match.group(2)
-        if Path(image_path).is_file():
-            paths.append(image_path)
-    text = _IMAGE_RE.sub("", content).strip() if paths else content
-    return text, paths
 
 
 _OP_COLORS = {
@@ -61,23 +39,13 @@ class ChatMessage(Static):
 
     def compose(self) -> "ComposeResult":
         prefix = "**You:**" if self.role == "user" else "**Assistant:**"
-        text, image_paths = _extract_images(str(self.content))
-        yield Markdown(f"{prefix}\n\n{text}", id="message-content")
-        if TEXTUAL_IMAGE_AVAILABLE:
-            for path in image_paths:
-                yield Image(path, classes="chat-image")
+        yield Markdown(f"{prefix}\n\n{self.content}", id="message-content")
 
     def update_content(self, content: str) -> None:
         self.content = content
         prefix = "**You:**" if self.role == "user" else "**Assistant:**"
-        text, image_paths = _extract_images(content)
         markdown = self.query_one("#message-content", Markdown)
-        markdown.update(f"{prefix}\n\n{text}")
-        if TEXTUAL_IMAGE_AVAILABLE:
-            for widget in self.query(".chat-image"):
-                widget.remove()
-            for path in image_paths:
-                self.mount(Image(path, classes="chat-image"))
+        markdown.update(f"{prefix}\n\n{content}")
 
 
 class ToolCallWidget(Static):
@@ -172,13 +140,6 @@ class ChatHistory(VerticalScroll):
     ChatMessage Markdown {
         margin: 0;
         padding: 0;
-    }
-
-    .chat-image {
-        width: auto;
-        height: auto;
-        max-height: 30;
-        margin: 1 0;
     }
 
     ThinkingWidget {
