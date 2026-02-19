@@ -2,8 +2,36 @@ import os
 from pathlib import Path
 from typing import Any
 
+from pydantic import BaseModel
+from pydantic_ai import RunContext
+
 from haiku.skills.models import Skill, SkillSource
 from haiku.skills.parser import parse_skill_md
+from haiku.skills.state import SkillRunDeps
+
+
+class RAGSearchResult(BaseModel):
+    chunk_id: str
+    document_title: str
+    content: str
+    score: float
+
+
+class RAGDocument(BaseModel):
+    id: str
+    title: str
+    uri: str | None
+
+
+class RAGAnswer(BaseModel):
+    question: str
+    answer: str
+
+
+class RAGState(BaseModel):
+    searches: dict[str, list[RAGSearchResult]] = {}
+    documents: list[RAGDocument] = []
+    answers: list[RAGAnswer] = []
 
 
 def create_skill(
@@ -32,9 +60,11 @@ def create_skill(
             db_path = config.storage.data_dir / "haiku.rag.lancedb"
 
     path = Path(__file__).parent
-    metadata, _ = parse_skill_md(path / "SKILL.md")
+    metadata, instructions = parse_skill_md(path / "SKILL.md")
 
-    async def search(query: str, limit: int | None = None) -> list[dict[str, Any]]:
+    async def search(
+        ctx: RunContext[SkillRunDeps], query: str, limit: int | None = None
+    ) -> list[dict[str, Any]]:
         """Search the knowledge base using hybrid search (vector + full-text).
 
         Args:
@@ -45,9 +75,25 @@ def create_skill(
 
         async with HaikuRAG(db_path, config=config, read_only=True) as rag:
             results = await rag.search(query, limit=limit)
-            return [r.model_dump() for r in results]
+            result_dicts = [r.model_dump() for r in results]
+
+        if ctx.deps and ctx.deps.state and isinstance(ctx.deps.state, RAGState):
+            rag_results = []
+            for r in result_dicts:
+                rag_results.append(
+                    RAGSearchResult(
+                        chunk_id=str(r.get("chunk_id") or ""),
+                        document_title=str(r.get("document_title") or ""),
+                        content=str(r.get("content") or ""),
+                        score=float(r.get("score", 0.0)),
+                    )
+                )
+            ctx.deps.state.searches[query] = rag_results
+
+        return result_dicts
 
     async def list_documents(
+        ctx: RunContext[SkillRunDeps],
         limit: int | None = None,
         offset: int | None = None,
         filter: str | None = None,
@@ -63,7 +109,7 @@ def create_skill(
 
         async with HaikuRAG(db_path, config=config, read_only=True) as rag:
             documents = await rag.list_documents(limit, offset, filter)
-            return [
+            result = [
                 {
                     "id": doc.id,
                     "title": doc.title,
@@ -75,7 +121,21 @@ def create_skill(
                 for doc in documents
             ]
 
-    async def get_document(query: str) -> dict[str, Any] | None:
+        if ctx.deps and ctx.deps.state and isinstance(ctx.deps.state, RAGState):
+            for doc_dict in result:
+                doc = RAGDocument(
+                    id=str(doc_dict["id"]),
+                    title=str(doc_dict["title"]),
+                    uri=doc_dict.get("uri"),
+                )
+                if not any(d.id == doc.id for d in ctx.deps.state.documents):
+                    ctx.deps.state.documents.append(doc)
+
+        return result
+
+    async def get_document(
+        ctx: RunContext[SkillRunDeps], query: str
+    ) -> dict[str, Any] | None:
         """Retrieve a document by ID, title, or URI.
 
         Tries exact ID match first, then partial URI match, then partial title match.
@@ -102,7 +162,7 @@ def create_skill(
                     document = await rag.get_document_by_id(docs[0].id)
             if document is None:
                 return None
-            return {
+            result = {
                 "id": document.id,
                 "content": document.content,
                 "title": document.title,
@@ -112,7 +172,18 @@ def create_skill(
                 "updated_at": str(document.updated_at),
             }
 
-    async def ask(question: str) -> str:
+        if ctx.deps and ctx.deps.state and isinstance(ctx.deps.state, RAGState):
+            doc = RAGDocument(
+                id=str(result["id"]),
+                title=str(result["title"]),
+                uri=result.get("uri"),
+            )
+            if not any(d.id == doc.id for d in ctx.deps.state.documents):
+                ctx.deps.state.documents.append(doc)
+
+        return result
+
+    async def ask(ctx: RunContext[SkillRunDeps], question: str) -> str:
         """Ask a question and get an answer with citations from the knowledge base.
 
         Args:
@@ -125,9 +196,14 @@ def create_skill(
             answer, citations = await rag.ask(question)
             if citations:
                 answer += "\n\n" + format_citations(citations)
-            return answer
+
+        if ctx.deps and ctx.deps.state and isinstance(ctx.deps.state, RAGState):
+            ctx.deps.state.answers.append(RAGAnswer(question=question, answer=answer))
+
+        return answer
 
     async def analyze(
+        ctx: RunContext[SkillRunDeps],
         question: str,
         document: str | None = None,
         filter: str | None = None,
@@ -150,11 +226,18 @@ def create_skill(
             output = result.answer
             if result.program:
                 output += f"\n\nProgram:\n{result.program}"
-            return output
+
+        if ctx.deps and ctx.deps.state and isinstance(ctx.deps.state, RAGState):
+            ctx.deps.state.answers.append(RAGAnswer(question=question, answer=output))
+
+        return output
 
     return Skill(
         metadata=metadata,
         source=SkillSource.ENTRYPOINT,
         path=path,
+        instructions=instructions,
         tools=[search, list_documents, get_document, ask, analyze],
+        state_type=RAGState,
+        state_namespace="rag",
     )

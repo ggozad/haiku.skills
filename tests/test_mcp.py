@@ -83,12 +83,11 @@ class TestSkillFromMCP:
         registry = SkillRegistry()
         registry.register(skill)
         assert registry.get("mcp-skill") is skill
-        registry.activate("mcp-skill")
         assert skill.instructions == "Already loaded."
 
     def test_invalid_name_rejected(self):
         server = MCPServerStdio("python", args=["-m", "server"])
-        with pytest.raises(ValueError, match="lowercase alphanumeric"):
+        with pytest.raises(ValueError, match="lowercase"):
             skill_from_mcp(
                 server,
                 name="Invalid Name!",

@@ -3,7 +3,7 @@ name = "haiku-skills-web"
 version = "0.1.0"
 description = "Web search and page fetching skill for haiku.skills"
 requires-python = ">=3.13"
-dependencies = ["haiku.skills>=0.1.0", "trafilatura>=2.0.0"]
+dependencies = ["haiku.skills>=0.1.0", "trafilatura>=2.0.0", "httpx>=0.28.0"]
 
 [project.entry-points."haiku.skills"]
 web = "haiku_skills_web:create_skill"

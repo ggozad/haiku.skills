@@ -1,8 +1,5 @@
 # haiku.skills
 
-[![Tests](https://github.com/ggozad/haiku.skills/actions/workflows/test.yml/badge.svg)](https://github.com/ggozad/haiku.skills/actions/workflows/test.yml)
-[![codecov](https://codecov.io/gh/ggozad/haiku.skills/graph/badge.svg)](https://codecov.io/gh/ggozad/haiku.skills)
-
 Skill-powered AI agents implementing the [Agent Skills specification](https://agentskills.io/specification) with [pydantic-ai](https://ai.pydantic.dev/).
 
 ## How it works
@@ -21,32 +18,19 @@ This sub-agent architecture means each skill runs in isolation with its own syst
 - **Script tools** — Python scripts in `scripts/` with a `main()` function, discovered and executed via `uv run`
 - **MCP integration** — Wrap any MCP server (stdio, SSE, streamable HTTP) as a skill
 
-## Quick start
+## Quick install
 
 ```bash
 uv add haiku.skills
 ```
 
-```python
-from pathlib import Path
-from pydantic_ai import Agent
-from haiku.skills import SkillToolset
-
-toolset = SkillToolset(skill_paths=[Path("./skills")])
-agent = Agent(
-    "anthropic:claude-sonnet-4-5-20250929",
-    instructions=toolset.system_prompt,
-    toolsets=[toolset],
-)
-
-result = await agent.run("Analyze this dataset.")
-print(result.output)
-```
-
 ## Documentation
 
-Full documentation at [ggozad.github.io/haiku.skills](https://ggozad.github.io/haiku.skills/).
-
-## License
-
-MIT
+- [Installation](installation.md) — Install with optional extras
+- [Quick start](quickstart.md) — Create a skill and use SkillToolset
+- [Skills](skills.md) — SKILL.md format, tools, state, and script tools
+- [Skill sources](skill-sources.md) — Filesystem, entrypoints, and MCP integration
+- [Examples](examples.md) — Practical examples for each source type
+- [CLI](cli.md) — Command-line interface reference
+- [AG-UI protocol](ag-ui.md) — State deltas and the AG-UI protocol
+- [Development](development.md) — Contributing, testing, and tooling

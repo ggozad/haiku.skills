@@ -34,10 +34,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+ag-ui = [
+    "ag-ui-protocol>=0.1.11",
+    "jsonpatch>=1.33",
+]
 tui = [
     "pydantic-ai-slim[logfire]>=1.46.0",
+    "ag-ui-protocol>=0.1.11",
+    "jsonpatch>=1.33",
     "textual>=3.2.0",
-    "textual-image>=0.8.5",
     "typer>=0.21.2",
     "python-dotenv>=1.1.0",
 ]
@@ -54,7 +59,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build]
-exclude = ["/tests", "/.github"]
+exclude = ["/tests", "/.github", "/docs"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["haiku"]
@@ -71,13 +76,16 @@ dev = [
     "ruff>=0.14.13",
     "pydantic-monty>=0.0.4",
     "textual>=7.5.0",
-    "textual-image>=0.8.5",
     "typer>=0.21.2",
     "python-dotenv>=1.2.1",
     "haiku-skills-web",
     "haiku-skills-image-generation",
     "haiku-skills-code-execution",
     "haiku-skills-rag",
+    "ag-ui-protocol>=0.1.11",
+    "jsonpatch>=1.33",
+    "mkdocs>=1.6.1,<2.0.0",
+    "mkdocs-material>=9.7.1",
 ]
 
 [tool.ruff]

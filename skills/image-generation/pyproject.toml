@@ -3,7 +3,7 @@ name = "haiku-skills-image-generation"
 version = "0.1.0"
 description = "Image generation skill for haiku.skills"
 requires-python = ">=3.13"
-dependencies = ["haiku.skills>=0.1.0"]
+dependencies = ["haiku.skills>=0.1.0", "httpx>=0.28.0"]
 
 [project.entry-points."haiku.skills"]
 image-generation = "haiku_skills_image_generation:create_skill"

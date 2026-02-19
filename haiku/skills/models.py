@@ -1,5 +1,5 @@
-import re
-from collections.abc import Callable
+import unicodedata
+from collections.abc import Callable, Sequence
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Any
@@ -8,16 +8,18 @@ from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator
 from pydantic_ai import Tool
 from pydantic_ai.toolsets import AbstractToolset
 
-_NAME_PATTERN = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$")
-
 
 def _validate_skill_name(name: str) -> str:
+    name = unicodedata.normalize("NFKC", name)
+    if name != name.lower():
+        raise ValueError("name must be lowercase")
+    if name.startswith("-") or name.endswith("-"):
+        raise ValueError("name must not start or end with a hyphen")
     if "--" in name:
         raise ValueError("name must not contain consecutive hyphens")
-    if not _NAME_PATTERN.match(name):
+    if not all(c.isalnum() or c == "-" for c in name):
         raise ValueError(
-            "name must be lowercase alphanumeric with hyphens, "
-            "not starting or ending with a hyphen"
+            "name must contain only lowercase alphanumeric characters and hyphens"
         )
     return name
 
@@ -53,17 +55,23 @@ class Skill(BaseModel):
     model: str | None = None
     _tools: list[Tool | Callable[..., Any]] = PrivateAttr(default_factory=list)
     _toolsets: list[AbstractToolset[Any]] = PrivateAttr(default_factory=list)
+    _state_type: type[BaseModel] | None = PrivateAttr(default=None)
+    _state_namespace: str | None = PrivateAttr(default=None)
 
     def __init__(
         self,
         *,
-        tools: list[Tool | Callable[..., Any]] | None = None,
-        toolsets: list[AbstractToolset[Any]] | None = None,
+        tools: Sequence[Tool | Callable[..., Any]] | None = None,
+        toolsets: Sequence[AbstractToolset[Any]] | None = None,
+        state_type: type[BaseModel] | None = None,
+        state_namespace: str | None = None,
         **data: Any,
     ) -> None:
         super().__init__(**data)
-        self._tools = tools or []
-        self._toolsets = toolsets or []
+        self._tools = list(tools) if tools else []
+        self._toolsets = list(toolsets) if toolsets else []
+        self._state_type = state_type
+        self._state_namespace = state_namespace
 
     @property
     def tools(self) -> list[Tool | Callable[..., Any]]:
@@ -81,18 +89,18 @@ class Skill(BaseModel):
     def toolsets(self, value: list[AbstractToolset[Any]]) -> None:
         self._toolsets = value
 
+    @property
+    def state_type(self) -> type[BaseModel] | None:
+        return self._state_type
 
-class TaskStatus(StrEnum):
-    PENDING = "pending"
-    IN_PROGRESS = "in_progress"
-    COMPLETED = "completed"
-    FAILED = "failed"
+    @state_type.setter
+    def state_type(self, value: type[BaseModel] | None) -> None:
+        self._state_type = value
 
+    @property
+    def state_namespace(self) -> str | None:
+        return self._state_namespace
 
-class Task(BaseModel):
-    id: str
-    description: str
-    skill: str
-    status: TaskStatus = TaskStatus.PENDING
-    result: str | None = None
-    error: str | None = None
+    @state_namespace.setter
+    def state_namespace(self, value: str | None) -> None:
+        self._state_namespace = value

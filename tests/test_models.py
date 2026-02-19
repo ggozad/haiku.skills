@@ -1,15 +1,13 @@
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 from pydantic_ai.toolsets.function import FunctionToolset
 
 from haiku.skills.models import (
     Skill,
     SkillMetadata,
     SkillSource,
-    Task,
-    TaskStatus,
 )
 
 
@@ -52,6 +50,18 @@ class TestSkillMetadata:
     def test_name_validation_consecutive_hyphens_rejected(self):
         with pytest.raises(ValidationError):
             SkillMetadata(name="bad--name", description="Bad name.")
+
+    def test_name_unicode_lowercase_accepted(self):
+        meta = SkillMetadata(name="données", description="French skill.")
+        assert meta.name == "données"
+
+    def test_name_unicode_uppercase_rejected(self):
+        with pytest.raises(ValidationError):
+            SkillMetadata(name="Données", description="Bad name.")
+
+    def test_name_special_characters_rejected(self):
+        with pytest.raises(ValidationError):
+            SkillMetadata(name="my_skill!", description="Bad name.")
 
     def test_name_validation_too_long_rejected(self):
         with pytest.raises(ValidationError):
@@ -157,29 +167,48 @@ class TestSkill:
         assert "tools" not in data
         assert "toolsets" not in data
 
+    def test_state_type_default_none(self):
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(metadata=meta, source=SkillSource.FILESYSTEM)
+        assert skill.state_type is None
+        assert skill.state_namespace is None
 
-class TestTaskStatus:
-    def test_values(self):
-        assert TaskStatus.PENDING.value == "pending"
-        assert TaskStatus.IN_PROGRESS.value == "in_progress"
-        assert TaskStatus.COMPLETED.value == "completed"
-        assert TaskStatus.FAILED.value == "failed"
+    def test_state_type_settable(self):
+        class MyState(BaseModel):
+            value: int = 0
 
-
-class TestTask:
-    def test_defaults(self):
-        task = Task(id="1", description="Do something.", skill="my-skill")
-        assert task.status == TaskStatus.PENDING
-        assert task.result is None
-        assert task.error is None
-
-    def test_completed_task(self):
-        task = Task(
-            id="1",
-            description="Do something.",
-            skill="my-skill",
-            status=TaskStatus.COMPLETED,
-            result="Done.",
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(
+            metadata=meta,
+            source=SkillSource.FILESYSTEM,
+            state_type=MyState,
+            state_namespace="ns",
         )
-        assert task.status == TaskStatus.COMPLETED
-        assert task.result == "Done."
+        assert skill.state_type is MyState
+        assert skill.state_namespace == "ns"
+
+    def test_state_type_setter(self):
+        class MyState(BaseModel):
+            value: int = 0
+
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(metadata=meta, source=SkillSource.FILESYSTEM)
+        skill.state_type = MyState
+        skill.state_namespace = "ns"
+        assert skill.state_type is MyState
+        assert skill.state_namespace == "ns"
+
+    def test_state_excluded_from_serialization(self):
+        class MyState(BaseModel):
+            value: int = 0
+
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(
+            metadata=meta,
+            source=SkillSource.FILESYSTEM,
+            state_type=MyState,
+            state_namespace="ns",
+        )
+        data = skill.model_dump()
+        assert "state_type" not in data
+        assert "state_namespace" not in data

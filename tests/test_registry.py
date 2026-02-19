@@ -55,70 +55,36 @@ class TestSkillRegistry:
         with pytest.raises(ValueError, match="already registered"):
             registry.register(_make_skill("dup"))
 
-    def test_activate_loads_instructions(self):
-        registry = SkillRegistry()
-        skill = _make_skill(
-            "simple-skill",
-            "A simple test skill that does basic operations.",
-            path=FIXTURES / "simple-skill",
-        )
-        registry.register(skill)
-        assert skill.instructions is None
-
-        registry.activate("simple-skill")
-        assert skill.instructions is not None
-        assert "# Simple Skill" in skill.instructions
-
-    def test_activate_discovers_script_tools(self):
-        registry = SkillRegistry()
-        skill = _make_skill(
-            "simple-skill",
-            "A simple test skill that does basic operations.",
-            path=FIXTURES / "simple-skill",
-        )
-        registry.register(skill)
-        registry.activate("simple-skill")
-        assert len(skill.tools) == 1
-        tool = skill.tools[0]
-        assert hasattr(tool, "name") and tool.name == "greet"
-
-    def test_activate_discovers_resources(self):
-        registry = SkillRegistry()
-        skill = _make_skill(
-            "skill-with-refs",
-            "A skill with references, metadata, and all optional fields.",
-            path=FIXTURES / "skill-with-refs",
-        )
-        registry.register(skill)
-        assert skill.resources == []
-        registry.activate("skill-with-refs")
-        assert "references/REFERENCE.md" in skill.resources
-        assert "assets/template.txt" in skill.resources
-
-    def test_activate_unknown_raises(self):
-        registry = SkillRegistry()
-        with pytest.raises(KeyError, match="unknown"):
-            registry.activate("unknown")
-
-    def test_activate_already_loaded_is_noop(self):
-        registry = SkillRegistry()
-        skill = _make_skill(instructions="Already loaded.")
-        registry.register(skill)
-        registry.activate("test-skill")
-        assert skill.instructions == "Already loaded."
-
-    def test_activate_without_path_is_noop(self):
-        registry = SkillRegistry()
-        skill = _make_skill()
-        registry.register(skill)
-        registry.activate("test-skill")
-        assert skill.instructions is None
-
     def test_discover_from_paths(self):
         registry = SkillRegistry()
         registry.discover(paths=[FIXTURES])
         assert "simple-skill" in registry.names
         assert "skill-with-refs" in registry.names
+
+    def test_discover_loads_instructions(self):
+        registry = SkillRegistry()
+        registry.discover(paths=[FIXTURES])
+        skill = registry.get("simple-skill")
+        assert skill is not None
+        assert skill.instructions is not None
+        assert "# Simple Skill" in skill.instructions
+
+    def test_discover_loads_script_tools(self):
+        registry = SkillRegistry()
+        registry.discover(paths=[FIXTURES])
+        skill = registry.get("simple-skill")
+        assert skill is not None
+        assert len(skill.tools) == 1
+        tool = skill.tools[0]
+        assert hasattr(tool, "name") and tool.name == "greet"
+
+    def test_discover_loads_resources(self):
+        registry = SkillRegistry()
+        registry.discover(paths=[FIXTURES])
+        skill = registry.get("skill-with-refs")
+        assert skill is not None
+        assert "references/REFERENCE.md" in skill.resources
+        assert "assets/template.txt" in skill.resources
 
     def test_discover_from_entrypoints(self, monkeypatch: pytest.MonkeyPatch):
         skill = _make_skill("ep-skill", source=SkillSource.ENTRYPOINT)

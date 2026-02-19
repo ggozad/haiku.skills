@@ -1,0 +1,98 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip
+      connection:
+      - keep-alive
+      host:
+      - api.search.brave.com
+    method: GET
+    uri: https://api.search.brave.com/res/v1/web/search?q=pydantic+ai+framework&count=2
+  response:
+    headers:
+      connection:
+      - keep-alive
+      content-length:
+      - '14223'
+      content-type:
+      - application/json
+      referrer-policy:
+      - strict-origin-when-cross-origin
+      server-timing:
+      - search-roundtrip;dur=227.69
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains; preload
+      transfer-encoding:
+      - chunked
+      vary:
+      - Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, Sec-Fetch-User
+    parsed_body:
+      mixed:
+        main:
+        - all: false
+          index: 0
+          type: web
+        - all: false
+          index: 1
+          type: web
+        side: []
+        top: []
+        type: mixed
+      query:
+        bad_results: false
+        city: ''
+        country: us
+        header_country: ''
+        is_navigational: true
+        is_news_breaking: false
+        more_results_available: true
+        original: pydantic ai framework
+        postal_code: ''
+        should_fallback: false
+        show_strict_warning: false
+        spellcheck_off: true
+        state: ''
+      type: search
+      web:
+        family_friendly: true
+        results:
+        - description: Pydantic AI is <strong>a Python agent framework designed to help you quickly, confidently, and painlessly
+            build production grade applications and workflows with Generative AI</strong>.
+          family_friendly: true
+          is_source_both: false
+          is_source_local: false
+          language: en
+          meta_url:
+            favicon: https://imgs.search.brave.com/DgP6LDhGh-U_S8B9RdsJFinR9pd6e1BW2zGJ3o_NbR0/rs:fit:32:32:1:0/g:ce/aHR0cDovL2Zhdmlj/b25zLnNlYXJjaC5i/cmF2ZS5jb20vaWNv/bnMvODUxMDcyZjdh/OTllY2ExZTZiZjBk/MTE2OWNlZmQxYmQ3/NjNiMDM0YjRmZmU4/ZjE4OTBiMzEwNWNl/MzA0NmYzNC9haS5w/eWRhbnRpYy5kZXYv
+            hostname: ai.pydantic.dev
+            netloc: ai.pydantic.dev
+            path: ''
+            scheme: https
+          title: Pydantic AI - Pydantic AI
+          type: search_result
+          url: https://ai.pydantic.dev/
+        - age: December 13, 2024
+          description: 'Pydantic AI: Agent Framework PydanticAI is <strong>a Python Agent Framework designed to make building
+            production-grade applications with Generative AI less painful</strong>.'
+          family_friendly: true
+          is_source_both: false
+          is_source_local: false
+          language: en
+          meta_url:
+            favicon: https://imgs.search.brave.com/4R4hFITz_F_be0roUiWbTZKhsywr3fnLTMTkFL5HFow/rs:fit:32:32:1:0/g:ce/aHR0cDovL2Zhdmlj/b25zLnNlYXJjaC5i/cmF2ZS5jb20vaWNv/bnMvOTZhYmQ1N2Q4/NDg4ZDcyODIyMDZi/MzFmOWNhNjE3Y2E4/Y2YzMThjNjljNDIx/ZjllZmNhYTcwODhl/YTcwNDEzYy9tZWRp/dW0uY29tLw
+            hostname: medium.com
+            netloc: medium.com
+            path: "\u203A ai-agent-insider  \u203A pydantic-ai-agent-framework-02b138e8db71"
+            scheme: https
+          title: 'Pydantic AI: Agent Framework'
+          type: search_result
+          url: https://medium.com/ai-agent-insider/pydantic-ai-agent-framework-02b138e8db71
+        type: search
+    status:
+      code: 200
+      message: OK
+version: 1
