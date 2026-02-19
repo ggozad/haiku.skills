@@ -17,7 +17,27 @@ _spec.loader.exec_module(_mod)
 
 get_current_version = _mod.get_current_version
 update_version_in_file = _mod.update_version_in_file
+update_changelog = _mod.update_changelog
 main = _mod.main
+
+CHANGELOG_TEMPLATE = """\
+# Changelog
+
+## [Unreleased]
+
+### Added
+
+- Something new
+
+## [0.1.0] - 2026-02-16
+
+### Added
+
+- Initial release
+
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.1.0...HEAD
+[0.1.0]: https://github.com/ggozad/haiku.skills/releases/tag/0.1.0
+"""
 
 
 @pytest.fixture
@@ -30,6 +50,9 @@ def workspace(tmp_path: Path) -> Path:
     (root / "pyproject.toml").write_text(
         '[project]\nname = "haiku.skills"\nversion = "0.1.0"\n'
     )
+
+    # CHANGELOG.md
+    (root / "CHANGELOG.md").write_text(CHANGELOG_TEMPLATE)
 
     return root
 
@@ -64,6 +87,38 @@ class TestUpdateVersionInFile:
         assert 'foo = "bar"' in result
 
 
+class TestUpdateChangelog:
+    def test_adds_version_header(self, tmp_path: Path):
+        f = tmp_path / "CHANGELOG.md"
+        f.write_text(CHANGELOG_TEMPLATE)
+        update_changelog(f, "0.2.0")
+        content = f.read_text()
+        assert "## [Unreleased]" in content
+        assert "## [0.2.0] - " in content
+
+    def test_updates_unreleased_link(self, tmp_path: Path):
+        f = tmp_path / "CHANGELOG.md"
+        f.write_text(CHANGELOG_TEMPLATE)
+        update_changelog(f, "0.2.0")
+        content = f.read_text()
+        assert "[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.2.0...HEAD" in content
+
+    def test_adds_version_link(self, tmp_path: Path):
+        f = tmp_path / "CHANGELOG.md"
+        f.write_text(CHANGELOG_TEMPLATE)
+        update_changelog(f, "0.2.0")
+        content = f.read_text()
+        assert "[0.2.0]: https://github.com/ggozad/haiku.skills/compare/0.1.0...0.2.0" in content
+
+    def test_preserves_existing_content(self, tmp_path: Path):
+        f = tmp_path / "CHANGELOG.md"
+        f.write_text(CHANGELOG_TEMPLATE)
+        update_changelog(f, "0.2.0")
+        content = f.read_text()
+        assert "- Something new" in content
+        assert "## [0.1.0] - 2026-02-16" in content
+
+
 class TestMain:
     def test_invalid_version_format(self, workspace: Path):
         with pytest.raises(SystemExit, match="1"):
@@ -77,7 +132,7 @@ class TestMain:
                 with patch.object(_mod, "ROOT", workspace):
                     main()
 
-    def test_updates_root_pyproject(self, workspace: Path):
+    def test_updates_root_pyproject_and_changelog(self, workspace: Path):
         with (
             patch("sys.argv", ["bump", "0.2.0"]),
             patch.object(_mod, "ROOT", workspace),
@@ -89,6 +144,11 @@ class TestMain:
         # Root version updated
         root_content = (workspace / "pyproject.toml").read_text()
         assert 'version = "0.2.0"' in root_content
+
+        # Changelog updated
+        changelog_content = (workspace / "CHANGELOG.md").read_text()
+        assert "## [0.2.0] - " in changelog_content
+        assert "[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.2.0...HEAD" in changelog_content
 
         # uv sync was called
         mock_run.assert_called_once_with(["uv", "sync"], check=True, cwd=workspace)

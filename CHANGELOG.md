@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-02-19
+
 ### Added
 
 - **`haiku-skills list` command**: List discovered skills with name and description, supports `-s`/`--skill-path` and `--use-entrypoints`
@@ -44,5 +46,6 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.1.0...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.3.0...HEAD
+[0.3.0]: https://github.com/ggozad/haiku.skills/compare/0.1.0...0.3.0
 [0.1.0]: https://github.com/ggozad/haiku.skills/releases/tag/0.1.0

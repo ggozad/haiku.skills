@@ -4,6 +4,7 @@
 import re
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
@@ -29,6 +30,44 @@ def update_version_in_file(file_path: Path, new_version: str) -> None:
     )
     file_path.write_text(updated)
     print(f"  Updated {file_path}")
+
+
+def update_changelog(changelog_path: Path, new_version: str) -> None:
+    """Update CHANGELOG.md with new version."""
+    content = changelog_path.read_text()
+    today = date.today().isoformat()
+
+    # Replace [Unreleased] header with new version
+    updated = re.sub(
+        r"## \[Unreleased\]",
+        f"## [Unreleased]\n\n## [{new_version}] - {today}",
+        content,
+        count=1,
+    )
+
+    # Update comparison links
+    old_unreleased_match = re.search(
+        r"\[Unreleased\]: https://github\.com/ggozad/haiku\.skills/compare/(.+?)\.\.\.HEAD",
+        updated,
+    )
+
+    if old_unreleased_match:
+        prev_version = old_unreleased_match.group(1)
+
+        updated = re.sub(
+            r"\[Unreleased\]: https://github\.com/ggozad/haiku\.skills/compare/.+?\.\.\.HEAD",
+            f"[Unreleased]: https://github.com/ggozad/haiku.skills/compare/{new_version}...HEAD",
+            updated,
+        )
+
+        updated = re.sub(
+            r"(\[Unreleased\]: https://github\.com/ggozad/haiku\.skills/compare/[^\n]+\n)",
+            f"\\1[{new_version}]: https://github.com/ggozad/haiku.skills/compare/{prev_version}...{new_version}\n",
+            updated,
+        )
+
+    changelog_path.write_text(updated)
+    print(f"  Updated {changelog_path}")
 
 
 def main():
@@ -61,6 +100,10 @@ def main():
 
     print()
     update_version_in_file(root_pyproject, new_version)
+
+    changelog = ROOT / "CHANGELOG.md"
+    if changelog.exists():
+        update_changelog(changelog, new_version)
 
     print()
     print("Running uv sync...")
