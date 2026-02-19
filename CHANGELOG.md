@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-02-19
+
 ### Added
 
 - **`haiku-skills validate` command**: Validate skill directories against the Agent Skills specification using `skills-ref`
@@ -56,6 +58,7 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.3.0...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.4.0...HEAD
+[0.4.0]: https://github.com/ggozad/haiku.skills/compare/0.3.0...0.4.0
 [0.3.0]: https://github.com/ggozad/haiku.skills/compare/0.1.0...0.3.0
 [0.1.0]: https://github.com/ggozad/haiku.skills/releases/tag/0.1.0
