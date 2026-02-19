@@ -70,6 +70,14 @@ class TestParseSkillMd:
         metadata, _ = parse_skill_md(skill_md)
         assert metadata.allowed_tools == ["Read", "Write"]
 
+    def test_unknown_frontmatter_field_raises(self, tmp_path: Path):
+        skill_md = tmp_path / "SKILL.md"
+        skill_md.write_text(
+            "---\nname: test\ndescription: Test.\nunknown-field: oops\n---\nBody.\n"
+        )
+        with pytest.raises(ValueError, match="unknown-field"):
+            parse_skill_md(skill_md)
+
     def test_allowed_tools_parsed_from_yaml_list(self, tmp_path: Path):
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text(

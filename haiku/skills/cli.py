@@ -34,6 +34,29 @@ def _resolve_discovery(
     return registry
 
 
+@cli.command("validate", help="Validate skill directories against the spec")
+def validate(
+    paths: list[Path] = typer.Argument(
+        ...,
+        help="Path(s) to skill directories containing SKILL.md",
+    ),
+) -> None:
+    from skills_ref import validate as skills_ref_validate
+
+    all_valid = True
+    for path in paths:
+        errors = skills_ref_validate(path)
+        if errors:
+            all_valid = False
+            typer.echo(f"INVALID {path}:", err=True)
+            for error in errors:
+                typer.echo(f"  - {error}", err=True)
+        else:
+            typer.echo(f"VALID   {path}")
+    if not all_valid:
+        raise typer.Exit(1)
+
+
 @cli.command("list", help="List discovered skills")
 def list_skills(
     skill_path: list[Path] = typer.Option(

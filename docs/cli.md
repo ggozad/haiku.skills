@@ -2,6 +2,16 @@
 
 haiku.skills provides a `haiku-skills` command-line interface.
 
+## `validate`
+
+Validate skill directories against the [Agent Skills specification](https://agentskills.io/specification) using the reference implementation:
+
+```bash
+haiku-skills validate ./skills/web ./skills/calculator
+```
+
+Prints `VALID` or `INVALID` with error details for each path. Exits with code 1 if any skill is invalid.
+
 ## `list`
 
 List discovered skills with name and description:

@@ -721,6 +721,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "pydantic-ai-slim", extra = ["mcp"] },
     { name = "pyyaml" },
+    { name = "skills-ref" },
 ]
 
 [package.optional-dependencies]
@@ -772,6 +773,7 @@ requires-dist = [
     { name = "pydantic-ai-slim", extras = ["mcp"], specifier = ">=1.46.0" },
     { name = "python-dotenv", marker = "extra == 'tui'", specifier = ">=1.1.0" },
     { name = "pyyaml", specifier = ">=6.0.3" },
+    { name = "skills-ref", specifier = ">=0.1.1" },
     { name = "textual", marker = "extra == 'tui'", specifier = ">=3.2.0" },
     { name = "typer", marker = "extra == 'tui'", specifier = ">=0.21.2" },
 ]
@@ -2762,6 +2764,19 @@ wheels = [
 ]
 
 [[package]]
+name = "skills-ref"
+version = "0.1.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+    { name = "strictyaml" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/23/42/943d3ba8b097af7068b7178563a5062ad8a977982f4a7b4f67facfc575e9/skills_ref-0.1.1.tar.gz", hash = "sha256:6b400ca6e0049be62dca0167ff943ba2745fd67efb37fbba4d0ee341fccd2695", size = 93519, upload-time = "2026-01-10T13:23:41.423Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/af/25/36a43c3a61fb6cc3984e6ad5e556929b8ae71c95eba615dae4cf2f427964/skills_ref-0.1.1-py3-none-any.whl", hash = "sha256:d35db5bb8de71ae301daf5ca9cb71f8a555e8c6f83a6d40e46a5bc09f8f461b5", size = 12918, upload-time = "2026-01-10T13:23:40.106Z" },
+]
+
+[[package]]
 name = "sniffio"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2802,6 +2817,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c4/68/79977123bb7be889ad680d79a40f339082c1978b5cfcf62c2d8d196873ac/starlette-0.52.1.tar.gz", hash = "sha256:834edd1b0a23167694292e94f597773bc3f89f362be6effee198165a35d62933", size = 2653702, upload-time = "2026-01-18T13:34:11.062Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/81/0d/13d1d239a25cbfb19e740db83143e95c772a1fe10202dda4b76792b114dd/starlette-0.52.1-py3-none-any.whl", hash = "sha256:0029d43eb3d273bc4f83a08720b4912ea4b071087a3b48db01b7c839f7954d74", size = 74272, upload-time = "2026-01-18T13:34:09.188Z" },
+]
+
+[[package]]
+name = "strictyaml"
+version = "1.7.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "python-dateutil" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b3/08/efd28d49162ce89c2ad61a88bd80e11fb77bc9f6c145402589112d38f8af/strictyaml-1.7.3.tar.gz", hash = "sha256:22f854a5fcab42b5ddba8030a0e4be51ca89af0267961c8d6cfa86395586c407", size = 115206, upload-time = "2023-03-10T12:50:27.062Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/96/7c/a81ef5ef10978dd073a854e0fa93b5d8021d0594b639cc8f6453c3c78a1d/strictyaml-1.7.3-py3-none-any.whl", hash = "sha256:fb5c8a4edb43bebb765959e420f9b3978d7f1af88c80606c03fb420888f5d1c7", size = 123917, upload-time = "2023-03-10T12:50:17.242Z" },
 ]
 
 [[package]]

@@ -69,13 +69,13 @@ def fetch_page(ctx: RunContext[SkillRunDeps], url: str) -> str:
 
 
 def create_skill() -> Skill:
-    path = Path(__file__).parent
-    metadata, instructions = parse_skill_md(path / "SKILL.md")
+    skill_dir = Path(__file__).parent / "web"
+    metadata, instructions = parse_skill_md(skill_dir / "SKILL.md")
 
     return Skill(
         metadata=metadata,
         source=SkillSource.ENTRYPOINT,
-        path=path,
+        path=skill_dir,
         instructions=instructions,
         tools=[search, fetch_page],
         state_type=WebState,

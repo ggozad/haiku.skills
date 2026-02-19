@@ -79,6 +79,12 @@ class TestSkillMetadata:
         with pytest.raises(ValidationError):
             SkillMetadata(name="ok", description="x" * 1025)
 
+    def test_unknown_field_rejected(self):
+        with pytest.raises(ValidationError, match="extra_field"):
+            SkillMetadata(
+                **{"name": "ok", "description": "Valid.", "extra_field": "unexpected"}  # type: ignore[invalid-argument-type]
+            )
+
 
 class TestSkillSource:
     def test_values(self):

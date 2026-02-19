@@ -59,8 +59,8 @@ def create_skill(
         else:
             db_path = config.storage.data_dir / "haiku.rag.lancedb"
 
-    path = Path(__file__).parent
-    metadata, instructions = parse_skill_md(path / "SKILL.md")
+    skill_dir = Path(__file__).parent / "rag"
+    metadata, instructions = parse_skill_md(skill_dir / "SKILL.md")
 
     async def search(
         ctx: RunContext[SkillRunDeps], query: str, limit: int | None = None
@@ -235,7 +235,7 @@ def create_skill(
     return Skill(
         metadata=metadata,
         source=SkillSource.ENTRYPOINT,
-        path=path,
+        path=skill_dir,
         instructions=instructions,
         tools=[search, list_documents, get_document, ask, analyze],
         state_type=RAGState,

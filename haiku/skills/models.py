@@ -25,6 +25,8 @@ def _validate_skill_name(name: str) -> str:
 
 
 class SkillMetadata(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: Annotated[str, Field(min_length=1, max_length=64)]
     description: Annotated[str, Field(min_length=1, max_length=1024)]
     license: str | None = None
