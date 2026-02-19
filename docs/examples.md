@@ -182,15 +182,7 @@ Sandboxed Python execution via [pydantic-monty](https://github.com/pydantic/pyda
 uv add haiku-skills-code-execution
 ```
 
-### rag
-
-Search, retrieve and analyze documents via [haiku.rag](https://github.com/ggozad/haiku.rag).
-
-```bash
-uv add haiku-skills-rag
-```
-
-Provides tools for hybrid search, document listing/retrieval, QA with citations, and code-execution analysis.
+For a more elaborate use case involving RAG (retrieval-augmented generation), see the [haiku.rag](https://github.com/ggozad/haiku.rag) project which provides a full RAG skill for haiku.skills.
 
 ## Mixing sources
 

@@ -40,14 +40,6 @@ class TestValidateDistributableSkills:
         errors = validate(skill.path)
         assert errors == []
 
-    def test_rag_valid(self):
-        from haiku_skills_rag import create_skill
-
-        skill = create_skill()
-        assert skill.path is not None
-        errors = validate(skill.path)
-        assert errors == []
-
 
 class TestValidateInvalid:
     def test_nonexistent_path(self):
