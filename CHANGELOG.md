@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`haiku-skills validate` command**: Validate skill directories against the Agent Skills specification using `skills-ref`
+- **Unknown frontmatter rejection**: `SkillMetadata` now rejects unknown fields (`extra="forbid"`)
+- **`skills-ref` dependency**: Reference implementation used for spec-compliant validation
+
+### Changed
+
+- **Distributable skill directory layout**: SKILL.md moved into a subdirectory matching the skill name (e.g. `haiku_skills_web/web/SKILL.md`) so all bundled skills pass directory-name validation
+
 ## [0.3.0] - 2026-02-19
 
 ### Added

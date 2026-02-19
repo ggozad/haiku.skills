@@ -16,7 +16,13 @@ Detailed instructions for the sub-agent go here. This content becomes
 the system prompt when the skill is executed.
 ```
 
-The frontmatter supports all fields from the Agent Skills spec including `name`, `description`, `version`, `author`, and more.
+The frontmatter supports fields from the Agent Skills spec: `name`, `description`, `license`, `compatibility`, `metadata`, and `allowed-tools`. Unknown fields are rejected.
+
+You can validate a skill directory against the spec with:
+
+```bash
+haiku-skills validate ./my-skill
+```
 
 ## In-process tools
 

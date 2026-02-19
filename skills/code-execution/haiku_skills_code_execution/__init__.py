@@ -69,13 +69,13 @@ def run_code(ctx: RunContext[SkillRunDeps], code: str) -> str:
 
 
 def create_skill() -> Skill:
-    path = Path(__file__).parent
-    metadata, instructions = parse_skill_md(path / "SKILL.md")
+    skill_dir = Path(__file__).parent / "code-execution"
+    metadata, instructions = parse_skill_md(skill_dir / "SKILL.md")
 
     return Skill(
         metadata=metadata,
         source=SkillSource.ENTRYPOINT,
-        path=path,
+        path=skill_dir,
         instructions=instructions,
         tools=[run_code],
         state_type=CodeState,

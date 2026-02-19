@@ -54,13 +54,13 @@ def generate_image(
 
 
 def create_skill() -> Skill:
-    path = Path(__file__).parent
-    metadata, instructions = parse_skill_md(path / "SKILL.md")
+    skill_dir = Path(__file__).parent / "image-generation"
+    metadata, instructions = parse_skill_md(skill_dir / "SKILL.md")
 
     return Skill(
         metadata=metadata,
         source=SkillSource.ENTRYPOINT,
-        path=path,
+        path=skill_dir,
         instructions=instructions,
         tools=[generate_image],
         state_type=ImageState,

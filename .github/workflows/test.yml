@@ -31,6 +31,27 @@ jobs:
       - name: Type check
         run: uv run ty check
 
+  validate-skills:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyproject.toml"
+      - name: Install dependencies
+        run: uv sync --all-extras
+      - name: Validate bundled skills
+        run: |
+          uv run haiku-skills validate \
+            skills/web/haiku_skills_web/web \
+            skills/image-generation/haiku_skills_image_generation/image-generation \
+            skills/code-execution/haiku_skills_code_execution/code-execution \
+            skills/rag/haiku_skills_rag/rag
+
   test:
     needs: [lint]
     runs-on: ubuntu-latest
