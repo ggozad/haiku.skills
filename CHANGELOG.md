@@ -17,6 +17,8 @@
 
 - **Skills fully loaded at discovery**: Instructions, script tools, and resources are loaded when skills are discovered, removing the separate activation step
 - **Chat TUI rewritten as AG-UI client**: Uses `AGUIAdapter` event stream instead of polling; inline state delta display and a "View state" modal via the command palette
+- **Skill name validation**: Now accepts unicode lowercase alphanumeric characters per the Agent Skills specification (previously ASCII-only)
+- **Documentation site**: Published at [ggozad.github.io/haiku.skills](https://ggozad.github.io/haiku.skills/) with MkDocs Material
 
 ### Removed
 
