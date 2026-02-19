@@ -50,6 +50,33 @@ toolset.get_namespace("my-skill") # MyState(items=["hello"])
 toolset.state_schemas             # {"my-skill": <JSON schema>}
 ```
 
+## State schemas
+
+`state_schemas` returns the JSON Schema for each namespace, useful for building typed frontend components or validating state:
+
+```python
+toolset.state_schemas
+# {
+#     "my-skill": {
+#         "properties": {
+#             "items": {
+#                 "default": [],
+#                 "items": {"type": "string"},
+#                 "title": "Items",
+#                 "type": "array",
+#             }
+#         },
+#         "title": "MyState",
+#         "type": "object",
+#     }
+# }
+```
+
+Schemas are standard [JSON Schema](https://json-schema.org/) generated from the Pydantic state models. Nested models produce `$defs` references as usual.
+
+!!! note
+    The AG-UI protocol does not currently define a standard mechanism for communicating state schemas to clients. `state_schemas` is available on the Python side — how you expose it to frontends (e.g. a dedicated endpoint, initial metadata) is up to your application.
+
 ## State deltas
 
 When `execute_skill` runs a skill whose tools modify state, the toolset computes a [JSON Patch](https://jsonpatch.com/) delta between the state before and after execution. This delta is returned as a `StateDeltaEvent`, compatible with the AG-UI protocol.
