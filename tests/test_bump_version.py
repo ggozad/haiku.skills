@@ -101,14 +101,20 @@ class TestUpdateChangelog:
         f.write_text(CHANGELOG_TEMPLATE)
         update_changelog(f, "0.2.0")
         content = f.read_text()
-        assert "[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.2.0...HEAD" in content
+        assert (
+            "[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.2.0...HEAD"
+            in content
+        )
 
     def test_adds_version_link(self, tmp_path: Path):
         f = tmp_path / "CHANGELOG.md"
         f.write_text(CHANGELOG_TEMPLATE)
         update_changelog(f, "0.2.0")
         content = f.read_text()
-        assert "[0.2.0]: https://github.com/ggozad/haiku.skills/compare/0.1.0...0.2.0" in content
+        assert (
+            "[0.2.0]: https://github.com/ggozad/haiku.skills/compare/0.1.0...0.2.0"
+            in content
+        )
 
     def test_preserves_existing_content(self, tmp_path: Path):
         f = tmp_path / "CHANGELOG.md"
@@ -148,7 +154,10 @@ class TestMain:
         # Changelog updated
         changelog_content = (workspace / "CHANGELOG.md").read_text()
         assert "## [0.2.0] - " in changelog_content
-        assert "[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.2.0...HEAD" in changelog_content
+        assert (
+            "[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.2.0...HEAD"
+            in changelog_content
+        )
 
         # uv sync was called
         mock_run.assert_called_once_with(["uv", "sync"], check=True, cwd=workspace)
