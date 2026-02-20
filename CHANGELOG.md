@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **AG-UI state restoration**: `SkillToolset` now restores skill namespace state from frontend-provided `deps.state` on each AG-UI request, so state survives server restarts
+
 ## [0.4.0] - 2026-02-19
 
 ### Added

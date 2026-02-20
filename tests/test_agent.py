@@ -1,9 +1,12 @@
 from pathlib import Path
+from typing import Any
+from unittest.mock import patch
 
 import pytest
 from pydantic import BaseModel
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.models.test import TestModel
+from pydantic_ai.result import RunUsage
 from pydantic_ai.toolsets.function import FunctionToolset
 
 from haiku.skills.agent import (
@@ -552,3 +555,167 @@ class TestExecuteSkillWithState:
         )
         result = await agent.run("Do something.")
         assert result.output
+
+
+class TestGetToolsStateRestoration:
+    """Tests for SkillToolset.get_tools() restoring state from deps."""
+
+    def _make_toolset(self) -> SkillToolset:
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do things.",
+            state_type=CounterState,
+            state_namespace="ns.counter",
+        )
+        return SkillToolset(skills=[skill])
+
+    def _make_ctx(self, deps: Any) -> RunContext[Any]:
+        return RunContext(
+            deps=deps,
+            model=TestModel(),
+            usage=RunUsage(),
+            prompt="test",
+            run_step=0,
+        )
+
+    async def test_restores_state_from_deps(self, allow_model_requests: None):
+        """get_tools restores state when deps has a dict state attribute."""
+        toolset = self._make_toolset()
+        state_dict = {"ns.counter": {"count": 42}}
+
+        class Deps:
+            state = state_dict
+
+        ctx = self._make_ctx(Deps())
+        await toolset.get_tools(ctx)
+
+        ns = toolset.get_namespace("ns.counter")
+        assert isinstance(ns, CounterState)
+        assert ns.count == 42
+
+    async def test_skips_restore_for_same_dict(self, allow_model_requests: None):
+        """State restored only once per unique dict (identity check)."""
+        toolset = self._make_toolset()
+        state_dict = {"ns.counter": {"count": 10}}
+
+        class Deps:
+            state = state_dict
+
+        ctx = self._make_ctx(Deps())
+        await toolset.get_tools(ctx)
+
+        # Mutate the namespace directly after restore
+        ns = toolset.get_namespace("ns.counter")
+        assert isinstance(ns, CounterState)
+        ns.count = 99
+
+        # Second call with same dict object should NOT re-restore
+        await toolset.get_tools(ctx)
+        ns = toolset.get_namespace("ns.counter")
+        assert isinstance(ns, CounterState)
+        assert ns.count == 99
+
+    async def test_restores_new_dict_object(self, allow_model_requests: None):
+        """A new dict object triggers a fresh restore."""
+        toolset = self._make_toolset()
+
+        class Deps:
+            state: dict[str, Any] = {"ns.counter": {"count": 10}}
+
+        deps = Deps()
+        ctx = self._make_ctx(deps)
+        await toolset.get_tools(ctx)
+
+        ns = toolset.get_namespace("ns.counter")
+        assert isinstance(ns, CounterState)
+        assert ns.count == 10
+
+        # Assign a new dict object
+        deps.state = {"ns.counter": {"count": 77}}
+        ctx = self._make_ctx(deps)
+        await toolset.get_tools(ctx)
+
+        ns = toolset.get_namespace("ns.counter")
+        assert isinstance(ns, CounterState)
+        assert ns.count == 77
+
+    async def test_ignores_non_dict_state(self, allow_model_requests: None):
+        """Non-dict state attribute is ignored."""
+        toolset = self._make_toolset()
+
+        class Deps:
+            state = "not a dict"
+
+        ctx = self._make_ctx(Deps())
+        await toolset.get_tools(ctx)
+
+        ns = toolset.get_namespace("ns.counter")
+        assert isinstance(ns, CounterState)
+        assert ns.count == 0
+
+    async def test_handles_deps_without_state(self, allow_model_requests: None):
+        """Deps without state attribute is handled gracefully."""
+        toolset = self._make_toolset()
+
+        class Deps:
+            pass
+
+        ctx = self._make_ctx(Deps())
+        await toolset.get_tools(ctx)
+
+        ns = toolset.get_namespace("ns.counter")
+        assert isinstance(ns, CounterState)
+        assert ns.count == 0
+
+    async def test_handles_none_deps(self, allow_model_requests: None):
+        """None deps is handled gracefully."""
+        toolset = self._make_toolset()
+        ctx = self._make_ctx(None)
+        await toolset.get_tools(ctx)
+
+        ns = toolset.get_namespace("ns.counter")
+        assert isinstance(ns, CounterState)
+        assert ns.count == 0
+
+    async def test_ignores_empty_dict_state(self, allow_model_requests: None):
+        """Empty dict state is ignored."""
+        toolset = self._make_toolset()
+
+        class Deps:
+            state: dict[str, Any] = {}
+
+        ctx = self._make_ctx(Deps())
+        with patch.object(toolset, "restore_state_snapshot") as mock_restore:
+            await toolset.get_tools(ctx)
+            mock_restore.assert_not_called()
+
+    async def test_end_to_end_agent_run(self, allow_model_requests: None):
+        """Agent run with deps carrying skill namespace state restores it."""
+
+        def read_count(ctx: RunContext[Any]) -> str:
+            """Read the counter."""
+            return "done"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Reads count."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use read_count.",
+            tools=[read_count],
+            state_type=CounterState,
+            state_namespace="ns.counter",
+        )
+        toolset = SkillToolset(skills=[skill])
+
+        class Deps:
+            state = {"ns.counter": {"count": 100}}
+
+        agent = Agent(
+            TestModel(), instructions=toolset.system_prompt, toolsets=[toolset]
+        )
+        result = await agent.run("Read the count.", deps=Deps())
+        assert result.output
+
+        ns = toolset.get_namespace("ns.counter")
+        assert isinstance(ns, CounterState)
+        assert ns.count == 100
