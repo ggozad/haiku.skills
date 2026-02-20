@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-02-20
+
 ### Added
 
 - **`SkillDeps`**: Minimal dataclass satisfying pydantic-ai's `StateHandler` protocol for type-correct AG-UI state round-tripping (replaces `StateDeps[dict[str, Any]]` recommendation in docs)
@@ -74,7 +76,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.4.1...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.4.2...HEAD
+[0.4.2]: https://github.com/ggozad/haiku.skills/compare/0.4.1...0.4.2
 [0.4.1]: https://github.com/ggozad/haiku.skills/compare/0.4.1...0.4.1
 [0.4.1]: https://github.com/ggozad/haiku.skills/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/ggozad/haiku.skills/compare/0.3.0...0.4.0
