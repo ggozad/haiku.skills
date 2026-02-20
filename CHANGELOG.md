@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-02-20
+
+## [0.4.1] - 2026-02-20
+
 ### Fixed
 
 - **AG-UI state restoration**: `SkillToolset` now restores skill namespace state from frontend-provided `deps.state` on each AG-UI request, so state survives server restarts
@@ -66,7 +70,9 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.4.0...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.4.1...HEAD
+[0.4.1]: https://github.com/ggozad/haiku.skills/compare/0.4.1...0.4.1
+[0.4.1]: https://github.com/ggozad/haiku.skills/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/ggozad/haiku.skills/compare/0.3.0...0.4.0
 [0.3.0]: https://github.com/ggozad/haiku.skills/compare/0.1.0...0.3.0
 [0.1.0]: https://github.com/ggozad/haiku.skills/releases/tag/0.1.0
