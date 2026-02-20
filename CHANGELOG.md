@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`SkillDeps`**: Minimal dataclass satisfying pydantic-ai's `StateHandler` protocol for type-correct AG-UI state round-tripping (replaces `StateDeps[dict[str, Any]]` recommendation in docs)
+
 ## [0.4.1] - 2026-02-20
 
 ## [0.4.1] - 2026-02-20
