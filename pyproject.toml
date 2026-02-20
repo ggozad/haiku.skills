@@ -82,7 +82,6 @@ dev = [
     "haiku-skills-web",
     "haiku-skills-image-generation",
     "haiku-skills-code-execution",
-    "haiku-skills-rag",
     "ag-ui-protocol>=0.1.11",
     "jsonpatch>=1.33",
     "mkdocs>=1.6.1,<2.0.0",
@@ -111,7 +110,7 @@ line-ending = "auto"
 haiku-skills-web = { workspace = true }
 haiku-skills-image-generation = { workspace = true }
 haiku-skills-code-execution = { workspace = true }
-haiku-skills-rag = { workspace = true }
+
 
 [tool.uv.workspace]
 members = ["skills/*"]
@@ -133,7 +132,7 @@ source = [
     "skills/web/haiku_skills_web",
     "skills/image-generation/haiku_skills_image_generation",
     "skills/code-execution/haiku_skills_code_execution",
-    "skills/rag/haiku_skills_rag",
+
 ]
 omit = ["haiku/skills/chat/*", "haiku/skills/cli.py"]
 

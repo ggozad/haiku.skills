@@ -6,6 +6,10 @@
 
 - **AG-UI state restoration**: `SkillToolset` now restores skill namespace state from frontend-provided `deps.state` on each AG-UI request, so state survives server restarts
 
+### Removed
+
+- **RAG skill package** (`haiku-skills-rag`): Moved to [haiku.rag](https://github.com/ggozad/haiku.rag)
+
 ## [0.4.0] - 2026-02-19
 
 ### Added
