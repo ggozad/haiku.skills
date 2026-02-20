@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import jsonpatch
@@ -11,6 +11,18 @@ class SkillRunDeps:
     """Dependencies passed to skill sub-agent tools via RunContext."""
 
     state: BaseModel | None = None
+
+
+@dataclass
+class SkillDeps:
+    """Agent-level dependencies for AG-UI state round-tripping.
+
+    Satisfies pydantic-ai's ``StateHandler`` protocol with a ``dict``
+    state, matching the namespace snapshot shape that ``SkillToolset``
+    expects.
+    """
+
+    state: dict[str, Any] = field(default_factory=dict)
 
 
 def compute_state_delta(

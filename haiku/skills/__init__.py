@@ -6,4 +6,4 @@ from haiku.skills.models import (
     SkillSource,
 )
 from haiku.skills.registry import SkillRegistry
-from haiku.skills.state import SkillRunDeps, compute_state_delta
+from haiku.skills.state import SkillDeps, SkillRunDeps, compute_state_delta

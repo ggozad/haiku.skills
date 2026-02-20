@@ -87,25 +87,39 @@ Frontends can apply these patches incrementally to keep their view of the agent'
 
 When serving an agent via AG-UI (using `handle_ag_ui_request` or `AGUIAdapter`), the frontend sends state with each request. The adapter injects that state into `deps.state` if the deps object implements pydantic-ai's `StateHandler` protocol. `SkillToolset` then automatically restores per-namespace state from `deps.state` at the start of each run, closing the loop between frontend and backend.
 
-pydantic-ai provides `StateDeps` for this purpose — a generic deps type that satisfies `StateHandler`. Use `StateDeps[dict[str, Any]]` as your agent's `deps_type`:
+haiku.skills provides `SkillDeps` — a minimal dataclass that satisfies pydantic-ai's `StateHandler` protocol with a `dict` state matching the namespace snapshot shape that `SkillToolset` expects:
 
 ```python
-from typing import Any
 from pydantic_ai import Agent
-from pydantic_ai.ag_ui import StateDeps, handle_ag_ui_request
-from haiku.skills import SkillToolset
+from pydantic_ai.ag_ui import handle_ag_ui_request
+from haiku.skills import SkillDeps, SkillToolset
 
 toolset = SkillToolset(use_entrypoints=True)
 agent = Agent(
     "anthropic:claude-sonnet-4-5-20250929",
     instructions=toolset.system_prompt,
     toolsets=[toolset],
-    deps_type=StateDeps[dict[str, Any]],
+    deps_type=SkillDeps,
 )
 
 # In your FastAPI route:
-# return await handle_ag_ui_request(agent, request, deps=StateDeps(state={}))
+# return await handle_ag_ui_request(agent, request, deps=SkillDeps())
 ```
 
 !!! note
-    `StateDeps` operates at the agent level — it carries the full AG-UI state dict (all namespaces) and is managed by the adapter. `SkillRunDeps`, on the other hand, is internal to `SkillToolset`: when a skill sub-agent runs, it receives `SkillRunDeps` containing only that skill's per-namespace state model. You don't need to create `SkillRunDeps` yourself.
+    `SkillDeps` operates at the agent level — it carries the full AG-UI state dict (all namespaces) and is managed by the adapter. `SkillRunDeps`, on the other hand, is internal to `SkillToolset`: when a skill sub-agent runs, it receives `SkillRunDeps` containing only that skill's per-namespace state model. You don't need to create `SkillRunDeps` yourself.
+
+!!! tip "Custom dependencies"
+    If your agent needs additional dependencies beyond state, create your own dataclass with a `state: dict[str, Any]` field:
+
+    ```python
+    from dataclasses import dataclass, field
+    from typing import Any
+
+    @dataclass
+    class MyDeps:
+        state: dict[str, Any] = field(default_factory=dict)
+        db: MyDatabase = ...
+    ```
+
+    Any dataclass with a `state` attribute satisfies the `StateHandler` protocol.

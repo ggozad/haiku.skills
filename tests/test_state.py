@@ -1,7 +1,8 @@
 from ag_ui.core import EventType, StateDeltaEvent
 from pydantic import BaseModel
+from pydantic_ai.ui import StateHandler
 
-from haiku.skills.state import SkillRunDeps, compute_state_delta
+from haiku.skills.state import SkillDeps, SkillRunDeps, compute_state_delta
 
 
 class SampleState(BaseModel):
@@ -18,6 +19,20 @@ class TestSkillRunDeps:
         state = SampleState(items=["a"], count=1)
         deps = SkillRunDeps(state=state)
         assert deps.state is state
+
+
+class TestSkillDeps:
+    def test_defaults_empty_dict(self):
+        deps = SkillDeps()
+        assert deps.state == {}
+
+    def test_with_state(self):
+        state = {"ns": {"items": ["a"], "count": 1}}
+        deps = SkillDeps(state=state)
+        assert deps.state is state
+
+    def test_satisfies_state_handler(self):
+        assert isinstance(SkillDeps(), StateHandler)
 
 
 class TestComputeStateDelta:
