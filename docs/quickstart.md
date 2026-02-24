@@ -24,7 +24,10 @@ from pathlib import Path
 from pydantic_ai import Agent
 from haiku.skills import SkillToolset
 
-toolset = SkillToolset(skill_paths=[Path("./skills")])
+toolset = SkillToolset(
+    skill_paths=[Path("./skills")],
+    skill_model="openai:gpt-4o-mini",   # optional: model to use for skill sub-agents
+)
 agent = Agent(
     "anthropic:claude-sonnet-4-5-20250929",
     instructions=toolset.system_prompt,

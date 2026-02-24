@@ -273,4 +273,284 @@ interactions:
     status:
       code: 200
       message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '1456'
+      content-type:
+      - application/json
+      host:
+      - 127.0.0.1:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a helpful assistant with access to specialized skills.
+
+          ## Available skills
+
+          - **simple-skill**: A simple test skill that does basic operations.
+          - **skill-with-refs**: A skill with references, metadata, and all optional fields.
+          - **summarizer**: Summarize text into concise bullet points.
+          - **translator**: Translate text between languages.
+
+          ## Instructions
+
+          - For general conversation or questions that don't need skills, respond directly
+          - Use execute_skill to delegate work to a skill. Call it once per task. Include everything the skill needs in the request.
+        role: system
+      - content: 'Summarize the following: Python is a high-level programming language known for its readability and versatility.
+          It supports multiple programming paradigms including procedural, object-oriented, and functional programming. Python
+          has a large standard library and an active community that contributes thousands of third-party packages.'
+        role: user
+      model: gpt-oss
+      stream: false
+      tool_choice: auto
+      tools:
+      - function:
+          description: Execute a skill by name.
+          name: execute_skill
+          parameters:
+            additionalProperties: false
+            properties:
+              request:
+                description: A clear description of what you need the skill to do.
+                type: string
+              skill_name:
+                description: The exact name of the skill to use.
+                type: string
+            required:
+            - skill_name
+            - request
+            type: object
+          strict: true
+        type: function
+    uri: http://127.0.0.1:11434/v1/chat/completions
+  response:
+    headers:
+      content-length:
+      - '925'
+      content-type:
+      - application/json
+    parsed_body:
+      choices:
+      - finish_reason: tool_calls
+        index: 0
+        message:
+          content: ''
+          reasoning: We need to summarize the text. That's a summarization request. Use summarizer skill.
+          role: assistant
+          tool_calls:
+          - function:
+              arguments: '{"request":"Summarize the following text into concise bullet points:\n\nPython is a high-level programming
+                language known for its readability and versatility. It supports multiple programming paradigms including procedural,
+                object-oriented, and functional programming. Python has a large standard library and an active community that
+                contributes thousands of third-party packages.","skill_name":"summarizer"}'
+              name: execute_skill
+            id: call_yaql66dm
+            index: 0
+            type: function
+      created: 1771934087
+      id: chatcmpl-591
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 108
+        prompt_tokens: 329
+        total_tokens: 437
+    status:
+      code: 200
+      message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '1362'
+      content-type:
+      - application/json
+      host:
+      - 127.0.0.1:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a focused execution agent. Complete the following task using the skills and instructions provided.
+
+          ## Task
+
+          Summarize the following text into concise bullet points:
+
+          Python is a high-level programming language known for its readability and versatility. It supports multiple programming paradigms including procedural, object-oriented, and functional programming. Python has a large standard library and an active community that contributes thousands of third-party packages.
+
+          ## Skill instructions
+
+          # Summarizer
+
+          You are a text summarization assistant. When given text:
+
+          1. Identify the key points
+          2. Condense them into concise bullet points
+          3. Preserve the essential meaning
+          4. Return a markdown bulleted list
+
+          ## Guidelines
+
+          - Follow the skill instructions carefully
+          - Stay focused on the specific task described above
+          - Provide a clear, complete result
+        role: system
+      - content: |-
+          Summarize the following text into concise bullet points:
+
+          Python is a high-level programming language known for its readability and versatility. It supports multiple programming paradigms including procedural, object-oriented, and functional programming. Python has a large standard library and an active community that contributes thousands of third-party packages.
+        role: user
+      model: gpt-oss
+      stream: false
+    uri: http://127.0.0.1:11434/v1/chat/completions
+  response:
+    headers:
+      content-length:
+      - '995'
+      content-type:
+      - application/json
+    parsed_body:
+      choices:
+      - finish_reason: stop
+        index: 0
+        message:
+          content: "- Python is a high‑level language prized for its readability and versatility.  \n- Supports procedural,
+            object‑oriented, and functional programming paradigms.  \n- Comes with a large standard library.  \n- Maintained
+            by an active community that provides thousands of third‑party packages."
+          reasoning: "The user wants a concise summary bullet points. Should follow guidelines: identify key points, condense,
+            preserve meaning, markdown bullet list.\n\nWe produce markdown list. Let's draft: \n- High-level, readable, versatile
+            language. \n- Supports procedural, object-oriented, functional paradigms. \n- Large standard library. \n- Active
+            community with thousands of third-party packages. That is enough."
+          role: assistant
+      created: 1771934090
+      id: chatcmpl-811
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 145
+        prompt_tokens: 295
+        total_tokens: 440
+    status:
+      code: 200
+      message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '2470'
+      content-type:
+      - application/json
+      host:
+      - 127.0.0.1:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a helpful assistant with access to specialized skills.
+
+          ## Available skills
+
+          - **simple-skill**: A simple test skill that does basic operations.
+          - **skill-with-refs**: A skill with references, metadata, and all optional fields.
+          - **summarizer**: Summarize text into concise bullet points.
+          - **translator**: Translate text between languages.
+
+          ## Instructions
+
+          - For general conversation or questions that don't need skills, respond directly
+          - Use execute_skill to delegate work to a skill. Call it once per task. Include everything the skill needs in the request.
+        role: system
+      - content: 'Summarize the following: Python is a high-level programming language known for its readability and versatility.
+          It supports multiple programming paradigms including procedural, object-oriented, and functional programming. Python
+          has a large standard library and an active community that contributes thousands of third-party packages.'
+        role: user
+      - content: null
+        reasoning: We need to summarize the text. That's a summarization request. Use summarizer skill.
+        role: assistant
+        tool_calls:
+        - function:
+            arguments: '{"request":"Summarize the following text into concise bullet points:\n\nPython is a high-level programming
+              language known for its readability and versatility. It supports multiple programming paradigms including procedural,
+              object-oriented, and functional programming. Python has a large standard library and an active community that
+              contributes thousands of third-party packages.","skill_name":"summarizer"}'
+            name: execute_skill
+          id: call_yaql66dm
+          type: function
+      - content: "- Python is a high‑level language prized for its readability and versatility.  \n- Supports procedural,
+          object‑oriented, and functional programming paradigms.  \n- Comes with a large standard library.  \n- Maintained
+          by an active community that provides thousands of third‑party packages."
+        role: tool
+        tool_call_id: call_yaql66dm
+      model: gpt-oss
+      stream: false
+      tool_choice: auto
+      tools:
+      - function:
+          description: Execute a skill by name.
+          name: execute_skill
+          parameters:
+            additionalProperties: false
+            properties:
+              request:
+                description: A clear description of what you need the skill to do.
+                type: string
+              skill_name:
+                description: The exact name of the skill to use.
+                type: string
+            required:
+            - skill_name
+            - request
+            type: object
+          strict: true
+        type: function
+    uri: http://127.0.0.1:11434/v1/chat/completions
+  response:
+    headers:
+      content-length:
+      - '578'
+      content-type:
+      - application/json
+    parsed_body:
+      choices:
+      - finish_reason: stop
+        index: 0
+        message:
+          content: "- Python is a high‑level language prized for its readability and versatility.  \n- Supports procedural,
+            object‑oriented, and functional programming paradigms.  \n- Comes with a large standard library.  \n- Maintained
+            by an active community that provides thousands of third‑party packages."
+          role: assistant
+      created: 1771934091
+      id: chatcmpl-911
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 61
+        prompt_tokens: 505
+        total_tokens: 566
+    status:
+      code: 200
+      message: OK
 version: 1

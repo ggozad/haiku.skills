@@ -15,6 +15,26 @@ from haiku.skills.registry import SkillRegistry
 from haiku.skills.state import SkillRunDeps, compute_state_delta
 
 
+def resolve_model(model: str) -> Model:
+    """Resolve a model string to a pydantic-ai Model.
+
+    For ``ollama:`` prefixed strings, uses ``OLLAMA_BASE_URL`` env var
+    if set, otherwise defaults to ``http://127.0.0.1:11434/v1``.
+    """
+    if model.startswith("ollama:"):
+        from pydantic_ai.models.openai import OpenAIChatModel
+        from pydantic_ai.providers.ollama import OllamaProvider
+
+        base_url = os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434/v1")
+        return OpenAIChatModel(
+            model.removeprefix("ollama:"),
+            provider=OllamaProvider(base_url=base_url),
+        )
+    from pydantic_ai.models import infer_model
+
+    return infer_model(model)
+
+
 def _last_tool_result(messages: list[ModelMessage]) -> str | None:
     """Extract the content of the last tool return from messages."""
     for message in reversed(messages):
@@ -94,11 +114,13 @@ class SkillToolset(FunctionToolset[Any]):
         skills: list[Skill] | None = None,
         skill_paths: list[Path] | None = None,
         use_entrypoints: bool = False,
+        skill_model: str | Model | None = None,
     ) -> None:
         super().__init__()
         self._registry = SkillRegistry()
         self._namespaces: dict[str, BaseModel] = {}
         self._last_restored_state: dict[str, Any] | None = None
+        self._skill_model = skill_model
         if skill_paths:
             self._registry.discover(paths=skill_paths)
         if use_entrypoints:
@@ -207,8 +229,13 @@ class SkillToolset(FunctionToolset[Any]):
             skill = registry.get(skill_name)
             if skill is None:
                 return f"Error: Skill '{skill_name}' not found in registry"
-            skill_model = (
-                skill.model or os.environ.get("HAIKU_SKILL_MODEL") or ctx.model
+            model_override = (
+                skill.model or self._skill_model or os.environ.get("HAIKU_SKILL_MODEL")
+            )
+            skill_model: str | Model = (
+                resolve_model(model_override)
+                if isinstance(model_override, str)
+                else model_override or ctx.model
             )
 
             namespace = skill.state_namespace

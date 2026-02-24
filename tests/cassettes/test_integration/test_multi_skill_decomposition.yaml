@@ -548,4 +548,96 @@ interactions:
     status:
       code: 200
       message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '1440'
+      content-type:
+      - application/json
+      host:
+      - 127.0.0.1:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a helpful assistant with access to specialized skills.
+
+          ## Available skills
+
+          - **simple-skill**: A simple test skill that does basic operations.
+          - **skill-with-refs**: A skill with references, metadata, and all optional fields.
+          - **summarizer**: Summarize text into concise bullet points.
+          - **translator**: Translate text between languages.
+
+          ## Instructions
+
+          - For general conversation or questions that don't need skills, respond directly
+          - Use execute_skill to delegate work to a skill. Call it once per task. Include everything the skill needs in the request.
+        role: system
+      - content: 'First summarize the following text, then translate the summary to French: Machine learning is a subset of
+          artificial intelligence that enables systems to learn and improve from experience without being explicitly programmed.
+          It focuses on developing algorithms that can access data and use it to learn for themselves.'
+        role: user
+      model: gpt-oss
+      stream: false
+      tool_choice: auto
+      tools:
+      - function:
+          description: Execute a skill by name.
+          name: execute_skill
+          parameters:
+            additionalProperties: false
+            properties:
+              request:
+                description: A clear description of what you need the skill to do.
+                type: string
+              skill_name:
+                description: The exact name of the skill to use.
+                type: string
+            required:
+            - skill_name
+            - request
+            type: object
+          strict: true
+        type: function
+    uri: http://127.0.0.1:11434/v1/chat/completions
+  response:
+    headers:
+      content-length:
+      - '1281'
+      content-type:
+      - application/json
+    parsed_body:
+      choices:
+      - finish_reason: stop
+        index: 0
+        message:
+          content: "**Summary:**  \nMachine learning lets systems improve from data without explicit programming.\n\n**French
+            translation:**  \nL’apprentissage automatique permet aux systèmes de s’améliorer à partir des données sans programmation
+            explicite."
+          reasoning: |-
+            The user wants: first summarize the text, then translate the summary to French. So they need a summary, then a French translation of it. We can do both in simple response. We don't need a skill because summarization and translation are simple tasks.
+
+            We are allowed to respond directly. So let's provide a concise summary first, then the French translation. Use a bullet summary? They say "summarize" without formatting. We'll provide a concise sentence summary: "Machine learning lets systems improve based on data without explicit programming" Then translate: "L'apprentissage automatique permet aux systèmes de s'améliorer à partir des données sans programmation explicite."
+
+            We can do the translation. No skill needed.
+          role: assistant
+      created: 1771934100
+      id: chatcmpl-160
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 189
+        prompt_tokens: 327
+        total_tokens: 516
+    status:
+      code: 200
+      message: OK
 version: 1

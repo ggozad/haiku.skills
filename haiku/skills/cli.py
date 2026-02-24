@@ -101,6 +101,11 @@ def chat(
         "--skill",
         help="Skill name to activate (repeatable, filters discovered skills)",
     ),
+    skill_model: str | None = typer.Option(
+        None,
+        "--skill-model",
+        help="Model to use for skill sub-agents (e.g. 'ollama:llama3')",
+    ),
 ) -> None:
     model_name = model or os.environ.get("HAIKU_SKILLS_MODEL") or "ollama:gpt-oss"
 
@@ -119,4 +124,4 @@ def chat(
     else:
         selected = [s for n in registry.names if (s := registry.get(n)) is not None]
 
-    run_chat(model=model_name, skills=selected)
+    run_chat(model=model_name, skills=selected, skill_model=skill_model)
