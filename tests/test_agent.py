@@ -14,6 +14,7 @@ from haiku.skills.agent import (
     _create_read_resource,
     _last_tool_result,
     _run_skill,
+    resolve_model,
 )
 from haiku.skills.models import (
     Skill,
@@ -315,6 +316,48 @@ class TestAgent:
         result = await agent.run("Do something.")
         assert result.output
 
+    async def test_skill_model_param_used_as_fallback(self, allow_model_requests: None):
+        """skill_model param is used when skill has no model and env var unset."""
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test skill."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do things.",
+        )
+        toolset = SkillToolset(skills=[skill], skill_model=TestModel())
+        agent = Agent(
+            TestModel(), instructions=toolset.system_prompt, toolsets=[toolset]
+        )
+        result = await agent.run("Do something.")
+        assert result.output
+
+    async def test_skill_model_param_string_resolved(self, allow_model_requests: None):
+        """skill_model as string goes through resolve_model."""
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test skill."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do things.",
+        )
+        toolset = SkillToolset(skills=[skill], skill_model="test")
+        agent = Agent(
+            TestModel(), instructions=toolset.system_prompt, toolsets=[toolset]
+        )
+        result = await agent.run("Do something.")
+        assert result.output
+
+    async def test_without_skill_model_uses_ctx_model(self, allow_model_requests: None):
+        """Without skill_model, ctx.model is used."""
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test skill."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do things.",
+        )
+        toolset = SkillToolset(skills=[skill])
+        agent = Agent(
+            TestModel(), instructions=toolset.system_prompt, toolsets=[toolset]
+        )
+        result = await agent.run("Do something.")
+        assert result.output
+
 
 class CounterState(BaseModel):
     count: int = 0
@@ -555,6 +598,31 @@ class TestExecuteSkillWithState:
         )
         result = await agent.run("Do something.")
         assert result.output
+
+
+class TestResolveModel:
+    def test_ollama_prefix_returns_openai_model_with_default_url(self):
+        from pydantic_ai.models.openai import OpenAIChatModel
+        from pydantic_ai.providers.ollama import OllamaProvider
+
+        model = resolve_model("ollama:llama3")
+        assert isinstance(model, OpenAIChatModel)
+        assert isinstance(model._provider, OllamaProvider)
+        assert model._provider.base_url.rstrip("/") == "http://127.0.0.1:11434/v1"
+
+    def test_ollama_prefix_uses_env_var(self, monkeypatch: pytest.MonkeyPatch):
+        from pydantic_ai.models.openai import OpenAIChatModel
+        from pydantic_ai.providers.ollama import OllamaProvider
+
+        monkeypatch.setenv("OLLAMA_BASE_URL", "http://custom:1234/v1")
+        model = resolve_model("ollama:llama3")
+        assert isinstance(model, OpenAIChatModel)
+        assert isinstance(model._provider, OllamaProvider)
+        assert model._provider.base_url.rstrip("/") == "http://custom:1234/v1"
+
+    def test_non_ollama_delegates_to_infer_model(self):
+        model = resolve_model("test")
+        assert isinstance(model, TestModel)
 
 
 class TestGetToolsStateRestoration:

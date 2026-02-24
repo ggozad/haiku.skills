@@ -1,4 +1,4 @@
-from haiku.skills.agent import SkillToolset
+from haiku.skills.agent import SkillToolset, resolve_model
 from haiku.skills.mcp import skill_from_mcp
 from haiku.skills.models import (
     Skill,

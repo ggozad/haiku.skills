@@ -5,19 +5,17 @@ from pathlib import Path
 import pytest
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIChatModel
-from pydantic_ai.providers.openai import OpenAIProvider
 
-from haiku.skills.agent import SkillToolset
+from haiku.skills.agent import SkillToolset, resolve_model
 from haiku.skills.models import Skill, SkillMetadata, SkillSource
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
 def _ollama_model() -> OpenAIChatModel:
-    return OpenAIChatModel(
-        "gpt-oss",
-        provider=OpenAIProvider(base_url="http://localhost:11434/v1"),
-    )
+    model = resolve_model("ollama:gpt-oss")
+    assert isinstance(model, OpenAIChatModel)
+    return model
 
 
 @pytest.mark.vcr()

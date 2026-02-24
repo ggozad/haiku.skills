@@ -204,6 +204,7 @@ toolset = SkillToolset(
     skill_paths=[Path("./skills")],   # Filesystem skills
     use_entrypoints=True,              # Entrypoint skills
     skills=[mcp_skill],                # MCP skills
+    skill_model="openai:gpt-4o-mini",   # Model for skill sub-agents
 )
 
 agent = Agent(

@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`skill_model` parameter**: `SkillToolset` accepts `skill_model` to set the model for skill sub-agents (also available as `--skill-model` CLI option)
+- **`resolve_model()`**: Resolves model strings with transparent `ollama:` prefix handling (defaults to `http://127.0.0.1:11434/v1` when `OLLAMA_BASE_URL` is unset)
+
 ## [0.4.2] - 2026-02-20
 
 ### Added

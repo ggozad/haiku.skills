@@ -137,6 +137,7 @@ class ChatApp(App):
         skill_paths: list[Path] | None = None,
         skills: list[Skill] | None = None,
         use_entrypoints: bool = False,
+        skill_model: str | None = None,
     ) -> None:
         super().__init__()
         self._model = model
@@ -144,6 +145,7 @@ class ChatApp(App):
             skill_paths=skill_paths,
             skills=skills,
             use_entrypoints=use_entrypoints,
+            skill_model=skill_model,
         )
         self._agent: Agent[None, str] | None = None
         self._messages: list[Any] = []  # AG-UI Message objects

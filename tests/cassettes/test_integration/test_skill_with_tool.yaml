@@ -359,4 +359,368 @@ interactions:
     status:
       code: 200
       message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '929'
+      content-type:
+      - application/json
+      host:
+      - 127.0.0.1:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a helpful assistant with access to specialized skills.
+
+          ## Available skills
+
+          - **calculator**: Perform mathematical calculations.
+
+          ## Instructions
+
+          - For general conversation or questions that don't need skills, respond directly
+          - Use execute_skill to delegate work to a skill. Call it once per task. Include everything the skill needs in the request.
+        role: system
+      - content: What is 15 * 23 + 7?
+        role: user
+      model: gpt-oss
+      stream: false
+      tool_choice: auto
+      tools:
+      - function:
+          description: Execute a skill by name.
+          name: execute_skill
+          parameters:
+            additionalProperties: false
+            properties:
+              request:
+                description: A clear description of what you need the skill to do.
+                type: string
+              skill_name:
+                description: The exact name of the skill to use.
+                type: string
+            required:
+            - skill_name
+            - request
+            type: object
+          strict: true
+        type: function
+    uri: http://127.0.0.1:11434/v1/chat/completions
+  response:
+    headers:
+      content-length:
+      - '870'
+      content-type:
+      - application/json
+    parsed_body:
+      choices:
+      - finish_reason: tool_calls
+        index: 0
+        message:
+          content: ''
+          reasoning: 'We need to compute 15*23 + 7. 15*23 = 345? Wait 23*10 = 230, 23*5 = 115, sum = 345. Then 345+7 = 352.
+            So answer 352. Use calculator skill? I can compute manually, but the instruction says for calculations, use the
+            calculator skill. We should use the skill. So call functions.execute_skill with request: "Calculate 15 * 23 +
+            7". Should I specify skill_name "calculator"? Yes.'
+          role: assistant
+          tool_calls:
+          - function:
+              arguments: '{"request":"Calculate 15 * 23 + 7","skill_name":"calculator"}'
+              name: execute_skill
+            id: call_sjxn840w
+            index: 0
+            type: function
+      created: 1771934094
+      id: chatcmpl-633
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 149
+        prompt_tokens: 233
+        total_tokens: 382
+    status:
+      code: 200
+      message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '970'
+      content-type:
+      - application/json
+      host:
+      - 127.0.0.1:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a focused execution agent. Complete the following task using the skills and instructions provided.
+
+          ## Task
+
+          Calculate 15 * 23 + 7
+
+          ## Skill instructions
+
+          You are a calculator assistant. Use the calculate tool to evaluate mathematical expressions. Always use the tool rather than computing in your head.
+
+          ## Guidelines
+
+          - Follow the skill instructions carefully
+          - Stay focused on the specific task described above
+          - Provide a clear, complete result
+        role: system
+      - content: Calculate 15 * 23 + 7
+        role: user
+      model: gpt-oss
+      stream: false
+      tool_choice: auto
+      tools:
+      - function:
+          description: Evaluate a mathematical expression and return the result.
+          name: calculate
+          parameters:
+            additionalProperties: false
+            properties:
+              expression:
+                description: A mathematical expression to evaluate, e.g. '2 + 2'.
+                type: string
+            required:
+            - expression
+            type: object
+          strict: true
+        type: function
+    uri: http://127.0.0.1:11434/v1/chat/completions
+  response:
+    headers:
+      content-length:
+      - '481'
+      content-type:
+      - application/json
+    parsed_body:
+      choices:
+      - finish_reason: tool_calls
+        index: 0
+        message:
+          content: ''
+          reasoning: Need to use the calculate tool.
+          role: assistant
+          tool_calls:
+          - function:
+              arguments: '{"expression":"15 * 23 + 7"}'
+              name: calculate
+            id: call_7im0yzgj
+            index: 0
+            type: function
+      created: 1771934095
+      id: chatcmpl-385
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 36
+        prompt_tokens: 240
+        total_tokens: 276
+    status:
+      code: 200
+      message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '1250'
+      content-type:
+      - application/json
+      host:
+      - 127.0.0.1:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a focused execution agent. Complete the following task using the skills and instructions provided.
+
+          ## Task
+
+          Calculate 15 * 23 + 7
+
+          ## Skill instructions
+
+          You are a calculator assistant. Use the calculate tool to evaluate mathematical expressions. Always use the tool rather than computing in your head.
+
+          ## Guidelines
+
+          - Follow the skill instructions carefully
+          - Stay focused on the specific task described above
+          - Provide a clear, complete result
+        role: system
+      - content: Calculate 15 * 23 + 7
+        role: user
+      - content: null
+        reasoning: Need to use the calculate tool.
+        role: assistant
+        tool_calls:
+        - function:
+            arguments: '{"expression":"15 * 23 + 7"}'
+            name: calculate
+          id: call_7im0yzgj
+          type: function
+      - content: '352'
+        role: tool
+        tool_call_id: call_7im0yzgj
+      model: gpt-oss
+      stream: false
+      tool_choice: auto
+      tools:
+      - function:
+          description: Evaluate a mathematical expression and return the result.
+          name: calculate
+          parameters:
+            additionalProperties: false
+            properties:
+              expression:
+                description: A mathematical expression to evaluate, e.g. '2 + 2'.
+                type: string
+            required:
+            - expression
+            type: object
+          strict: true
+        type: function
+    uri: http://127.0.0.1:11434/v1/chat/completions
+  response:
+    headers:
+      content-length:
+      - '306'
+      content-type:
+      - application/json
+    parsed_body:
+      choices:
+      - finish_reason: stop
+        index: 0
+        message:
+          content: The result is **352**.
+          role: assistant
+      created: 1771934096
+      id: chatcmpl-510
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 11
+        prompt_tokens: 287
+        total_tokens: 298
+    status:
+      code: 200
+      message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '1597'
+      content-type:
+      - application/json
+      host:
+      - 127.0.0.1:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a helpful assistant with access to specialized skills.
+
+          ## Available skills
+
+          - **calculator**: Perform mathematical calculations.
+
+          ## Instructions
+
+          - For general conversation or questions that don't need skills, respond directly
+          - Use execute_skill to delegate work to a skill. Call it once per task. Include everything the skill needs in the request.
+        role: system
+      - content: What is 15 * 23 + 7?
+        role: user
+      - content: null
+        reasoning: 'We need to compute 15*23 + 7. 15*23 = 345? Wait 23*10 = 230, 23*5 = 115, sum = 345. Then 345+7 = 352.
+          So answer 352. Use calculator skill? I can compute manually, but the instruction says for calculations, use the
+          calculator skill. We should use the skill. So call functions.execute_skill with request: "Calculate 15 * 23 + 7".
+          Should I specify skill_name "calculator"? Yes.'
+        role: assistant
+        tool_calls:
+        - function:
+            arguments: '{"request":"Calculate 15 * 23 + 7","skill_name":"calculator"}'
+            name: execute_skill
+          id: call_sjxn840w
+          type: function
+      - content: '352'
+        role: tool
+        tool_call_id: call_sjxn840w
+      model: gpt-oss
+      stream: false
+      tool_choice: auto
+      tools:
+      - function:
+          description: Execute a skill by name.
+          name: execute_skill
+          parameters:
+            additionalProperties: false
+            properties:
+              request:
+                description: A clear description of what you need the skill to do.
+                type: string
+              skill_name:
+                description: The exact name of the skill to use.
+                type: string
+            required:
+            - skill_name
+            - request
+            type: object
+          strict: true
+        type: function
+    uri: http://127.0.0.1:11434/v1/chat/completions
+  response:
+    headers:
+      content-length:
+      - '306'
+      content-type:
+      - application/json
+    parsed_body:
+      choices:
+      - finish_reason: stop
+        index: 0
+        message:
+          content: The result is **352**.
+          role: assistant
+      created: 1771934096
+      id: chatcmpl-791
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 11
+        prompt_tokens: 394
+        total_tokens: 405
+    status:
+      code: 200
+      message: OK
 version: 1

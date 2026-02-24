@@ -9,6 +9,7 @@ def run_chat(
     skill_paths: list[Path] | None = None,
     skills: list[Skill] | None = None,
     use_entrypoints: bool = False,
+    skill_model: str | None = None,
 ) -> None:
     """Run the chat TUI."""
     try:
@@ -18,12 +19,13 @@ def run_chat(
             "textual is not installed. Install it with: pip install 'haiku.skills[tui]'"
         ) from e
 
-    from pydantic_ai.models import infer_model
+    from haiku.skills.agent import resolve_model
 
     app = ChatApp(
-        model=infer_model(model),
+        model=resolve_model(model),
         skill_paths=skill_paths,
         skills=skills,
         use_entrypoints=use_entrypoints,
+        skill_model=skill_model,
     )
     app.run()
