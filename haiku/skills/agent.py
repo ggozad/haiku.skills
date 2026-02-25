@@ -103,9 +103,9 @@ def _create_run_script(skill: Skill) -> Callable[..., Any]:
         )
         stdout, stderr = await proc.communicate()
         if proc.returncode != 0:
+            output = stderr.decode().strip() or stdout.decode().strip()
             raise RuntimeError(
-                f"Script {script} failed (exit {proc.returncode}): "
-                f"{stderr.decode().strip()}"
+                f"Script {script} failed (exit {proc.returncode}): {output}"
             )
         return stdout.decode()
 

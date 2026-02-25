@@ -830,6 +830,22 @@ class TestCreateRunScript:
         with pytest.raises(RuntimeError, match="failed"):
             await run_script(script="scripts/fail.py")
 
+    async def test_nonzero_exit_includes_stdout(self, tmp_path: Path):
+        scripts_dir = tmp_path / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "usage.py").write_text(
+            "import sys\nprint('Usage: usage.py <arg>')\nsys.exit(1)\n"
+        )
+        skill = Skill(
+            metadata=SkillMetadata(name="s", description="Test."),
+            source=SkillSource.FILESYSTEM,
+            path=tmp_path,
+            instructions="Use scripts.",
+        )
+        run_script = _create_run_script(skill)
+        with pytest.raises(RuntimeError, match="Usage: usage.py <arg>"):
+            await run_script(script="scripts/usage.py")
+
     async def test_executes_sh_script(self, tmp_path: Path):
         skill = self._make_skill_with_scripts(tmp_path)
         run_script = _create_run_script(skill)

@@ -130,9 +130,9 @@ def create_script_tool(path: Path) -> Tool:
         )
         stdout, stderr = await proc.communicate()
         if proc.returncode != 0:
+            output = stderr.decode().strip() or stdout.decode().strip()
             raise RuntimeError(
-                f"Script {path.name} failed (exit {proc.returncode}): "
-                f"{stderr.decode().strip()}"
+                f"Script {path.name} failed (exit {proc.returncode}): {output}"
             )
         return stdout.decode().strip()
 

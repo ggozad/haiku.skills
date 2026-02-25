@@ -155,6 +155,21 @@ class TestCreateScriptTool:
         with pytest.raises(RuntimeError, match="bad.py failed"):
             await tool.function(x=1)
 
+    async def test_script_failure_includes_stdout(self, tmp_path: Path):
+        script = tmp_path / "usage.py"
+        script.write_text(
+            "import sys\n"
+            "def main(x: str) -> str:\n"
+            '    """Show usage."""\n'
+            "    return x\n"
+            'if __name__ == "__main__":\n'
+            "    print('Usage: usage.py <arg>')\n"
+            "    sys.exit(1)\n"
+        )
+        tool = create_script_tool(script)
+        with pytest.raises(RuntimeError, match="Usage: usage.py <arg>"):
+            await tool.function(x="test")
+
 
 class TestDiscoverScriptTools:
     def test_discovers_scripts_in_directory(self):
