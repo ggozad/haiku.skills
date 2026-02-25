@@ -4,7 +4,6 @@
 # ///
 """Search the web using Brave Search API."""
 
-import json
 import os
 import sys
 
@@ -72,5 +71,6 @@ def main(query: str, count: int = 5) -> str:
 
 
 if __name__ == "__main__":
-    args = json.loads(sys.stdin.read())
-    print(json.dumps({"result": main(**args)}))
+    query = sys.argv[1]
+    count = int(sys.argv[2]) if len(sys.argv) > 2 else 5
+    print(main(query, count))

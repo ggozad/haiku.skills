@@ -4,7 +4,6 @@
 # ///
 """Execute Python code safely in a sandboxed environment."""
 
-import json
 import os
 import sys
 import tempfile
@@ -43,5 +42,4 @@ def main(code: str) -> str:
 
 
 if __name__ == "__main__":
-    args = json.loads(sys.stdin.read())
-    print(json.dumps({"result": main(**args)}))
+    print(main(sys.argv[1]))

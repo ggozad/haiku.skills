@@ -1,6 +1,5 @@
 """Generate a greeting message."""
 
-import json
 import sys
 
 
@@ -15,6 +14,6 @@ def main(name: str, greeting: str = "Hello") -> str:
 
 
 if __name__ == "__main__":
-    args = json.loads(sys.stdin.read())
-    result = main(**args)
-    json.dump({"result": result}, sys.stdout)
+    name = sys.argv[1]
+    greeting = sys.argv[2] if len(sys.argv) > 2 else "Hello"
+    print(main(name, greeting))

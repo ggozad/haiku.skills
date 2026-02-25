@@ -2,7 +2,6 @@
 
 import ast
 import asyncio
-import json
 import logging
 import re
 from dataclasses import dataclass, field
@@ -115,28 +114,27 @@ def parse_script_metadata(path: Path) -> ScriptMetadata:
 
 
 def create_script_tool(path: Path) -> Tool:
-    """Create a pydantic-ai Tool that executes a script via `uv run`."""
+    """Create a pydantic-ai Tool that executes a script via `uv run` with CLI args."""
     metadata = parse_script_metadata(path)
     script_path = str(path.resolve())
 
     async def run_script(**kwargs: object) -> str:
+        args = [str(kwargs[name]) for name in metadata.parameters if name in kwargs]
         proc = await asyncio.create_subprocess_exec(
             "uv",
             "run",
             script_path,
-            stdin=asyncio.subprocess.PIPE,
+            *args,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        input_data = json.dumps(kwargs).encode()
-        stdout, stderr = await proc.communicate(input=input_data)
+        stdout, stderr = await proc.communicate()
         if proc.returncode != 0:
             raise RuntimeError(
                 f"Script {path.name} failed (exit {proc.returncode}): "
                 f"{stderr.decode().strip()}"
             )
-        output = json.loads(stdout.decode())
-        return output["result"]
+        return stdout.decode().strip()
 
     # Build JSON schema from parsed metadata
     properties: dict[str, dict[str, str]] = {}

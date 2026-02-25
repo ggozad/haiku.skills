@@ -7,6 +7,10 @@
 - **`skill_model` parameter**: `SkillToolset` accepts `skill_model` to set the model for skill sub-agents (also available as `--skill-model` CLI option)
 - **`resolve_model()`**: Resolves model strings with transparent `ollama:` prefix handling (defaults to `http://127.0.0.1:11434/v1` when `OLLAMA_BASE_URL` is unset)
 
+### Changed
+
+- **Script tool execution**: Scripts are now invoked with CLI positional arguments (`sys.argv` + `print()`) instead of JSON on stdin/stdout, matching standard CLI conventions and enabling compatibility with external skill scripts
+
 ## [0.4.2] - 2026-02-20
 
 ### Added
@@ -75,7 +79,7 @@
 - **Progressive disclosure**: Three-level progressive disclosure — metadata at startup, instructions on activation, resources on demand
 - **Sub-agent delegation**: Each skill runs in a focused sub-agent with its own system prompt and tools via `execute_skill`
 - **SkillToolset**: `FunctionToolset` integration that exposes skills as tools for any pydantic-ai `Agent`
-- **Script tools**: Python scripts in `scripts/` with `main()` function get AST-parsed into typed pydantic-ai `Tool` objects with automatic parameter schema extraction, executed via `uv run`
+- **Script tools**: Python scripts in `scripts/` with `main()` function get AST-parsed into typed pydantic-ai `Tool` objects with automatic parameter schema extraction
 - **Resource reading**: Skills can expose files (references, assets, templates) as resources; sub-agents read them on demand via `read_resource` tool with path validation and traversal defense
 - **MCP integration**: `skill_from_mcp()` maps MCP servers directly to skills
 - **Chat TUI**: Terminal-based chat interface using Textual

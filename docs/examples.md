@@ -36,7 +36,7 @@ input, and read the reference resource when you need context.
 # dependencies = ["pandas"]
 # ///
 """Analyze data."""
-import json, sys
+import sys
 
 import pandas as pd
 
@@ -53,8 +53,9 @@ def main(data: str, operation: str = "describe") -> str:
     return f"Analyzed {len(df)} rows"
 
 if __name__ == "__main__":
-    args = json.loads(sys.stdin.read())
-    json.dump({"result": main(**args)}, sys.stdout)
+    data = sys.argv[1]
+    operation = sys.argv[2] if len(sys.argv) > 2 else "describe"
+    print(main(data, operation))
 ```
 
 **Usage:**

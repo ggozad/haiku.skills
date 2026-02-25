@@ -67,7 +67,7 @@ Skills can include executable Python scripts in a `scripts/` directory. Scripts 
 # dependencies = ["pandas"]
 # ///
 """Analyze data."""
-import json, sys
+import sys
 
 import pandas as pd
 
@@ -84,11 +84,12 @@ def main(data: str, operation: str = "describe") -> str:
     return f"Analyzed {len(df)} rows"
 
 if __name__ == "__main__":
-    args = json.loads(sys.stdin.read())
-    json.dump({"result": main(**args)}, sys.stdout)
+    data = sys.argv[1]
+    operation = sys.argv[2] if len(sys.argv) > 2 else "describe"
+    print(main(data, operation))
 ```
 
-Script tools are automatically discovered on skill loading. [PEP 723](https://peps.python.org/pep-0723/) inline dependency metadata (the `# /// script` block above) is supported — dependencies are installed automatically when the script runs via `uv run`.
+Script tools are automatically discovered on skill loading. Scripts must define a `main()` function with type-annotated parameters (used for AST-based schema extraction) and a `__main__` block that reads positional arguments from `sys.argv`. Scripts are executed via `uv run`, so [PEP 723](https://peps.python.org/pep-0723/) inline dependency metadata (the `# /// script` block above) is supported — dependencies are installed automatically.
 
 ## Resources
 

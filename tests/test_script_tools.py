@@ -39,12 +39,11 @@ class TestParseScriptMetadata:
         script = tmp_path / "tool.py"
         script.write_text(
             '"""Module doc."""\n'
-            "import json, sys\n"
+            "import sys\n"
             "def main(x: int) -> str:\n"
             "    return str(x)\n"
             'if __name__ == "__main__":\n'
-            "    args = json.loads(sys.stdin.read())\n"
-            '    json.dump({"result": main(**args)}, sys.stdout)\n'
+            "    print(main(int(sys.argv[1])))\n"
         )
         meta = parse_script_metadata(script)
         assert meta.description == "Module doc."
@@ -52,12 +51,11 @@ class TestParseScriptMetadata:
     def test_no_docstring(self, tmp_path: Path):
         script = tmp_path / "tool.py"
         script.write_text(
-            "import json, sys\n"
+            "import sys\n"
             "def main(x: int) -> str:\n"
             "    return str(x)\n"
             'if __name__ == "__main__":\n'
-            "    args = json.loads(sys.stdin.read())\n"
-            '    json.dump({"result": main(**args)}, sys.stdout)\n'
+            "    print(main(int(sys.argv[1])))\n"
         )
         meta = parse_script_metadata(script)
         assert meta.description == ""
@@ -65,7 +63,7 @@ class TestParseScriptMetadata:
     def test_multiline_param_description(self, tmp_path: Path):
         script = tmp_path / "tool.py"
         script.write_text(
-            "import json, sys\n"
+            "import sys\n"
             "def main(data: str) -> str:\n"
             '    """Process data.\n'
             "\n"
@@ -78,8 +76,7 @@ class TestParseScriptMetadata:
             '    """\n'
             "    return data\n"
             'if __name__ == "__main__":\n'
-            "    args = json.loads(sys.stdin.read())\n"
-            '    json.dump({"result": main(**args)}, sys.stdout)\n'
+            "    print(main(sys.argv[1]))\n"
         )
         meta = parse_script_metadata(script)
         assert meta.parameters["data"].description == (
@@ -89,13 +86,12 @@ class TestParseScriptMetadata:
     def test_non_literal_default_skipped(self, tmp_path: Path):
         script = tmp_path / "tool.py"
         script.write_text(
-            "import json, sys, os\n"
+            "import sys, os\n"
             "def main(x: str, y: str = os.getcwd()) -> str:\n"
             '    """Do stuff."""\n'
             "    return x\n"
             'if __name__ == "__main__":\n'
-            "    args = json.loads(sys.stdin.read())\n"
-            '    json.dump({"result": main(**args)}, sys.stdout)\n'
+            "    print(main(sys.argv[1]))\n"
         )
         meta = parse_script_metadata(script)
         assert meta.parameters["y"].default is None
@@ -111,14 +107,13 @@ class TestParseScriptMetadata:
     ):
         script = tmp_path / "tool.py"
         script.write_text(
-            "import json, sys\n"
+            "import sys\n"
             "from pathlib import Path\n"
             "def main(x: Path) -> str:\n"
             '    """Do stuff."""\n'
             "    return str(x)\n"
             'if __name__ == "__main__":\n'
-            "    args = json.loads(sys.stdin.read())\n"
-            '    json.dump({"result": main(**args)}, sys.stdout)\n'
+            "    print(main(sys.argv[1]))\n"
         )
         with caplog.at_level(logging.WARNING, logger="haiku.skills.script_tools"):
             tool = create_script_tool(script)
@@ -149,13 +144,12 @@ class TestCreateScriptTool:
     async def test_script_failure_raises(self, tmp_path: Path):
         script = tmp_path / "bad.py"
         script.write_text(
-            "import json, sys\n"
+            "import sys\n"
             "def main(x: int) -> str:\n"
             '    """Fail."""\n'
             "    raise ValueError('boom')\n"
             'if __name__ == "__main__":\n'
-            "    args = json.loads(sys.stdin.read())\n"
-            '    json.dump({"result": main(**args)}, sys.stdout)\n'
+            "    main(int(sys.argv[1]))\n"
         )
         tool = create_script_tool(script)
         with pytest.raises(RuntimeError, match="bad.py failed"):
@@ -179,13 +173,12 @@ class TestDiscoverScriptTools:
         scripts_dir.mkdir()
         (scripts_dir / "__init__.py").write_text("")
         (scripts_dir / "tool.py").write_text(
-            "import json, sys\n"
+            "import sys\n"
             "def main(x: str) -> str:\n"
             '    """Do stuff."""\n'
             "    return x\n"
             'if __name__ == "__main__":\n'
-            "    args = json.loads(sys.stdin.read())\n"
-            '    json.dump({"result": main(**args)}, sys.stdout)\n'
+            "    print(main(sys.argv[1]))\n"
         )
         tools = discover_script_tools(tmp_path)
         assert len(tools) == 1
