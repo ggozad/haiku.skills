@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-02-25
+
 ### Added
 
 - **`skill_model` parameter**: `SkillToolset` accepts `skill_model` to set the model for skill sub-agents (also available as `--skill-model` CLI option)
@@ -93,7 +95,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.4.2...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.5.0...HEAD
+[0.5.0]: https://github.com/ggozad/haiku.skills/compare/0.4.2...0.5.0
 [0.4.2]: https://github.com/ggozad/haiku.skills/compare/0.4.1...0.4.2
 [0.4.1]: https://github.com/ggozad/haiku.skills/compare/0.4.1...0.4.1
 [0.4.1]: https://github.com/ggozad/haiku.skills/compare/0.4.0...0.4.1
