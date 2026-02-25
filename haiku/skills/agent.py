@@ -17,6 +17,13 @@ from haiku.skills.prompts import MAIN_AGENT_PROMPT, SKILL_PROMPT
 from haiku.skills.registry import SkillRegistry
 from haiku.skills.state import SkillRunDeps, compute_state_delta
 
+SCRIPT_RUNNERS: dict[str, tuple[str, ...]] = {
+    ".py": (sys.executable,),
+    ".sh": ("bash",),
+    ".js": ("node",),
+    ".ts": ("npx", "tsx"),
+}
+
 
 def resolve_model(model: str) -> Model:
     """Resolve a model string to a pydantic-ai Model.
@@ -89,12 +96,8 @@ def _create_run_script(skill: Skill) -> Callable[..., Any]:
         if not resolved.exists():
             raise ValueError(f"Script '{script}' not found")
         args = shlex.split(arguments) if arguments else []
-        if resolved.suffix == ".py":
-            cmd = [sys.executable, str(resolved), *args]
-        elif resolved.suffix == ".sh":
-            cmd = ["bash", str(resolved), *args]
-        else:
-            cmd = [str(resolved), *args]
+        runner = SCRIPT_RUNNERS.get(resolved.suffix, ())
+        cmd = [*runner, str(resolved), *args]
         existing = os.environ.get("PYTHONPATH", "")
         pythonpath = (
             f"{skill.path}{os.pathsep}{existing}" if existing else str(skill.path)
@@ -141,7 +144,9 @@ async def _run_skill(
         script_files = sorted(
             str(f.relative_to(skill.path))
             for f in (skill.path / "scripts").rglob("*")
-            if f.is_file() and f.suffix in (".py", ".sh") and f.name != "__init__.py"
+            if f.is_file()
+            and f.name != "__init__.py"
+            and (f.suffix in SCRIPT_RUNNERS or os.access(f, os.X_OK))
         )
         if script_files:
             script_list = "\n".join(f"- {s}" for s in script_files)

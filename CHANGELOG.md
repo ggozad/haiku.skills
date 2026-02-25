@@ -6,7 +6,8 @@
 
 - **`skill_model` parameter**: `SkillToolset` accepts `skill_model` to set the model for skill sub-agents (also available as `--skill-model` CLI option)
 - **`resolve_model()`**: Resolves model strings with transparent `ollama:` prefix handling (defaults to `http://127.0.0.1:11434/v1` when `OLLAMA_BASE_URL` is unset)
-- **`run_script` tool**: Skill sub-agents can execute scripts from the skill's `scripts/` directory via a `run_script` tool, supporting `.py`, `.sh`, and generic executables with path validation
+- **`run_script` tool**: Skill sub-agents can execute scripts from the skill's `scripts/` directory via a `run_script` tool, supporting `.py`, `.sh`, `.js`, `.ts`, and generic executables with path validation
+- **JS/TS script support**: `run_script` dispatches `.js` files via `node` and `.ts` files via `npx tsx`; extensible via `SCRIPT_RUNNERS` mapping
 
 ### Changed
 

@@ -60,7 +60,7 @@ For `AbstractToolset` instances (e.g. MCP toolsets), use the `toolsets` paramete
 
 ## Script tools
 
-Skills can include executable Python scripts in a `scripts/` directory. Scripts must define a `main()` function with type-annotated parameters:
+Skills can include executable scripts in a `scripts/` directory. Python scripts that define a `main()` function with type-annotated parameters get AST-parsed into typed tools:
 
 ```python
 # /// script
@@ -91,7 +91,7 @@ if __name__ == "__main__":
 
 Script tools are automatically discovered on skill loading. Scripts with a `main()` function get AST-parsed into typed pydantic-ai `Tool` objects with automatic parameter schema extraction. Scripts without `main()` are skipped (with a warning) during typed tool discovery.
 
-Additionally, when a skill has a `scripts/` directory, the sub-agent receives a `run_script` tool that can execute any script (`.py`, `.sh`, or generic executable) with free-form arguments. This allows the LLM to invoke scripts that don't follow the `main()` convention.
+Additionally, when a skill has a `scripts/` directory, the sub-agent receives a `run_script` tool that can execute any script (`.py`, `.sh`, `.js`, `.ts`, or generic executable) with free-form arguments. This allows the LLM to invoke scripts that don't follow the `main()` convention.
 
 Typed script tools are executed via `uv run`, so [PEP 723](https://peps.python.org/pep-0723/) inline dependency metadata (the `# /// script` block above) is supported — dependencies are installed automatically.
 
@@ -103,6 +103,8 @@ The `run_script` tool expects a relative path under `scripts/` (e.g. `scripts/ex
 |-----------|----------|
 | `.py`     | Current Python interpreter (`sys.executable`) |
 | `.sh`     | `bash` |
+| `.js`     | `node` |
+| `.ts`     | `npx tsx` |
 | Other     | Run as executable directly |
 
 Both typed script tools and `run_script` prepend the skill directory to `PYTHONPATH`, so scripts can use package-style sibling imports:
