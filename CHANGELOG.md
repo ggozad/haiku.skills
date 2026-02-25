@@ -10,6 +10,7 @@
 ### Changed
 
 - **Script tool execution**: Scripts are now invoked with CLI positional arguments (`sys.argv` + `print()`) instead of JSON on stdin/stdout, matching standard CLI conventions and enabling compatibility with external skill scripts
+- **Resilient script discovery**: `discover_script_tools()` now skips scripts without a `main()` function (with a warning) instead of crashing
 
 ## [0.4.2] - 2026-02-20
 

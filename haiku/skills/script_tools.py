@@ -184,5 +184,8 @@ def discover_script_tools(skill_path: Path) -> list[Tool]:
     for script in sorted(scripts_dir.glob("*.py")):
         if script.name == "__init__.py":
             continue
-        tools.append(create_script_tool(script))
+        try:
+            tools.append(create_script_tool(script))
+        except ValueError:
+            logger.warning("Skipping %s: no main() function", script.name)
     return tools

@@ -187,3 +187,30 @@ class TestDiscoverScriptTools:
     def test_returns_empty_for_nonexistent_path(self, tmp_path: Path):
         tools = discover_script_tools(tmp_path / "nonexistent")
         assert tools == []
+
+    def test_skips_script_without_main(self, tmp_path: Path, caplog):
+        scripts_dir = tmp_path / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "no_main.py").write_text("x = 1\n")
+        with caplog.at_level(logging.WARNING, logger="haiku.skills.script_tools"):
+            tools = discover_script_tools(tmp_path)
+        assert tools == []
+        assert any("no_main.py" in r.message for r in caplog.records)
+
+    def test_mixed_conforming_and_nonconforming(self, tmp_path: Path, caplog):
+        scripts_dir = tmp_path / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "good.py").write_text(
+            "import sys\n"
+            "def main(x: str) -> str:\n"
+            '    """Do stuff."""\n'
+            "    return x\n"
+            'if __name__ == "__main__":\n'
+            "    print(main(sys.argv[1]))\n"
+        )
+        (scripts_dir / "no_main.py").write_text("x = 1\n")
+        with caplog.at_level(logging.WARNING, logger="haiku.skills.script_tools"):
+            tools = discover_script_tools(tmp_path)
+        assert len(tools) == 1
+        assert tools[0].name == "good"
+        assert any("no_main.py" in r.message for r in caplog.records)
