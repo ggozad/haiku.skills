@@ -3,6 +3,7 @@
 import ast
 import asyncio
 import logging
+import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -120,11 +121,16 @@ def create_script_tool(path: Path) -> Tool:
 
     async def run_script(**kwargs: object) -> str:
         args = [str(kwargs[name]) for name in metadata.parameters if name in kwargs]
+        skill_dir = str(path.resolve().parent.parent)
+        existing = os.environ.get("PYTHONPATH", "")
+        pythonpath = f"{skill_dir}{os.pathsep}{existing}" if existing else skill_dir
+        env = {**os.environ, "PYTHONPATH": pythonpath}
         proc = await asyncio.create_subprocess_exec(
             "uv",
             "run",
             script_path,
             *args,
+            env=env,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )

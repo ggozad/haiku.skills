@@ -96,7 +96,9 @@ def _create_run_script(skill: Skill) -> Callable[..., Any]:
         else:
             cmd = [str(resolved), *args]
         existing = os.environ.get("PYTHONPATH", "")
-        pythonpath = f"{skill.path}{os.pathsep}{existing}" if existing else str(skill.path)
+        pythonpath = (
+            f"{skill.path}{os.pathsep}{existing}" if existing else str(skill.path)
+        )
         env = {**os.environ, "PYTHONPATH": pythonpath}
         proc = await asyncio.create_subprocess_exec(
             *cmd,

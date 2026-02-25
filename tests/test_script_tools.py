@@ -170,6 +170,26 @@ class TestCreateScriptTool:
         with pytest.raises(RuntimeError, match="Usage: usage.py <arg>"):
             await tool.function(x="test")
 
+    async def test_script_can_import_sibling_modules(self, tmp_path: Path):
+        scripts_dir = tmp_path / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "__init__.py").write_text("")
+        (scripts_dir / "utils.py").write_text(
+            "def greet(name: str) -> str:\n    return f'Hello, {name}!'\n"
+        )
+        (scripts_dir / "caller.py").write_text(
+            "import sys\n"
+            "from scripts.utils import greet\n"
+            "def main(name: str) -> str:\n"
+            '    """Call sibling."""\n'
+            "    return greet(name)\n"
+            'if __name__ == "__main__":\n'
+            "    print(main(sys.argv[1]))\n"
+        )
+        tool = create_script_tool(scripts_dir / "caller.py")
+        result = await tool.function(name="World")
+        assert result == "Hello, World!"
+
 
 class TestDiscoverScriptTools:
     def test_discovers_scripts_in_directory(self):
