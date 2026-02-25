@@ -16,6 +16,7 @@
 ### Fixed
 
 - **Script failure error reporting**: Script error messages now include stdout when stderr is empty, so usage messages and other stdout-based errors are visible to the sub-agent
+- **Script sibling imports**: `run_script` now sets `PYTHONPATH` to the skill directory so scripts can use package-style imports (e.g. `from scripts.utils import ...`)
 
 ## [0.4.2] - 2026-02-20
 
