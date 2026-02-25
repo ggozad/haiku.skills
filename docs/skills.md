@@ -93,7 +93,28 @@ Script tools are automatically discovered on skill loading. Scripts with a `main
 
 Additionally, when a skill has a `scripts/` directory, the sub-agent receives a `run_script` tool that can execute any script (`.py`, `.sh`, or generic executable) with free-form arguments. This allows the LLM to invoke scripts that don't follow the `main()` convention.
 
-Scripts are executed via `uv run`, so [PEP 723](https://peps.python.org/pep-0723/) inline dependency metadata (the `# /// script` block above) is supported — dependencies are installed automatically.
+Typed script tools are executed via `uv run`, so [PEP 723](https://peps.python.org/pep-0723/) inline dependency metadata (the `# /// script` block above) is supported — dependencies are installed automatically.
+
+### Script resolution
+
+The `run_script` tool expects a relative path under `scripts/` (e.g. `scripts/extract.py`). Paths that escape the `scripts/` directory are rejected. The execution method depends on the file extension:
+
+| Extension | Executor |
+|-----------|----------|
+| `.py`     | Current Python interpreter (`sys.executable`) |
+| `.sh`     | `bash` |
+| Other     | Run as executable directly |
+
+Both typed script tools and `run_script` prepend the skill directory to `PYTHONPATH`, so scripts can use package-style sibling imports:
+
+```python
+# scripts/utils.py
+def helper():
+    return "shared logic"
+
+# scripts/main_script.py
+from scripts.utils import helper
+```
 
 ## Resources
 
