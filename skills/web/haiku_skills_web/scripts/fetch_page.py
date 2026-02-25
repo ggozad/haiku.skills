@@ -4,7 +4,6 @@
 # ///
 """Fetch a web page and extract its readable content."""
 
-import json
 import sys
 
 import trafilatura
@@ -29,5 +28,4 @@ def main(url: str) -> str:
 
 
 if __name__ == "__main__":
-    args = json.loads(sys.stdin.read())
-    print(json.dumps({"result": main(**args)}))
+    print(main(sys.argv[1]))

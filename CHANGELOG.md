@@ -6,6 +6,17 @@
 
 - **`skill_model` parameter**: `SkillToolset` accepts `skill_model` to set the model for skill sub-agents (also available as `--skill-model` CLI option)
 - **`resolve_model()`**: Resolves model strings with transparent `ollama:` prefix handling (defaults to `http://127.0.0.1:11434/v1` when `OLLAMA_BASE_URL` is unset)
+- **`run_script` tool**: Skill sub-agents can execute scripts from the skill's `scripts/` directory via a `run_script` tool, supporting `.py`, `.sh`, and generic executables with path validation
+
+### Changed
+
+- **Script tool execution**: Scripts are now invoked with CLI positional arguments (`sys.argv` + `print()`) instead of JSON on stdin/stdout, matching standard CLI conventions and enabling compatibility with external skill scripts
+- **Resilient script discovery**: `discover_script_tools()` now skips scripts without a `main()` function (with a warning) instead of crashing
+
+### Fixed
+
+- **Script failure error reporting**: Script error messages now include stdout when stderr is empty, so usage messages and other stdout-based errors are visible to the sub-agent
+- **Script sibling imports**: `run_script` and typed script tools now set `PYTHONPATH` to the skill directory so scripts can use package-style imports (e.g. `from scripts.utils import ...`)
 
 ## [0.4.2] - 2026-02-20
 
@@ -75,7 +86,7 @@
 - **Progressive disclosure**: Three-level progressive disclosure — metadata at startup, instructions on activation, resources on demand
 - **Sub-agent delegation**: Each skill runs in a focused sub-agent with its own system prompt and tools via `execute_skill`
 - **SkillToolset**: `FunctionToolset` integration that exposes skills as tools for any pydantic-ai `Agent`
-- **Script tools**: Python scripts in `scripts/` with `main()` function get AST-parsed into typed pydantic-ai `Tool` objects with automatic parameter schema extraction, executed via `uv run`
+- **Script tools**: Python scripts in `scripts/` with `main()` function get AST-parsed into typed pydantic-ai `Tool` objects with automatic parameter schema extraction
 - **Resource reading**: Skills can expose files (references, assets, templates) as resources; sub-agents read them on demand via `read_resource` tool with path validation and traversal defense
 - **MCP integration**: `skill_from_mcp()` maps MCP servers directly to skills
 - **Chat TUI**: Terminal-based chat interface using Textual

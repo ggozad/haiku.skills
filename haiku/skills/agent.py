@@ -1,4 +1,7 @@
+import asyncio
 import os
+import shlex
+import sys
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -68,6 +71,53 @@ def _create_read_resource(skill: Skill) -> Callable[..., Any]:
     return read_resource
 
 
+def _create_run_script(skill: Skill) -> Callable[..., Any]:
+    """Create a run_script tool bound to a specific skill."""
+    assert skill.path is not None
+    scripts_dir = (skill.path / "scripts").resolve()
+
+    async def run_script(script: str, arguments: str = "") -> str:
+        """Execute a script from the skill's scripts/ directory.
+
+        Args:
+            script: Relative path to the script (e.g. 'scripts/extract.py').
+            arguments: Command-line arguments for the script.
+        """
+        resolved = (skill.path / script).resolve()  # type: ignore[operator]
+        if not resolved.is_relative_to(scripts_dir):
+            raise ValueError(f"'{script}' is not under scripts/")
+        if not resolved.exists():
+            raise ValueError(f"Script '{script}' not found")
+        args = shlex.split(arguments) if arguments else []
+        if resolved.suffix == ".py":
+            cmd = [sys.executable, str(resolved), *args]
+        elif resolved.suffix == ".sh":
+            cmd = ["bash", str(resolved), *args]
+        else:
+            cmd = [str(resolved), *args]
+        existing = os.environ.get("PYTHONPATH", "")
+        pythonpath = (
+            f"{skill.path}{os.pathsep}{existing}" if existing else str(skill.path)
+        )
+        env = {**os.environ, "PYTHONPATH": pythonpath}
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            cwd=str(skill.path),
+            env=env,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            output = stderr.decode().strip() or stdout.decode().strip()
+            raise RuntimeError(
+                f"Script {script} failed (exit {proc.returncode}): {output}"
+            )
+        return stdout.decode()
+
+    return run_script
+
+
 async def _run_skill(
     model: str | Model,
     skill: Skill,
@@ -76,6 +126,7 @@ async def _run_skill(
 ) -> str:
     instructions = skill.instructions or "No specific instructions."
     resource_section = ""
+    scripts_section = ""
     tools = list(skill.tools)
     if skill.resources:
         resource_list = "\n".join(f"- {r}" for r in skill.resources)
@@ -85,10 +136,26 @@ async def _run_skill(
             f"Use the `read_resource` tool to read any of these files.\n\n"
         )
         tools.append(_create_read_resource(skill))
+    if skill.path and (skill.path / "scripts").is_dir():
+        tools.append(_create_run_script(skill))
+        script_files = sorted(
+            str(f.relative_to(skill.path))
+            for f in (skill.path / "scripts").rglob("*")
+            if f.is_file() and f.suffix in (".py", ".sh") and f.name != "__init__.py"
+        )
+        if script_files:
+            script_list = "\n".join(f"- {s}" for s in script_files)
+            scripts_section = (
+                f"## Available scripts\n\n"
+                f"{script_list}\n\n"
+                f"Execute scripts with the `run_script` tool "
+                f"(not `read_resource` — that is only for resource files).\n\n"
+            )
     system_prompt = SKILL_PROMPT.format(
         task_description=request,
         skill_instructions=instructions,
         resource_section=resource_section,
+        scripts_section=scripts_section,
     )
     deps = SkillRunDeps(state=state) if state else None
     agent = Agent[SkillRunDeps | None, str](

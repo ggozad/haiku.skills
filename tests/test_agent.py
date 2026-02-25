@@ -12,6 +12,7 @@ from pydantic_ai.toolsets.function import FunctionToolset
 from haiku.skills.agent import (
     SkillToolset,
     _create_read_resource,
+    _create_run_script,
     _last_tool_result,
     _run_skill,
     resolve_model,
@@ -82,7 +83,7 @@ class TestRunSkill:
         toolset = SkillToolset(skill_paths=[FIXTURES])
         skill = toolset.registry.get("simple-skill")
         assert skill is not None
-        result = await _run_skill(TestModel(), skill, "Do something.")
+        result = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
         assert result
 
     async def test_run_skill_with_tools(self, allow_model_requests: None):
@@ -787,3 +788,135 @@ class TestGetToolsStateRestoration:
         ns = toolset.get_namespace("ns.counter")
         assert isinstance(ns, CounterState)
         assert ns.count == 100
+
+
+class TestCreateRunScript:
+    def _make_skill_with_scripts(self, tmp_path: Path) -> Skill:
+        scripts_dir = tmp_path / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "hello.py").write_text(
+            "import sys\nprint(f'Hello, {sys.argv[1]}!')\n"
+        )
+        (scripts_dir / "fail.py").write_text("import sys\nsys.exit(1)\n")
+        (scripts_dir / "greet.sh").write_text('#!/bin/bash\necho "Hi, $1!"\n')
+        return Skill(
+            metadata=SkillMetadata(name="scripted", description="Has scripts."),
+            source=SkillSource.FILESYSTEM,
+            path=tmp_path,
+            instructions="Use scripts.",
+        )
+
+    async def test_executes_py_script(self, tmp_path: Path):
+        skill = self._make_skill_with_scripts(tmp_path)
+        run_script = _create_run_script(skill)
+        result = await run_script(script="scripts/hello.py", arguments="World")
+        assert "Hello, World!" in result
+
+    async def test_rejects_path_outside_scripts(self, tmp_path: Path):
+        skill = self._make_skill_with_scripts(tmp_path)
+        run_script = _create_run_script(skill)
+        with pytest.raises(ValueError, match="not under scripts/"):
+            await run_script(script="../etc/passwd")
+
+    async def test_rejects_nonexistent_script(self, tmp_path: Path):
+        skill = self._make_skill_with_scripts(tmp_path)
+        run_script = _create_run_script(skill)
+        with pytest.raises(ValueError, match="not found"):
+            await run_script(script="scripts/missing.py")
+
+    async def test_nonzero_exit_raises(self, tmp_path: Path):
+        skill = self._make_skill_with_scripts(tmp_path)
+        run_script = _create_run_script(skill)
+        with pytest.raises(RuntimeError, match="failed"):
+            await run_script(script="scripts/fail.py")
+
+    async def test_nonzero_exit_includes_stdout(self, tmp_path: Path):
+        scripts_dir = tmp_path / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "usage.py").write_text(
+            "import sys\nprint('Usage: usage.py <arg>')\nsys.exit(1)\n"
+        )
+        skill = Skill(
+            metadata=SkillMetadata(name="s", description="Test."),
+            source=SkillSource.FILESYSTEM,
+            path=tmp_path,
+            instructions="Use scripts.",
+        )
+        run_script = _create_run_script(skill)
+        with pytest.raises(RuntimeError, match="Usage: usage.py <arg>"):
+            await run_script(script="scripts/usage.py")
+
+    async def test_py_script_can_import_sibling_modules(self, tmp_path: Path):
+        scripts_dir = tmp_path / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "__init__.py").write_text("")
+        (scripts_dir / "utils.py").write_text(
+            "def greet(name: str) -> str:\n    return f'Hello, {name}!'\n"
+        )
+        (scripts_dir / "caller.py").write_text(
+            "import sys\nfrom scripts.utils import greet\nprint(greet(sys.argv[1]))\n"
+        )
+        skill = Skill(
+            metadata=SkillMetadata(name="s", description="Test."),
+            source=SkillSource.FILESYSTEM,
+            path=tmp_path,
+            instructions="Use scripts.",
+        )
+        run_script = _create_run_script(skill)
+        result = await run_script(script="scripts/caller.py", arguments="World")
+        assert "Hello, World!" in result
+
+    async def test_executes_sh_script(self, tmp_path: Path):
+        skill = self._make_skill_with_scripts(tmp_path)
+        run_script = _create_run_script(skill)
+        result = await run_script(script="scripts/greet.sh", arguments="Alice")
+        assert "Hi, Alice!" in result
+
+    async def test_executes_generic_script(self, tmp_path: Path):
+        scripts_dir = tmp_path / "scripts"
+        scripts_dir.mkdir()
+        script = scripts_dir / "greet"
+        script.write_text('#!/bin/bash\necho "Hey, $1!"\n')
+        script.chmod(0o755)
+        skill = Skill(
+            metadata=SkillMetadata(name="s", description="Test."),
+            source=SkillSource.FILESYSTEM,
+            path=tmp_path,
+            instructions="Use scripts.",
+        )
+        run_script = _create_run_script(skill)
+        result = await run_script(script="scripts/greet", arguments="Bob")
+        assert "Hey, Bob!" in result
+
+
+class TestRunSkillWithScripts:
+    async def test_includes_run_script_tool(
+        self, tmp_path: Path, allow_model_requests: None
+    ):
+        scripts_dir = tmp_path / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "hello.py").write_text(
+            "import sys\nprint(f'Hello, {sys.argv[1]}!')\n"
+        )
+        skill = Skill(
+            metadata=SkillMetadata(name="scripted", description="Has scripts."),
+            source=SkillSource.FILESYSTEM,
+            path=tmp_path,
+            instructions="Use scripts.",
+        )
+        result = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
+        assert result
+
+    async def test_no_run_script_without_scripts_dir(self, allow_model_requests: None):
+        skill = Skill(
+            metadata=SkillMetadata(name="plain", description="No scripts."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do things.",
+        )
+        result = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
+        assert result
+
+
+class TestPromptScriptsSection:
+    def test_prompt_has_scripts_placeholder(self):
+        assert "{scripts_section}" in SKILL_PROMPT

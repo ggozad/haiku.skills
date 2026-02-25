@@ -1,7 +1,6 @@
 """Tests for distributable skill packages."""
 
 import io
-import json
 import runpy
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -63,15 +62,14 @@ class TestWeb:
 
     def test_search_main_entry(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("BRAVE_API_KEY", "")
-        monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps({"query": "test"})))
+        monkeypatch.setattr("sys.argv", ["search.py", "test"])
         captured = io.StringIO()
         monkeypatch.setattr("sys.stdout", captured)
 
         script = SKILLS_ROOT / "web" / "haiku_skills_web" / "scripts" / "search.py"
         runpy.run_path(str(script), run_name="__main__")
 
-        output = json.loads(captured.getvalue())
-        assert "BRAVE_API_KEY not set" in output["result"]
+        assert "BRAVE_API_KEY not set" in captured.getvalue()
 
     @pytest.mark.vcr()
     def test_search_tool_with_state(self, monkeypatch: pytest.MonkeyPatch):
@@ -131,8 +129,7 @@ class TestWeb:
 
         monkeypatch.setattr(fp.trafilatura, "fetch_url", lambda url: None)
         monkeypatch.setattr(
-            "sys.stdin",
-            io.StringIO(json.dumps({"url": "https://invalid.example.com"})),
+            "sys.argv", ["fetch_page.py", "https://invalid.example.com"]
         )
         captured = io.StringIO()
         monkeypatch.setattr("sys.stdout", captured)
@@ -140,8 +137,7 @@ class TestWeb:
         script = SKILLS_ROOT / "web" / "haiku_skills_web" / "scripts" / "fetch_page.py"
         runpy.run_path(str(script), run_name="__main__")
 
-        output = json.loads(captured.getvalue())
-        assert "could not fetch" in output["result"]
+        assert "could not fetch" in captured.getvalue()
 
     def test_fetch_page_tool_with_state(self, monkeypatch: pytest.MonkeyPatch):
         import haiku_skills_web.scripts.fetch_page as fp
@@ -212,10 +208,10 @@ class TestImageGeneration:
 
     @pytest.mark.vcr()
     def test_main_entry(self, monkeypatch: pytest.MonkeyPatch):
-        input_data = json.dumps(
-            {"prompt": "a red circle on white background", "width": 64, "height": 64}
+        monkeypatch.setattr(
+            "sys.argv",
+            ["generate_image.py", "a red circle on white background", "64", "64"],
         )
-        monkeypatch.setattr("sys.stdin", io.StringIO(input_data))
         captured = io.StringIO()
         monkeypatch.setattr("sys.stdout", captured)
 
@@ -228,8 +224,7 @@ class TestImageGeneration:
         )
         runpy.run_path(str(script), run_name="__main__")
 
-        output = json.loads(captured.getvalue())
-        assert "![" in output["result"]
+        assert "![" in captured.getvalue()
 
 
 class TestCodeExecution:
@@ -300,7 +295,7 @@ class TestCodeExecution:
         assert len(state.executions) == 1
 
     def test_main_entry(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps({"code": "1 + 1"})))
+        monkeypatch.setattr("sys.argv", ["run_code.py", "1 + 1"])
         captured = io.StringIO()
         monkeypatch.setattr("sys.stdout", captured)
 
@@ -313,5 +308,4 @@ class TestCodeExecution:
         )
         runpy.run_path(str(script), run_name="__main__")
 
-        output = json.loads(captured.getvalue())
-        assert "result" in output
+        assert "result" in captured.getvalue()

@@ -5,7 +5,6 @@
 """Generate images from text prompts using Ollama."""
 
 import base64
-import json
 import os
 import sys
 import tempfile
@@ -55,5 +54,7 @@ def main(
 
 
 if __name__ == "__main__":
-    args = json.loads(sys.stdin.read())
-    print(json.dumps({"result": main(**args)}))
+    prompt = sys.argv[1]
+    width = int(sys.argv[2]) if len(sys.argv) > 2 else 1024
+    height = int(sys.argv[3]) if len(sys.argv) > 3 else 1024
+    print(main(prompt, width, height))

@@ -39,12 +39,11 @@ class TestParseScriptMetadata:
         script = tmp_path / "tool.py"
         script.write_text(
             '"""Module doc."""\n'
-            "import json, sys\n"
+            "import sys\n"
             "def main(x: int) -> str:\n"
             "    return str(x)\n"
             'if __name__ == "__main__":\n'
-            "    args = json.loads(sys.stdin.read())\n"
-            '    json.dump({"result": main(**args)}, sys.stdout)\n'
+            "    print(main(int(sys.argv[1])))\n"
         )
         meta = parse_script_metadata(script)
         assert meta.description == "Module doc."
@@ -52,12 +51,11 @@ class TestParseScriptMetadata:
     def test_no_docstring(self, tmp_path: Path):
         script = tmp_path / "tool.py"
         script.write_text(
-            "import json, sys\n"
+            "import sys\n"
             "def main(x: int) -> str:\n"
             "    return str(x)\n"
             'if __name__ == "__main__":\n'
-            "    args = json.loads(sys.stdin.read())\n"
-            '    json.dump({"result": main(**args)}, sys.stdout)\n'
+            "    print(main(int(sys.argv[1])))\n"
         )
         meta = parse_script_metadata(script)
         assert meta.description == ""
@@ -65,7 +63,7 @@ class TestParseScriptMetadata:
     def test_multiline_param_description(self, tmp_path: Path):
         script = tmp_path / "tool.py"
         script.write_text(
-            "import json, sys\n"
+            "import sys\n"
             "def main(data: str) -> str:\n"
             '    """Process data.\n'
             "\n"
@@ -78,8 +76,7 @@ class TestParseScriptMetadata:
             '    """\n'
             "    return data\n"
             'if __name__ == "__main__":\n'
-            "    args = json.loads(sys.stdin.read())\n"
-            '    json.dump({"result": main(**args)}, sys.stdout)\n'
+            "    print(main(sys.argv[1]))\n"
         )
         meta = parse_script_metadata(script)
         assert meta.parameters["data"].description == (
@@ -89,13 +86,12 @@ class TestParseScriptMetadata:
     def test_non_literal_default_skipped(self, tmp_path: Path):
         script = tmp_path / "tool.py"
         script.write_text(
-            "import json, sys, os\n"
+            "import sys, os\n"
             "def main(x: str, y: str = os.getcwd()) -> str:\n"
             '    """Do stuff."""\n'
             "    return x\n"
             'if __name__ == "__main__":\n'
-            "    args = json.loads(sys.stdin.read())\n"
-            '    json.dump({"result": main(**args)}, sys.stdout)\n'
+            "    print(main(sys.argv[1]))\n"
         )
         meta = parse_script_metadata(script)
         assert meta.parameters["y"].default is None
@@ -111,14 +107,13 @@ class TestParseScriptMetadata:
     ):
         script = tmp_path / "tool.py"
         script.write_text(
-            "import json, sys\n"
+            "import sys\n"
             "from pathlib import Path\n"
             "def main(x: Path) -> str:\n"
             '    """Do stuff."""\n'
             "    return str(x)\n"
             'if __name__ == "__main__":\n'
-            "    args = json.loads(sys.stdin.read())\n"
-            '    json.dump({"result": main(**args)}, sys.stdout)\n'
+            "    print(main(sys.argv[1]))\n"
         )
         with caplog.at_level(logging.WARNING, logger="haiku.skills.script_tools"):
             tool = create_script_tool(script)
@@ -149,17 +144,51 @@ class TestCreateScriptTool:
     async def test_script_failure_raises(self, tmp_path: Path):
         script = tmp_path / "bad.py"
         script.write_text(
-            "import json, sys\n"
+            "import sys\n"
             "def main(x: int) -> str:\n"
             '    """Fail."""\n'
             "    raise ValueError('boom')\n"
             'if __name__ == "__main__":\n'
-            "    args = json.loads(sys.stdin.read())\n"
-            '    json.dump({"result": main(**args)}, sys.stdout)\n'
+            "    main(int(sys.argv[1]))\n"
         )
         tool = create_script_tool(script)
         with pytest.raises(RuntimeError, match="bad.py failed"):
             await tool.function(x=1)
+
+    async def test_script_failure_includes_stdout(self, tmp_path: Path):
+        script = tmp_path / "usage.py"
+        script.write_text(
+            "import sys\n"
+            "def main(x: str) -> str:\n"
+            '    """Show usage."""\n'
+            "    return x\n"
+            'if __name__ == "__main__":\n'
+            "    print('Usage: usage.py <arg>')\n"
+            "    sys.exit(1)\n"
+        )
+        tool = create_script_tool(script)
+        with pytest.raises(RuntimeError, match="Usage: usage.py <arg>"):
+            await tool.function(x="test")
+
+    async def test_script_can_import_sibling_modules(self, tmp_path: Path):
+        scripts_dir = tmp_path / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "__init__.py").write_text("")
+        (scripts_dir / "utils.py").write_text(
+            "def greet(name: str) -> str:\n    return f'Hello, {name}!'\n"
+        )
+        (scripts_dir / "caller.py").write_text(
+            "import sys\n"
+            "from scripts.utils import greet\n"
+            "def main(name: str) -> str:\n"
+            '    """Call sibling."""\n'
+            "    return greet(name)\n"
+            'if __name__ == "__main__":\n'
+            "    print(main(sys.argv[1]))\n"
+        )
+        tool = create_script_tool(scripts_dir / "caller.py")
+        result = await tool.function(name="World")
+        assert result == "Hello, World!"
 
 
 class TestDiscoverScriptTools:
@@ -179,13 +208,12 @@ class TestDiscoverScriptTools:
         scripts_dir.mkdir()
         (scripts_dir / "__init__.py").write_text("")
         (scripts_dir / "tool.py").write_text(
-            "import json, sys\n"
+            "import sys\n"
             "def main(x: str) -> str:\n"
             '    """Do stuff."""\n'
             "    return x\n"
             'if __name__ == "__main__":\n'
-            "    args = json.loads(sys.stdin.read())\n"
-            '    json.dump({"result": main(**args)}, sys.stdout)\n'
+            "    print(main(sys.argv[1]))\n"
         )
         tools = discover_script_tools(tmp_path)
         assert len(tools) == 1
@@ -194,3 +222,30 @@ class TestDiscoverScriptTools:
     def test_returns_empty_for_nonexistent_path(self, tmp_path: Path):
         tools = discover_script_tools(tmp_path / "nonexistent")
         assert tools == []
+
+    def test_skips_script_without_main(self, tmp_path: Path, caplog):
+        scripts_dir = tmp_path / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "no_main.py").write_text("x = 1\n")
+        with caplog.at_level(logging.WARNING, logger="haiku.skills.script_tools"):
+            tools = discover_script_tools(tmp_path)
+        assert tools == []
+        assert any("no_main.py" in r.message for r in caplog.records)
+
+    def test_mixed_conforming_and_nonconforming(self, tmp_path: Path, caplog):
+        scripts_dir = tmp_path / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "good.py").write_text(
+            "import sys\n"
+            "def main(x: str) -> str:\n"
+            '    """Do stuff."""\n'
+            "    return x\n"
+            'if __name__ == "__main__":\n'
+            "    print(main(sys.argv[1]))\n"
+        )
+        (scripts_dir / "no_main.py").write_text("x = 1\n")
+        with caplog.at_level(logging.WARNING, logger="haiku.skills.script_tools"):
+            tools = discover_script_tools(tmp_path)
+        assert len(tools) == 1
+        assert tools[0].name == "good"
+        assert any("no_main.py" in r.message for r in caplog.records)
