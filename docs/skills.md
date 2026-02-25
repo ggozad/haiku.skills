@@ -89,7 +89,11 @@ if __name__ == "__main__":
     print(main(data, operation))
 ```
 
-Script tools are automatically discovered on skill loading. Scripts must define a `main()` function with type-annotated parameters (used for AST-based schema extraction) and a `__main__` block that reads positional arguments from `sys.argv`. Scripts are executed via `uv run`, so [PEP 723](https://peps.python.org/pep-0723/) inline dependency metadata (the `# /// script` block above) is supported — dependencies are installed automatically.
+Script tools are automatically discovered on skill loading. Scripts with a `main()` function get AST-parsed into typed pydantic-ai `Tool` objects with automatic parameter schema extraction. Scripts without `main()` are skipped (with a warning) during typed tool discovery.
+
+Additionally, when a skill has a `scripts/` directory, the sub-agent receives a `run_script` tool that can execute any script (`.py`, `.sh`, or generic executable) with free-form arguments. This allows the LLM to invoke scripts that don't follow the `main()` convention.
+
+Scripts are executed via `uv run`, so [PEP 723](https://peps.python.org/pep-0723/) inline dependency metadata (the `# /// script` block above) is supported — dependencies are installed automatically.
 
 ## Resources
 
