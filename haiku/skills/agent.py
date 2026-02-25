@@ -146,7 +146,8 @@ async def _run_skill(
             scripts_section = (
                 f"## Available scripts\n\n"
                 f"{script_list}\n\n"
-                f"Use the `run_script` tool to execute any of these scripts.\n\n"
+                f"Execute scripts with the `run_script` tool "
+                f"(not `read_resource` — that is only for resource files).\n\n"
             )
     system_prompt = SKILL_PROMPT.format(
         task_description=request,
