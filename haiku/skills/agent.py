@@ -172,7 +172,7 @@ async def _run_skill(
     result = await agent.run(
         request,
         deps=deps,
-        usage_limits=UsageLimits(request_limit=10),
+        usage_limits=UsageLimits(request_limit=20),
     )
     return _last_tool_result(result.all_messages()) or result.output
 

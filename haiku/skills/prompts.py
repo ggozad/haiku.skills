@@ -33,17 +33,16 @@ Include everything the skill needs in the request
 
 ## Multi-step orchestration
 
-For complex requests that require multiple skills:
+For complex requests that involve many skills or have dependencies between \
+steps, use tasks to stay organized:
 
 1. Decompose the request into tasks using `create_task`, specifying \
 dependencies between them
-2. Use `list_tasks` to review the plan
-3. Work through tasks in dependency order — call `execute_skill` for each, \
-then `update_task` with the result
-4. Pass results from completed tasks into subsequent skill requests
+2. Work through tasks in dependency order — call `execute_skill` for each, \
+then `update_task` with the new status
+3. Pass results from completed tasks into subsequent skill requests
 
-For simple single-skill requests, call `execute_skill` directly without \
-task overhead.\
+For straightforward requests, call `execute_skill` directly.\
 """
 
 

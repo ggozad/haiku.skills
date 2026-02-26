@@ -5,5 +5,7 @@ from haiku.skills.models import (
     SkillMetadata,
     SkillSource,
 )
+from haiku.skills.prompts import build_system_prompt
 from haiku.skills.registry import SkillRegistry
 from haiku.skills.state import SkillDeps, SkillRunDeps, compute_state_delta
+from haiku.skills.tasks import Task, TaskStatus, TaskToolset

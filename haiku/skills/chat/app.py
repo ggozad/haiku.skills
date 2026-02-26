@@ -10,6 +10,7 @@ from pydantic_ai.models import Model
 from haiku.skills.agent import SkillToolset
 from haiku.skills.models import Skill
 from haiku.skills.prompts import build_system_prompt
+from haiku.skills.tasks import TaskToolset
 
 try:
     import logfire
@@ -148,6 +149,7 @@ class ChatApp(App):
             use_entrypoints=use_entrypoints,
             skill_model=skill_model,
         )
+        self._task_toolset = TaskToolset()
         self._agent: Agent[None, str] | None = None
         self._messages: list[Any] = []  # AG-UI Message objects
         self._state: dict[str, Any] = {}
@@ -176,8 +178,10 @@ class ChatApp(App):
     async def on_mount(self) -> None:
         self._agent = Agent(
             self._model,
-            instructions=build_system_prompt(self._toolset.skill_catalog),
-            toolsets=[self._toolset],
+            instructions=build_system_prompt(
+                self._toolset.skill_catalog, with_tasks=True
+            ),
+            toolsets=[self._toolset, self._task_toolset],
         )
         self._state = self._toolset.build_state_snapshot()
         self.query_one(Input).focus()
