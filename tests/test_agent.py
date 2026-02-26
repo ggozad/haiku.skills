@@ -67,6 +67,26 @@ class TestSkillToolset:
         assert "simple-skill" in toolset.registry.names
         assert "extra" in toolset.registry.names
 
+    def test_manual_skill_takes_priority_over_entrypoint(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        ep_skill = Skill(
+            metadata=SkillMetadata(name="memory", description="From entrypoint."),
+            source=SkillSource.ENTRYPOINT,
+        )
+        mock_ep = type("MockEP", (), {"load": lambda self: lambda: ep_skill})()
+        monkeypatch.setattr(
+            "haiku.skills.discovery.entry_points",
+            lambda group: [mock_ep],
+        )
+        manual_skill = Skill(
+            metadata=SkillMetadata(name="memory", description="Manual version."),
+            source=SkillSource.FILESYSTEM,
+            instructions="Custom instructions.",
+        )
+        toolset = SkillToolset(skills=[manual_skill], use_entrypoints=True)
+        assert toolset.registry.get("memory") is manual_skill
+
     def test_skill_catalog(self):
         toolset = SkillToolset(skill_paths=[FIXTURES])
         catalog = toolset.skill_catalog
