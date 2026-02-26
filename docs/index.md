@@ -16,6 +16,7 @@ This sub-agent architecture means each skill runs in isolation with its own syst
 - **Per-skill state** — Skills declare a Pydantic state model and namespace; state is passed to tools via `RunContext` and tracked on the toolset
 - **AG-UI protocol** — State changes emit `StateDeltaEvent` (JSON Patch), compatible with the [AG-UI protocol](https://docs.ag-ui.com)
 - **Script tools** — Python, JavaScript, TypeScript, and shell scripts in `scripts/`; Python scripts with a `main()` function are AST-parsed for typed tool schemas and executed via `uv run` with [PEP 723](https://peps.python.org/pep-0723/) dependency support
+- **Multi-skill orchestration** — Optional `TaskToolset` gives the agent task management tools (`create_task`, `update_task`, `list_tasks`) for decomposing complex multi-skill requests
 - **MCP integration** — Wrap any MCP server (stdio, SSE, streamable HTTP) as a skill
 
 ## Quick install

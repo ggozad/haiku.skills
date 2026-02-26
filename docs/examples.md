@@ -63,12 +63,12 @@ if __name__ == "__main__":
 ```python
 from pathlib import Path
 from pydantic_ai import Agent
-from haiku.skills import SkillToolset
+from haiku.skills import SkillToolset, build_system_prompt
 
 toolset = SkillToolset(skill_paths=[Path("./my-skill")])
 agent = Agent(
     "anthropic:claude-sonnet-4-5-20250929",
-    instructions=toolset.system_prompt,
+    instructions=build_system_prompt(toolset.skill_catalog),
     toolsets=[toolset],
 )
 ```
@@ -136,7 +136,7 @@ Wrapping an existing MCP server as a skill:
 ```python
 from pydantic_ai.mcp import MCPServerStdio
 from pydantic_ai import Agent
-from haiku.skills import SkillToolset, skill_from_mcp
+from haiku.skills import SkillToolset, build_system_prompt, skill_from_mcp
 
 skill = skill_from_mcp(
     MCPServerStdio("uvx", args=["my-mcp-server"]),
@@ -148,7 +148,7 @@ skill = skill_from_mcp(
 toolset = SkillToolset(skills=[skill])
 agent = Agent(
     "anthropic:claude-sonnet-4-5-20250929",
-    instructions=toolset.system_prompt,
+    instructions=build_system_prompt(toolset.skill_catalog),
     toolsets=[toolset],
 )
 ```
@@ -193,7 +193,7 @@ Combine filesystem, entrypoint, and MCP skills in a single toolset:
 from pathlib import Path
 from pydantic_ai.mcp import MCPServerStdio
 from pydantic_ai import Agent
-from haiku.skills import SkillToolset, skill_from_mcp
+from haiku.skills import SkillToolset, build_system_prompt, skill_from_mcp
 
 mcp_skill = skill_from_mcp(
     MCPServerStdio("uvx", args=["my-mcp-server"]),
@@ -210,7 +210,7 @@ toolset = SkillToolset(
 
 agent = Agent(
     "anthropic:claude-sonnet-4-5-20250929",
-    instructions=toolset.system_prompt,
+    instructions=build_system_prompt(toolset.skill_catalog),
     toolsets=[toolset],
 )
 ```

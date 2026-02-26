@@ -30,12 +30,12 @@ uv add haiku.skills
 ```python
 from pathlib import Path
 from pydantic_ai import Agent
-from haiku.skills import SkillToolset
+from haiku.skills import SkillToolset, build_system_prompt
 
 toolset = SkillToolset(skill_paths=[Path("./skills")])
 agent = Agent(
     "anthropic:claude-sonnet-4-5-20250929",
-    instructions=toolset.system_prompt,
+    instructions=build_system_prompt(toolset.skill_catalog),
     toolsets=[toolset],
 )
 

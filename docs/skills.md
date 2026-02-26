@@ -29,7 +29,7 @@ haiku-skills validate ./my-skill
 Skills can carry tool functions that run in the same process. These are plain Python callables or pydantic-ai `Tool` objects:
 
 ```python
-from haiku.skills import Skill, SkillMetadata, SkillSource, SkillToolset
+from haiku.skills import Skill, SkillMetadata, SkillSource, SkillToolset, build_system_prompt
 from pydantic_ai import Agent
 
 def add(a: float, b: float) -> float:
@@ -49,7 +49,7 @@ skill = Skill(
 toolset = SkillToolset(skills=[skill])
 agent = Agent(
     "anthropic:claude-sonnet-4-5-20250929",
-    instructions=toolset.system_prompt,
+    instructions=build_system_prompt(toolset.skill_catalog),
     toolsets=[toolset],
 )
 ```

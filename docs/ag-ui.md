@@ -92,12 +92,12 @@ haiku.skills provides `SkillDeps` — a minimal dataclass that satisfies pydanti
 ```python
 from pydantic_ai import Agent
 from pydantic_ai.ag_ui import handle_ag_ui_request
-from haiku.skills import SkillDeps, SkillToolset
+from haiku.skills import SkillDeps, SkillToolset, build_system_prompt
 
 toolset = SkillToolset(use_entrypoints=True)
 agent = Agent(
     "anthropic:claude-sonnet-4-5-20250929",
-    instructions=toolset.system_prompt,
+    instructions=build_system_prompt(toolset.skill_catalog),
     toolsets=[toolset],
     deps_type=SkillDeps,
 )

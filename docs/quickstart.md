@@ -22,7 +22,7 @@ See the [Agent Skills specification](https://agentskills.io/specification) for t
 ```python
 from pathlib import Path
 from pydantic_ai import Agent
-from haiku.skills import SkillToolset
+from haiku.skills import SkillToolset, build_system_prompt
 
 toolset = SkillToolset(
     skill_paths=[Path("./skills")],
@@ -30,7 +30,7 @@ toolset = SkillToolset(
 )
 agent = Agent(
     "anthropic:claude-sonnet-4-5-20250929",
-    instructions=toolset.system_prompt,
+    instructions=build_system_prompt(toolset.skill_catalog),
     toolsets=[toolset],
 )
 
@@ -38,4 +38,4 @@ result = await agent.run("Analyze this dataset.")
 print(result.output)
 ```
 
-`SkillToolset` discovers skills from the given paths, generates a system prompt listing available skills, and exposes a single `execute_skill` tool. When the agent decides to use a skill, a focused sub-agent handles the request with that skill's instructions and tools.
+`SkillToolset` discovers skills from the given paths and exposes a single `execute_skill` tool. `build_system_prompt` generates a system prompt listing the available skills. When the agent decides to use a skill, a focused sub-agent handles the request with that skill's instructions and tools.
