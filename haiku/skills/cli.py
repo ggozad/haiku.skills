@@ -106,6 +106,11 @@ def chat(
         "--skill-model",
         help="Model to use for skill sub-agents (e.g. 'ollama:llama3')",
     ),
+    tasks: bool = typer.Option(
+        False,
+        "--tasks/--no-tasks",
+        help="Enable task tools for multi-skill orchestration",
+    ),
 ) -> None:
     model_name = model or os.environ.get("HAIKU_SKILLS_MODEL") or "ollama:gpt-oss"
 
@@ -124,4 +129,4 @@ def chat(
     else:
         selected = [s for n in registry.names if (s := registry.get(n)) is not None]
 
-    run_chat(model=model_name, skills=selected, skill_model=skill_model)
+    run_chat(model=model_name, skills=selected, skill_model=skill_model, tasks=tasks)
