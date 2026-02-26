@@ -8,6 +8,7 @@ from pydantic_ai.models.openai import OpenAIChatModel
 
 from haiku.skills.agent import SkillToolset, resolve_model
 from haiku.skills.models import Skill, SkillMetadata, SkillSource
+from haiku.skills.prompts import build_system_prompt
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -24,7 +25,7 @@ async def test_single_skill_summarize(allow_model_requests: None):
     toolset = SkillToolset(skill_paths=[FIXTURES])
     agent = Agent(
         _ollama_model(),
-        instructions=toolset.system_prompt,
+        instructions=build_system_prompt(toolset.skill_catalog),
         toolsets=[toolset],
     )
     result = await agent.run(
@@ -74,7 +75,7 @@ async def test_skill_with_tool(allow_model_requests: None):
     toolset = SkillToolset(skills=[skill])
     agent = Agent(
         _ollama_model(),
-        instructions=toolset.system_prompt,
+        instructions=build_system_prompt(toolset.skill_catalog),
         toolsets=[toolset],
     )
     result = await agent.run("What is 15 * 23 + 7?")
@@ -88,7 +89,7 @@ async def test_multi_skill_decomposition(allow_model_requests: None):
     toolset = SkillToolset(skill_paths=[FIXTURES])
     agent = Agent(
         _ollama_model(),
-        instructions=toolset.system_prompt,
+        instructions=build_system_prompt(toolset.skill_catalog),
         toolsets=[toolset],
     )
     result = await agent.run(

@@ -9,6 +9,7 @@ from pydantic_ai.models import Model
 
 from haiku.skills.agent import SkillToolset
 from haiku.skills.models import Skill
+from haiku.skills.prompts import build_system_prompt
 
 try:
     import logfire
@@ -175,7 +176,7 @@ class ChatApp(App):
     async def on_mount(self) -> None:
         self._agent = Agent(
             self._model,
-            instructions=self._toolset.system_prompt,
+            instructions=build_system_prompt(self._toolset.skill_catalog),
             toolsets=[self._toolset],
         )
         self._state = self._toolset.build_state_snapshot()

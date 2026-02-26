@@ -13,7 +13,7 @@ from pydantic_ai.models import Model
 from pydantic_ai.toolsets import FunctionToolset, ToolsetTool
 
 from haiku.skills.models import Skill
-from haiku.skills.prompts import MAIN_AGENT_PROMPT, SKILL_PROMPT
+from haiku.skills.prompts import SKILL_PROMPT
 from haiku.skills.registry import SkillRegistry
 from haiku.skills.state import SkillRunDeps, compute_state_delta
 
@@ -257,10 +257,6 @@ class SkillToolset(FunctionToolset[Any]):
         for meta in self._registry.list_metadata():
             lines.append(f"- **{meta.name}**: {meta.description}")
         return "\n".join(lines)
-
-    @property
-    def system_prompt(self) -> str:
-        return MAIN_AGENT_PROMPT.format(skill_catalog=self.skill_catalog)
 
     @property
     def state_schemas(self) -> dict[str, dict[str, Any]]:

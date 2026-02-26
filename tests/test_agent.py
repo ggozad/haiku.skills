@@ -24,7 +24,7 @@ from haiku.skills.models import (
     SkillMetadata,
     SkillSource,
 )
-from haiku.skills.prompts import SKILL_PROMPT
+from haiku.skills.prompts import SKILL_PROMPT, build_system_prompt
 from haiku.skills.state import SkillRunDeps
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -93,11 +93,22 @@ class TestSkillToolset:
         assert "simple-skill" in catalog
         assert "skill-with-refs" in catalog
 
-    def test_system_prompt(self):
-        toolset = SkillToolset(skill_paths=[FIXTURES])
-        prompt = toolset.system_prompt
-        assert "simple-skill" in prompt
-        assert "Available skills" in prompt
+    def test_build_system_prompt_default(self):
+        prompt = build_system_prompt("- **test**: A test skill.")
+        assert "test" in prompt
+        assert "Call it once per task" not in prompt
+        assert "create_task" not in prompt
+
+    def test_build_system_prompt_with_tasks(self):
+        prompt = build_system_prompt("- **test**: A test skill.", with_tasks=True)
+        assert "test" in prompt
+        assert "create_task" in prompt
+        assert "update_task" in prompt
+        assert "list_tasks" in prompt
+
+    def test_build_system_prompt_custom_preamble(self):
+        prompt = build_system_prompt("", preamble="You are a coding assistant.")
+        assert "You are a coding assistant." in prompt
 
 
 class TestRunSkill:
@@ -248,7 +259,7 @@ class TestAgent:
         """Agent responds directly without skill execution for simple chat."""
         model = TestModel(call_tools=[], custom_output_text="Hello there!")
         toolset = SkillToolset(skill_paths=[FIXTURES])
-        agent = Agent(model, instructions=toolset.system_prompt, toolsets=[toolset])
+        agent = Agent(model, instructions=build_system_prompt(toolset.skill_catalog), toolsets=[toolset])
         result = await agent.run("Hello")
         assert result.output == "Hello there!"
 
@@ -261,7 +272,7 @@ class TestAgent:
         )
         toolset = SkillToolset(skills=[skill])
         agent = Agent(
-            TestModel(), instructions=toolset.system_prompt, toolsets=[toolset]
+            TestModel(), instructions=build_system_prompt(toolset.skill_catalog), toolsets=[toolset]
         )
         result = await agent.run("Do something.")
         assert result.output
@@ -270,7 +281,7 @@ class TestAgent:
         """Unknown skill in execute_skill returns error message."""
         toolset = SkillToolset(skill_paths=[FIXTURES])
         agent = Agent(
-            TestModel(), instructions=toolset.system_prompt, toolsets=[toolset]
+            TestModel(), instructions=build_system_prompt(toolset.skill_catalog), toolsets=[toolset]
         )
         result = await agent.run("Do something.")
         assert result.output
@@ -293,7 +304,7 @@ class TestAgent:
         )
         toolset = SkillToolset(skills=[skill])
         agent = Agent(
-            TestModel(), instructions=toolset.system_prompt, toolsets=[toolset]
+            TestModel(), instructions=build_system_prompt(toolset.skill_catalog), toolsets=[toolset]
         )
         result = await agent.run("Do something.")
         assert result.output
@@ -319,7 +330,7 @@ class TestAgent:
         )
         toolset = SkillToolset(skills=[skill])
         agent = Agent(
-            TestModel(), instructions=toolset.system_prompt, toolsets=[toolset]
+            TestModel(), instructions=build_system_prompt(toolset.skill_catalog), toolsets=[toolset]
         )
         result = await agent.run("Do something.")
         assert result.output
@@ -334,7 +345,7 @@ class TestAgent:
         )
         toolset = SkillToolset(skills=[skill])
         agent = Agent(
-            TestModel(), instructions=toolset.system_prompt, toolsets=[toolset]
+            TestModel(), instructions=build_system_prompt(toolset.skill_catalog), toolsets=[toolset]
         )
         result = await agent.run("Do something.")
         assert result.output
@@ -348,7 +359,7 @@ class TestAgent:
         )
         toolset = SkillToolset(skills=[skill], skill_model=TestModel())
         agent = Agent(
-            TestModel(), instructions=toolset.system_prompt, toolsets=[toolset]
+            TestModel(), instructions=build_system_prompt(toolset.skill_catalog), toolsets=[toolset]
         )
         result = await agent.run("Do something.")
         assert result.output
@@ -362,7 +373,7 @@ class TestAgent:
         )
         toolset = SkillToolset(skills=[skill], skill_model="test")
         agent = Agent(
-            TestModel(), instructions=toolset.system_prompt, toolsets=[toolset]
+            TestModel(), instructions=build_system_prompt(toolset.skill_catalog), toolsets=[toolset]
         )
         result = await agent.run("Do something.")
         assert result.output
@@ -376,7 +387,7 @@ class TestAgent:
         )
         toolset = SkillToolset(skills=[skill])
         agent = Agent(
-            TestModel(), instructions=toolset.system_prompt, toolsets=[toolset]
+            TestModel(), instructions=build_system_prompt(toolset.skill_catalog), toolsets=[toolset]
         )
         result = await agent.run("Do something.")
         assert result.output
@@ -575,7 +586,7 @@ class TestExecuteSkillWithState:
         )
         toolset = SkillToolset(skills=[skill])
         agent = Agent(
-            TestModel(), instructions=toolset.system_prompt, toolsets=[toolset]
+            TestModel(), instructions=build_system_prompt(toolset.skill_catalog), toolsets=[toolset]
         )
         result = await agent.run("Count.")
         assert result.output
@@ -600,7 +611,7 @@ class TestExecuteSkillWithState:
         )
         toolset = SkillToolset(skills=[skill])
         agent = Agent(
-            TestModel(), instructions=toolset.system_prompt, toolsets=[toolset]
+            TestModel(), instructions=build_system_prompt(toolset.skill_catalog), toolsets=[toolset]
         )
         result = await agent.run("Do nothing.")
         assert result.output
@@ -617,7 +628,7 @@ class TestExecuteSkillWithState:
         )
         toolset = SkillToolset(skills=[skill])
         agent = Agent(
-            TestModel(), instructions=toolset.system_prompt, toolsets=[toolset]
+            TestModel(), instructions=build_system_prompt(toolset.skill_catalog), toolsets=[toolset]
         )
         result = await agent.run("Do something.")
         assert result.output
@@ -802,7 +813,7 @@ class TestGetToolsStateRestoration:
             state = {"ns.counter": {"count": 100}}
 
         agent = Agent(
-            TestModel(), instructions=toolset.system_prompt, toolsets=[toolset]
+            TestModel(), instructions=build_system_prompt(toolset.skill_catalog), toolsets=[toolset]
         )
         result = await agent.run("Read the count.", deps=Deps())
         assert result.output
