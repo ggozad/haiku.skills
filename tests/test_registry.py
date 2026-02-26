@@ -96,3 +96,18 @@ class TestSkillRegistry:
         registry = SkillRegistry()
         registry.discover(use_entrypoints=True)
         assert "ep-skill" in registry.names
+
+    def test_entrypoint_skips_already_registered(self, monkeypatch: pytest.MonkeyPatch):
+        ep_skill = _make_skill("overlap", source=SkillSource.ENTRYPOINT)
+        mock_ep = type("MockEP", (), {"load": lambda self: lambda: ep_skill})()
+        monkeypatch.setattr(
+            "haiku.skills.discovery.entry_points",
+            lambda group: [mock_ep],
+        )
+        manual_skill = _make_skill(
+            "overlap", description="Manual version.", source=SkillSource.FILESYSTEM
+        )
+        registry = SkillRegistry()
+        registry.register(manual_skill)
+        registry.discover(use_entrypoints=True)
+        assert registry.get("overlap") is manual_skill

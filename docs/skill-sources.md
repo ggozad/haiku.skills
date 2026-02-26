@@ -81,6 +81,20 @@ haiku-skills list --use-entrypoints
 haiku-skills chat --use-entrypoints -m openai:gpt-4o
 ```
 
+### Priority
+
+Skills passed via `skills=` take priority over entrypoint-discovered skills. If a manually provided skill has the same name as an entrypoint skill, the entrypoint is silently skipped. This lets you override an entrypoint skill with a custom configuration:
+
+```python
+from haiku.skills import SkillToolset
+
+custom_skill = create_my_skill(db_path="/custom/path")
+toolset = SkillToolset(
+    skills=[custom_skill],
+    use_entrypoints=True,  # entrypoint for "my-skill" is skipped
+)
+```
+
 ## MCP
 
 Any [MCP](https://modelcontextprotocol.io/) server can be wrapped as a skill using `skill_from_mcp`.

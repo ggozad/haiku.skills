@@ -193,6 +193,9 @@ class SkillToolset(FunctionToolset[Any]):
         self._namespaces: dict[str, BaseModel] = {}
         self._last_restored_state: dict[str, Any] | None = None
         self._skill_model = skill_model
+        if skills:
+            for skill in skills:
+                self._registry.register(skill)
         if skill_paths:
             self._registry.discover(paths=skill_paths)
         if use_entrypoints:
@@ -200,10 +203,6 @@ class SkillToolset(FunctionToolset[Any]):
         for name in self._registry.names:
             skill = self._registry.get(name)
             if skill:
-                self._register_skill_state(skill)
-        if skills:
-            for skill in skills:
-                self._registry.register(skill)
                 self._register_skill_state(skill)
         self._register_tools()
 

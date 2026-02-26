@@ -39,4 +39,5 @@ class SkillRegistry:
                 self.register(skill)
         if use_entrypoints:
             for skill in discover_from_entrypoints():
-                self.register(skill)
+                if skill.metadata.name not in self._skills:
+                    self.register(skill)

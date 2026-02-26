@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Entrypoint skill priority**: Skills passed via `skills=` now take priority over entrypoint-discovered skills — entrypoints with the same name are silently skipped instead of raising a duplicate error
+
 ## [0.5.0] - 2026-02-25
 
 ### Added
