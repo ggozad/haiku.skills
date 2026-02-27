@@ -666,7 +666,7 @@ class TestResolveModel:
         from pydantic_ai.models.openai import OpenAIChatModel
         from pydantic_ai.providers.ollama import OllamaProvider
 
-        monkeypatch.setenv("OLLAMA_BASE_URL", "http://custom:1234/v1")
+        monkeypatch.setenv("OLLAMA_BASE_URL", "http://custom:1234")
         model = resolve_model("ollama:llama3")
         assert isinstance(model, OpenAIChatModel)
         assert isinstance(model._provider, OllamaProvider)

@@ -29,16 +29,16 @@ def resolve_model(model: str) -> Model:
     """Resolve a model string to a pydantic-ai Model.
 
     For ``ollama:`` prefixed strings, uses ``OLLAMA_BASE_URL`` env var
-    if set, otherwise defaults to ``http://127.0.0.1:11434/v1``.
+    if set, otherwise defaults to ``http://127.0.0.1:11434``.
     """
     if model.startswith("ollama:"):
         from pydantic_ai.models.openai import OpenAIChatModel
         from pydantic_ai.providers.ollama import OllamaProvider
 
-        base_url = os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434/v1")
+        base_url = os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
         return OpenAIChatModel(
             model.removeprefix("ollama:"),
-            provider=OllamaProvider(base_url=base_url),
+            provider=OllamaProvider(base_url=f"{base_url}/v1"),
         )
     from pydantic_ai.models import infer_model
 
