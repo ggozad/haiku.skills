@@ -33,6 +33,7 @@ try:
         RunAgentInput,
         StateDeltaEvent,
         TextMessageContentEvent,
+        ToolCallArgsEvent,
         ToolCallEndEvent,
         ToolCallStartEvent,
         UserMessage,
@@ -239,6 +240,8 @@ class ChatApp(App):
 
         message = None
         accumulated_text = ""
+        tool_call_args: dict[str, str] = {}
+        tool_call_names: dict[str, str] = {}
 
         try:
             async for event in adapter.run_stream():
@@ -265,10 +268,23 @@ class ChatApp(App):
                 elif event.type == EventType.TOOL_CALL_START:
                     assert isinstance(event, ToolCallStartEvent)
                     chat_history.hide_thinking()
+                    tool_call_names[event.tool_call_id] = event.tool_call_name
+                    tool_call_args[event.tool_call_id] = ""
                     await chat_history.show_tool_call(
                         event.tool_call_id, event.tool_call_name
                     )
-                    await chat_history.show_thinking("Executing tasks...")
+                    await chat_history.show_thinking("Working...")
+                elif event.type == EventType.TOOL_CALL_ARGS:
+                    assert isinstance(event, ToolCallArgsEvent)
+                    tool_call_args[event.tool_call_id] = (
+                        tool_call_args.get(event.tool_call_id, "") + event.delta
+                    )
+                    self._update_tool_description(
+                        chat_history,
+                        event.tool_call_id,
+                        tool_call_names.get(event.tool_call_id, ""),
+                        tool_call_args[event.tool_call_id],
+                    )
                 elif event.type == EventType.TOOL_CALL_END:
                     assert isinstance(event, ToolCallEndEvent)
                     chat_history.update_tool_call(event.tool_call_id, completed=True)
@@ -302,6 +318,43 @@ class ChatApp(App):
             chat_input = self.query_one(Input)
             chat_input.disabled = False
             chat_input.focus()
+
+    def _update_tool_description(
+        self,
+        chat_history: "ChatHistory",
+        tool_call_id: str,
+        tool_name: str,
+        args_json: str,
+    ) -> None:
+        """Parse accumulated tool args and update the widget description."""
+        try:
+            args = json.loads(args_json)
+        except (json.JSONDecodeError, ValueError):
+            return
+        widget = chat_history._tool_widgets.get(tool_call_id)
+        if not widget:
+            return
+        if tool_name == "execute_skill":
+            skill_name = args.get("skill_name", "")
+            request = args.get("request", "")
+            if skill_name:
+                desc = f"execute_skill → {skill_name}"
+                if request:
+                    preview = request[:80] + ("…" if len(request) > 80 else "")
+                    desc += f": {preview}"
+                widget.update_description(desc)
+        elif tool_name == "create_task":
+            subject = args.get("subject", "")
+            if subject:
+                widget.update_description(f"create_task: {subject}")
+        elif tool_name == "update_task":
+            task_id = args.get("task_id", "")
+            status = args.get("status", "")
+            if task_id:
+                desc = f"update_task #{task_id}"
+                if status:
+                    desc += f" → {status}"
+                widget.update_description(desc)
 
     def action_view_state(self) -> None:
         self.push_screen(StateScreen(self._state))

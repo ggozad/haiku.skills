@@ -61,7 +61,14 @@ class ToolCallWidget(Static):
         icon = "✓" if self._completed else "◌"
         with Horizontal(classes="task-row"):
             yield Static(icon, classes="task-status", id="tool-status")
-            yield Static(self.tool_name, classes="task-desc")
+            yield Static(self.tool_name, classes="task-desc", id="tool-desc")
+
+    def update_description(self, text: str) -> None:
+        try:
+            desc = self.query_one("#tool-desc", Static)
+            desc.update(text)
+        except Exception:
+            pass
 
     def mark_completed(self) -> None:
         self._completed = True
