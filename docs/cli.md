@@ -59,14 +59,6 @@ Set the model to use for skill sub-agents (overrides `HAIKU_SKILL_MODEL` env var
 haiku-skills chat -s ./skills -m openai:gpt-4o --skill-model ollama:llama3
 ```
 
-Enable task tools for multi-skill orchestration:
-
-```bash
-haiku-skills chat --use-entrypoints -m openai:gpt-4o --tasks
-```
-
-With `--tasks`, the agent gets `create_task`, `update_task`, and `list_tasks` tools to decompose complex multi-skill requests into tracked steps. Without it (the default), the agent calls skills directly.
-
 The `tui` extra includes `ag-ui-protocol`. The chat TUI uses the AG-UI protocol adapter for event streaming, making it useful for debugging skills with [per-skill state](skills.md#per-skill-state):
 
 - **State deltas** are displayed inline as JSON Patch operations whenever a skill modifies state

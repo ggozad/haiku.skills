@@ -96,14 +96,7 @@ class TestSkillToolset:
     def test_build_system_prompt_default(self):
         prompt = build_system_prompt("- **test**: A test skill.")
         assert "test" in prompt
-        assert "Call it once per task" not in prompt
         assert "create_task" not in prompt
-
-    def test_build_system_prompt_with_tasks(self):
-        prompt = build_system_prompt("- **test**: A test skill.", with_tasks=True)
-        assert "test" in prompt
-        assert "create_task" in prompt
-        assert "update_task" in prompt
 
     def test_build_system_prompt_custom_preamble(self):
         prompt = build_system_prompt("", preamble="You are a coding assistant.")

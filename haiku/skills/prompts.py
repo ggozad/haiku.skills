@@ -17,44 +17,14 @@ calls into later requests
 - Skills cannot see each other's results unless you pass them explicitly\
 """
 
-_MAIN_AGENT_PROMPT_WITH_TASKS = """\
-{preamble}
-
-## Available skills
-
-{skill_catalog}
-
-## Instructions
-
-- For general conversation or questions that don't need skills, respond directly
-- Use execute_skill to delegate work to a skill. \
-Include everything the skill needs in the request
-- Skills cannot see each other's results unless you pass them explicitly
-
-## Multi-step orchestration
-
-For complex requests that involve many skills or have dependencies between \
-steps, use tasks to stay organized:
-
-1. Decompose the request into tasks using `create_task`, specifying \
-dependencies between them
-2. Work through tasks in dependency order — call `execute_skill` for each, \
-then `update_task` with the new status
-3. Pass results from completed tasks into subsequent skill requests
-
-For straightforward requests, call `execute_skill` directly.\
-"""
-
 
 def build_system_prompt(
     skill_catalog: str,
     *,
     preamble: str = DEFAULT_PREAMBLE,
-    with_tasks: bool = False,
 ) -> str:
     """Build the main agent system prompt from a skill catalog."""
-    template = _MAIN_AGENT_PROMPT_WITH_TASKS if with_tasks else _MAIN_AGENT_PROMPT
-    return template.format(preamble=preamble, skill_catalog=skill_catalog)
+    return _MAIN_AGENT_PROMPT.format(preamble=preamble, skill_catalog=skill_catalog)
 
 
 SKILL_PROMPT = """\

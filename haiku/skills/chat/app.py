@@ -10,7 +10,6 @@ from pydantic_ai.models import Model
 from haiku.skills.agent import SkillToolset
 from haiku.skills.models import Skill
 from haiku.skills.prompts import build_system_prompt
-from haiku.skills.tasks import TaskToolset
 
 try:
     import logfire
@@ -141,7 +140,6 @@ class ChatApp(App):
         skills: list[Skill] | None = None,
         use_entrypoints: bool = False,
         skill_model: str | None = None,
-        tasks: bool = False,
     ) -> None:
         super().__init__()
         self._model = model
@@ -151,7 +149,6 @@ class ChatApp(App):
             use_entrypoints=use_entrypoints,
             skill_model=skill_model,
         )
-        self._task_toolset = TaskToolset() if tasks else None
         self._agent: Agent[None, str] | None = None
         self._messages: list[Any] = []  # AG-UI Message objects
         self._state: dict[str, Any] = {}
@@ -178,16 +175,10 @@ class ChatApp(App):
         )
 
     async def on_mount(self) -> None:
-        toolsets = [self._toolset]
-        if self._task_toolset is not None:
-            toolsets.append(self._task_toolset)
         self._agent = Agent(
             self._model,
-            instructions=build_system_prompt(
-                self._toolset.skill_catalog,
-                with_tasks=self._task_toolset is not None,
-            ),
-            toolsets=toolsets,
+            instructions=build_system_prompt(self._toolset.skill_catalog),
+            toolsets=[self._toolset],
         )
         self._state = self._toolset.build_state_snapshot()
         self.query_one(Input).focus()
@@ -342,18 +333,6 @@ class ChatApp(App):
                 if request:
                     preview = request[:80] + ("…" if len(request) > 80 else "")
                     desc += f": {preview}"
-                widget.update_description(desc)
-        elif tool_name == "create_task":
-            subject = args.get("subject", "")
-            if subject:
-                widget.update_description(f"create_task: {subject}")
-        elif tool_name == "update_task":
-            task_id = args.get("task_id", "")
-            status = args.get("status", "")
-            if task_id:
-                desc = f"update_task #{task_id}"
-                if status:
-                    desc += f" → {status}"
                 widget.update_description(desc)
 
     def action_view_state(self) -> None:
