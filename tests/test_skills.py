@@ -30,6 +30,16 @@ def _make_ctx(state=None):
     return ctx
 
 
+def _make_fetch_response(data: bytes, content_type: str, url: str):
+    """Create a mock trafilatura Response with headers."""
+    from trafilatura.downloads import Response
+
+    response = Response(data=data, status=200, url=url)
+    response.store_headers({"Content-Type": content_type})
+    response.decode_data(True)
+    return response
+
+
 class TestWeb:
     def test_create_skill(self):
         from haiku_skills_web import create_skill
@@ -99,7 +109,10 @@ class TestWeb:
             "<article><p>Pydantic AI is a Python agent framework.</p></article>"
             "</body></html>"
         )
-        monkeypatch.setattr(fp.trafilatura, "fetch_url", lambda url: html)
+        response = _make_fetch_response(
+            html.encode(), "text/html", "https://ai.pydantic.dev/"
+        )
+        monkeypatch.setattr(fp, "fetch_response", lambda *a, **kw: response)
         from haiku_skills_web.scripts.fetch_page import main
 
         result = main("https://ai.pydantic.dev/")
@@ -108,7 +121,7 @@ class TestWeb:
     def test_fetch_page_invalid_url(self, monkeypatch: pytest.MonkeyPatch):
         import haiku_skills_web.scripts.fetch_page as fp
 
-        monkeypatch.setattr(fp.trafilatura, "fetch_url", lambda url: None)
+        monkeypatch.setattr(fp, "fetch_response", lambda *a, **kw: None)
         from haiku_skills_web.scripts.fetch_page import main
 
         result = main("https://invalid.example.com")
@@ -117,17 +130,33 @@ class TestWeb:
     def test_fetch_page_no_content(self, monkeypatch: pytest.MonkeyPatch):
         import haiku_skills_web.scripts.fetch_page as fp
 
-        monkeypatch.setattr(fp.trafilatura, "fetch_url", lambda url: "<html></html>")
+        response = _make_fetch_response(
+            b"<html></html>", "text/html; charset=utf-8", "https://example.com"
+        )
+        monkeypatch.setattr(fp, "fetch_response", lambda *a, **kw: response)
         monkeypatch.setattr(fp, "extract", lambda *a, **kw: None)
         from haiku_skills_web.scripts.fetch_page import main
 
         result = main("https://example.com")
         assert result == "Error: could not extract content from the page."
 
+    def test_fetch_page_plain_text(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_web.scripts.fetch_page as fp
+
+        text = "# README\n\nThis is plain markdown content."
+        response = _make_fetch_response(
+            text.encode(), "text/plain; charset=utf-8", "https://example.com/README.md"
+        )
+        monkeypatch.setattr(fp, "fetch_response", lambda *a, **kw: response)
+        from haiku_skills_web.scripts.fetch_page import main
+
+        result = main("https://example.com/README.md")
+        assert result == text
+
     def test_fetch_page_main_entry(self, monkeypatch: pytest.MonkeyPatch):
         import haiku_skills_web.scripts.fetch_page as fp
 
-        monkeypatch.setattr(fp.trafilatura, "fetch_url", lambda url: None)
+        monkeypatch.setattr(fp, "fetch_response", lambda *a, **kw: None)
         monkeypatch.setattr(
             "sys.argv", ["fetch_page.py", "https://invalid.example.com"]
         )
@@ -143,7 +172,10 @@ class TestWeb:
         import haiku_skills_web.scripts.fetch_page as fp
 
         html = "<html><body><article><p>Test content here.</p></article></body></html>"
-        monkeypatch.setattr(fp.trafilatura, "fetch_url", lambda url: html)
+        response = _make_fetch_response(
+            html.encode(), "text/html", "https://example.com"
+        )
+        monkeypatch.setattr(fp, "fetch_response", lambda *a, **kw: response)
         from haiku_skills_web import WebState, fetch_page
 
         state = WebState()
@@ -156,7 +188,7 @@ class TestWeb:
     def test_fetch_page_tool_error_no_state(self, monkeypatch: pytest.MonkeyPatch):
         import haiku_skills_web.scripts.fetch_page as fp
 
-        monkeypatch.setattr(fp.trafilatura, "fetch_url", lambda url: None)
+        monkeypatch.setattr(fp, "fetch_response", lambda *a, **kw: None)
         from haiku_skills_web import WebState, fetch_page
 
         state = WebState()
