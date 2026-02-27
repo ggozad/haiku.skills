@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Graphiti memory skill** (`haiku-skills-graphiti-memory`): Store, recall, and forget memories using a knowledge graph powered by [Graphiti](https://github.com/getzep/graphiti) and [FalkorDB](https://www.falkordb.com/) — with per-skill state tracking
+
 ### Fixed
 
 - **Ollama base URL handling**: `resolve_model()` now appends `/v1` to `OLLAMA_BASE_URL` instead of expecting it in the env var, consistent with Ollama's convention

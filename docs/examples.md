@@ -183,6 +183,23 @@ Sandboxed Python execution via [pydantic-monty](https://github.com/pydantic/pyda
 uv add haiku-skills-code-execution
 ```
 
+### graphiti-memory
+
+Knowledge graph memory using [Graphiti](https://github.com/getzep/graphiti) and [FalkorDB](https://www.falkordb.com/). Store, recall, and forget facts across conversations.
+
+```bash
+uv add haiku-skills-graphiti-memory
+```
+
+Requires a running FalkorDB instance. Configure via environment variables:
+
+- `FALKORDB_URI` — FalkorDB connection URI (default: `falkor://localhost:6379`)
+- `OLLAMA_BASE_URL` — Ollama API base URL (default: `http://localhost:11434`)
+- `GRAPHITI_LLM_MODEL` — LLM model for graph operations (default: `gpt-oss`)
+- `GRAPHITI_EMBEDDING_MODEL` — Embedding model (default: `qwen3-embedding:4b`)
+- `GRAPHITI_EMBEDDING_DIM` — Embedding dimension (default: `2560`)
+- `GRAPHITI_GROUP_ID` — Graph partition identifier (default: `default`)
+
 For a more elaborate use case involving RAG (retrieval-augmented generation), see the [haiku.rag](https://github.com/ggozad/haiku.rag) project which provides a full RAG skill for haiku.skills.
 
 ## Mixing sources
