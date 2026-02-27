@@ -6,8 +6,12 @@
 
 import sys
 
-import trafilatura
 from trafilatura import extract
+from trafilatura.downloads import fetch_response
+
+
+def _is_html(content_type: str) -> bool:
+    return "html" in content_type or "xml" in content_type
 
 
 def main(url: str) -> str:
@@ -16,11 +20,15 @@ def main(url: str) -> str:
     Args:
         url: The URL of the page to fetch.
     """
-    downloaded = trafilatura.fetch_url(url)
-    if downloaded is None:
+    response = fetch_response(url, with_headers=True, decode=True)
+    if response is None:
         return "Error: could not fetch the page."
 
-    content = extract(downloaded, include_links=True)
+    content_type = (response.headers or {}).get("content-type", "text/html")
+    if not _is_html(content_type):
+        return response.html or "Error: could not decode the response."
+
+    content = extract(response.html, include_links=True)
     if content is None:
         return "Error: could not extract content from the page."
 

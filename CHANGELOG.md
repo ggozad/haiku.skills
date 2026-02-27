@@ -5,6 +5,7 @@
 ### Fixed
 
 - **Ollama base URL handling**: `resolve_model()` now appends `/v1` to `OLLAMA_BASE_URL` instead of expecting it in the env var, consistent with Ollama's convention
+- **Web skill `fetch_page` for non-HTML content**: Pages with non-HTML content types (e.g. plain text, markdown) are now returned directly instead of failing with "could not extract content"
 
 ## [0.5.1] - 2026-02-27
 
