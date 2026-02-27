@@ -2,9 +2,19 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`build_system_prompt()` utility**: Standalone function to build the main agent system prompt from a skill catalog, with optional custom preamble — replaces `SkillToolset.system_prompt` property
+
 ### Changed
 
 - **Entrypoint skill priority**: Skills passed via `skills=` now take priority over entrypoint-discovered skills — entrypoints with the same name are silently skipped instead of raising a duplicate error
+- **Sub-agent request limit**: Increased from 10 to 20 to allow skills with more complex tool chains to complete
+- **Chat TUI tool call display**: Tool call widgets now stream argument updates and show richer descriptions (e.g. `execute_skill → web: search for ...`)
+
+### Removed
+
+- **`SkillToolset.system_prompt`**: Use `build_system_prompt(toolset.skill_catalog)` instead
 
 ## [0.5.0] - 2026-02-25
 

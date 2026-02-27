@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any
 
 from rich.markup import escape
 from textual.containers import Horizontal, VerticalScroll
+from textual.css.query import NoMatches
 from textual.widgets import LoadingIndicator, Markdown, Static
 
 if TYPE_CHECKING:
@@ -67,7 +68,7 @@ class ToolCallWidget(Static):
         try:
             desc = self.query_one("#tool-desc", Static)
             desc.update(text)
-        except Exception:
+        except NoMatches:
             pass
 
     def mark_completed(self) -> None:
@@ -76,7 +77,7 @@ class ToolCallWidget(Static):
             status = self.query_one("#tool-status", Static)
             status.update("✓")
             self.add_class("task-completed")
-        except Exception:
+        except NoMatches:
             pass
 
 
@@ -110,7 +111,7 @@ class ThinkingWidget(Static):
         try:
             label = self.query_one("#thinking-label", Static)
             label.update(text)
-        except Exception:
+        except NoMatches:
             pass
 
 
@@ -238,14 +239,14 @@ class ChatHistory(VerticalScroll):
     async def show_thinking(self, text: str = "Thinking...") -> None:
         try:
             self.query_one("#thinking", ThinkingWidget).update_text(text)
-        except Exception:
+        except NoMatches:
             await self.mount(ThinkingWidget(text, id="thinking"))
         self.scroll_end(animate=False)
 
     def hide_thinking(self) -> None:
         try:
             self.query_one("#thinking", ThinkingWidget).remove()
-        except Exception:
+        except NoMatches:
             pass
 
     async def show_tool_call(self, tool_call_id: str, tool_name: str) -> None:
