@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-02-27
+
 ### Added
 
 - **`build_system_prompt()` utility**: Standalone function to build the main agent system prompt from a skill catalog, with optional custom preamble — replaces `SkillToolset.system_prompt` property
@@ -109,7 +111,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.5.0...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.5.1...HEAD
+[0.5.1]: https://github.com/ggozad/haiku.skills/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/ggozad/haiku.skills/compare/0.4.2...0.5.0
 [0.4.2]: https://github.com/ggozad/haiku.skills/compare/0.4.1...0.4.2
 [0.4.1]: https://github.com/ggozad/haiku.skills/compare/0.4.1...0.4.1
