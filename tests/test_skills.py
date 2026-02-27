@@ -3,7 +3,7 @@
 import io
 import runpy
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from pydantic_ai import RunContext
@@ -309,3 +309,329 @@ class TestCodeExecution:
         runpy.run_path(str(script), run_name="__main__")
 
         assert "result" in captured.getvalue()
+
+
+class TestGraphitiMemory:
+    @pytest.fixture(autouse=True)
+    def _reset_globals(self, monkeypatch: pytest.MonkeyPatch):
+        """Reset module-level singleton state between tests."""
+        import haiku_skills_graphiti_memory as mod
+
+        monkeypatch.setattr(mod, "_client", None)
+        monkeypatch.setattr(mod, "_initialized", False)
+
+    def _mock_client(self) -> AsyncMock:
+        client = AsyncMock()
+        client.build_indices_and_constraints = AsyncMock()
+        client.add_episode = AsyncMock()
+        client.search = AsyncMock(return_value=[])
+        client.driver = MagicMock()
+        return client
+
+    def test_create_skill(self):
+        from haiku_skills_graphiti_memory import create_skill
+
+        skill = create_skill()
+        assert skill.metadata.name == "graphiti-memory"
+        assert (
+            skill.metadata.description
+            == "Store and recall memories using a knowledge graph."
+        )
+        assert skill.source == SkillSource.ENTRYPOINT
+        assert skill.path is not None
+        assert skill.instructions is not None
+        assert skill.state_type is not None
+        assert skill.state_namespace == "graphiti-memory"
+        assert len(skill.tools) == 3
+
+    async def test_remember(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_graphiti_memory as mod
+        from haiku_skills_graphiti_memory import MemoryState, remember
+
+        client = self._mock_client()
+        monkeypatch.setattr(mod, "_get_client", AsyncMock(return_value=client))
+
+        state = MemoryState()
+        ctx = _make_ctx(state)
+        result = await remember(ctx, "Yiorgis likes coffee", name="preference")
+
+        assert "Remembered: Yiorgis likes coffee" in result
+        client.add_episode.assert_called_once()
+        call_kwargs = client.add_episode.call_args.kwargs
+        assert call_kwargs["name"] == "preference"
+        assert call_kwargs["episode_body"] == "Yiorgis likes coffee"
+        assert call_kwargs["source_description"] == "agent observation"
+        assert call_kwargs["group_id"] == "default"
+        assert len(state.memories) == 1
+        assert state.memories[0].name == "preference"
+        assert state.memories[0].content == "Yiorgis likes coffee"
+
+    async def test_remember_error(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_graphiti_memory as mod
+        from haiku_skills_graphiti_memory import MemoryState, remember
+
+        client = self._mock_client()
+        client.add_episode.side_effect = RuntimeError("connection failed")
+        monkeypatch.setattr(mod, "_get_client", AsyncMock(return_value=client))
+
+        state = MemoryState()
+        ctx = _make_ctx(state)
+        result = await remember(ctx, "some fact")
+
+        assert result.startswith("Error:")
+        assert "connection failed" in result
+        assert len(state.memories) == 0
+
+    async def test_recall(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_graphiti_memory as mod
+        from haiku_skills_graphiti_memory import MemoryState, recall
+
+        edge1 = MagicMock()
+        edge1.fact = "Yiorgis likes coffee"
+        edge2 = MagicMock()
+        edge2.fact = "Yiorgis works on haiku.skills"
+
+        client = self._mock_client()
+        client.search = AsyncMock(return_value=[edge1, edge2])
+        monkeypatch.setattr(mod, "_get_client", AsyncMock(return_value=client))
+
+        state = MemoryState()
+        ctx = _make_ctx(state)
+        result = await recall(ctx, "what does Yiorgis like?")
+
+        assert "- Yiorgis likes coffee" in result
+        assert "- Yiorgis works on haiku.skills" in result
+        client.search.assert_called_once()
+        call_kwargs = client.search.call_args.kwargs
+        assert call_kwargs["query"] == "what does Yiorgis like?"
+        assert call_kwargs["group_ids"] == ["default"]
+        assert call_kwargs["num_results"] == 10
+        assert len(state.recalls) == 1
+        assert state.recalls[0].query == "what does Yiorgis like?"
+        assert len(state.recalls[0].facts) == 2
+
+    async def test_recall_no_results(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_graphiti_memory as mod
+        from haiku_skills_graphiti_memory import MemoryState, recall
+
+        client = self._mock_client()
+        client.search = AsyncMock(return_value=[])
+        monkeypatch.setattr(mod, "_get_client", AsyncMock(return_value=client))
+
+        state = MemoryState()
+        ctx = _make_ctx(state)
+        result = await recall(ctx, "nonexistent topic")
+
+        assert result == "No memories found for: nonexistent topic"
+        assert len(state.recalls) == 1
+        assert state.recalls[0].facts == []
+
+    async def test_recall_error(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_graphiti_memory as mod
+        from haiku_skills_graphiti_memory import recall
+
+        client = self._mock_client()
+        client.search.side_effect = RuntimeError("search failed")
+        monkeypatch.setattr(mod, "_get_client", AsyncMock(return_value=client))
+
+        ctx = _make_ctx()
+        result = await recall(ctx, "test")
+
+        assert result.startswith("Error:")
+        assert "search failed" in result
+
+    async def test_forget(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_graphiti_memory as mod
+        from haiku_skills_graphiti_memory import forget
+
+        edge1 = AsyncMock()
+        edge1.fact = "outdated fact 1"
+        edge2 = AsyncMock()
+        edge2.fact = "outdated fact 2"
+
+        client = self._mock_client()
+        client.search = AsyncMock(return_value=[edge1, edge2])
+        monkeypatch.setattr(mod, "_get_client", AsyncMock(return_value=client))
+
+        ctx = _make_ctx()
+        result = await forget(ctx, "outdated info")
+
+        assert "Deleted memories:" in result
+        assert "- outdated fact 1" in result
+        assert "- outdated fact 2" in result
+        edge1.delete.assert_called_once_with(client.driver)
+        edge2.delete.assert_called_once_with(client.driver)
+
+    async def test_forget_no_results(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_graphiti_memory as mod
+        from haiku_skills_graphiti_memory import forget
+
+        client = self._mock_client()
+        client.search = AsyncMock(return_value=[])
+        monkeypatch.setattr(mod, "_get_client", AsyncMock(return_value=client))
+
+        ctx = _make_ctx()
+        result = await forget(ctx, "nothing here")
+
+        assert result == "No matching memories found for: nothing here"
+
+    async def test_forget_error(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_graphiti_memory as mod
+        from haiku_skills_graphiti_memory import forget
+
+        client = self._mock_client()
+        client.search.side_effect = RuntimeError("search failed")
+        monkeypatch.setattr(mod, "_get_client", AsyncMock(return_value=client))
+
+        ctx = _make_ctx()
+        result = await forget(ctx, "test")
+
+        assert result.startswith("Error:")
+        assert "search failed" in result
+
+    async def test_get_client_lazy_init(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_graphiti_memory as mod
+
+        monkeypatch.delenv("GRAPHITI_GROUP_ID", raising=False)
+
+        mock_driver_cls = MagicMock()
+        mock_graphiti_cls = MagicMock()
+        mock_client = AsyncMock()
+        mock_graphiti_cls.return_value = mock_client
+
+        import graphiti_core
+        import graphiti_core.driver.falkordb_driver as falkor_mod
+
+        monkeypatch.setattr(graphiti_core, "Graphiti", mock_graphiti_cls)
+        monkeypatch.setattr(falkor_mod, "FalkorDriver", mock_driver_cls)
+        monkeypatch.setattr(mod, "_build_llm_client", lambda: "llm")
+        monkeypatch.setattr(mod, "_build_embedder", lambda: "embedder")
+        monkeypatch.setattr(mod, "_build_cross_encoder", lambda: "cross_encoder")
+
+        client1 = await mod._get_client()
+        client2 = await mod._get_client()
+
+        assert client1 is client2
+        mock_graphiti_cls.assert_called_once()
+        call_kwargs = mock_graphiti_cls.call_args.kwargs
+        assert call_kwargs["llm_client"] == "llm"
+        assert call_kwargs["embedder"] == "embedder"
+        assert call_kwargs["cross_encoder"] == "cross_encoder"
+        assert mock_driver_cls.call_args.kwargs["database"] == "default"
+        mock_client.build_indices_and_constraints.assert_called_once()
+
+    async def test_get_client_env_vars(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_graphiti_memory as mod
+
+        monkeypatch.setenv("FALKORDB_URI", "falkor://myuser:mypass@myhost:1234")
+        monkeypatch.setenv("GRAPHITI_GROUP_ID", "my-tenant")
+
+        mock_driver_cls = MagicMock()
+        mock_graphiti_cls = MagicMock()
+        mock_client = AsyncMock()
+        mock_graphiti_cls.return_value = mock_client
+
+        import graphiti_core
+        import graphiti_core.driver.falkordb_driver as falkor_mod
+
+        monkeypatch.setattr(graphiti_core, "Graphiti", mock_graphiti_cls)
+        monkeypatch.setattr(falkor_mod, "FalkorDriver", mock_driver_cls)
+        monkeypatch.setattr(mod, "_build_llm_client", lambda: "llm")
+        monkeypatch.setattr(mod, "_build_embedder", lambda: "embedder")
+        monkeypatch.setattr(mod, "_build_cross_encoder", lambda: "cross_encoder")
+
+        await mod._get_client()
+
+        driver_kwargs = mock_driver_cls.call_args.kwargs
+        assert driver_kwargs["host"] == "myhost"
+        assert driver_kwargs["port"] == 1234
+        assert driver_kwargs["username"] == "myuser"
+        assert driver_kwargs["password"] == "mypass"
+        assert driver_kwargs["database"] == "my-tenant"
+
+    def test_build_llm_client_defaults(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.delenv("OLLAMA_BASE_URL", raising=False)
+        monkeypatch.delenv("GRAPHITI_LLM_MODEL", raising=False)
+        monkeypatch.delenv("GRAPHITI_SMALL_LLM_MODEL", raising=False)
+
+        from haiku_skills_graphiti_memory import _build_llm_client
+
+        client = _build_llm_client()
+        assert client.config.model == "gpt-oss"
+        assert client.config.small_model == "gpt-oss"
+        assert client.config.base_url == "http://localhost:11434/v1"
+
+    def test_build_llm_client_env_vars(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("OLLAMA_BASE_URL", "http://myhost:9999")
+        monkeypatch.setenv("GRAPHITI_LLM_MODEL", "llama3")
+        monkeypatch.setenv("GRAPHITI_SMALL_LLM_MODEL", "llama3-small")
+
+        from haiku_skills_graphiti_memory import _build_llm_client
+
+        client = _build_llm_client()
+        assert client.config.model == "llama3"
+        assert client.config.small_model == "llama3-small"
+        assert client.config.base_url == "http://myhost:9999/v1"
+
+    def test_build_embedder_defaults(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.delenv("OLLAMA_BASE_URL", raising=False)
+        monkeypatch.delenv("GRAPHITI_EMBEDDING_MODEL", raising=False)
+        monkeypatch.delenv("GRAPHITI_EMBEDDING_DIM", raising=False)
+
+        from haiku_skills_graphiti_memory import _build_embedder
+
+        embedder = _build_embedder()
+        assert embedder.config.embedding_model == "qwen3-embedding:4b"
+        assert embedder.config.embedding_dim == 2560
+        assert embedder.config.base_url == "http://localhost:11434/v1"
+
+    def test_build_embedder_env_vars(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("OLLAMA_BASE_URL", "http://myhost:9999")
+        monkeypatch.setenv("GRAPHITI_EMBEDDING_MODEL", "nomic-embed-text")
+        monkeypatch.setenv("GRAPHITI_EMBEDDING_DIM", "768")
+
+        from haiku_skills_graphiti_memory import _build_embedder
+
+        embedder = _build_embedder()
+        assert embedder.config.embedding_model == "nomic-embed-text"
+        assert embedder.config.embedding_dim == 768
+        assert embedder.config.base_url == "http://myhost:9999/v1"
+
+    def test_build_cross_encoder(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.delenv("OLLAMA_BASE_URL", raising=False)
+        monkeypatch.delenv("GRAPHITI_LLM_MODEL", raising=False)
+        monkeypatch.delenv("GRAPHITI_SMALL_LLM_MODEL", raising=False)
+
+        from haiku_skills_graphiti_memory import _build_cross_encoder
+
+        cross_encoder = _build_cross_encoder()
+        assert cross_encoder.config.model == "gpt-oss"
+
+    def test_parse_falkordb_uri(self):
+        from haiku_skills_graphiti_memory import _parse_falkordb_uri
+
+        result = _parse_falkordb_uri("falkor://localhost:6379")
+        assert result == {"host": "localhost", "port": 6379}
+
+        result = _parse_falkordb_uri("falkor://user:pass@host:1234")
+        assert result == {
+            "host": "host",
+            "port": 1234,
+            "username": "user",
+            "password": "pass",
+        }
+
+        result = _parse_falkordb_uri("falkor://host:9999")
+        assert result == {"host": "host", "port": 9999}
+
+    def test_get_group_id_default(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.delenv("GRAPHITI_GROUP_ID", raising=False)
+        from haiku_skills_graphiti_memory import _get_group_id
+
+        assert _get_group_id() == "default"
+
+    def test_get_group_id_from_env(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("GRAPHITI_GROUP_ID", "my-tenant")
+        from haiku_skills_graphiti_memory import _get_group_id
+
+        assert _get_group_id() == "my-tenant"
