@@ -23,7 +23,7 @@ def _summarize_delta(delta: list[dict[str, Any]]) -> str:
     """Summarize JSON patch operations into a compact Rich-markup description."""
     parts = []
     for op in delta:
-        path = escape(op.get("path", ""))
+        path = escape(op.get("path", "").replace("~1", "/").replace("~0", "~"))
         action = op.get("op", "?")
         color = _OP_COLORS.get(action, "white")
         parts.append(f"[{color}]{action}[/{color}] {path}")

@@ -345,6 +345,6 @@ class ChatApp(App):
 
     async def action_clear_chat(self) -> None:
         self._messages = []
-        self._state = {}
+        self._state = self._toolset.build_state_snapshot()
         chat_history = self.query_one(ChatHistory)
         await chat_history.clear_messages()
