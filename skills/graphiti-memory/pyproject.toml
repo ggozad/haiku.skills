@@ -1,0 +1,16 @@
+[project]
+name = "haiku-skills-graphiti-memory"
+version = "0.1.0"
+description = "Knowledge graph memory skill for haiku.skills using Graphiti and FalkorDB"
+requires-python = ">=3.13"
+dependencies = ["haiku.skills>=0.1.0", "graphiti-core[falkordb]"]
+
+[project.entry-points."haiku.skills"]
+graphiti-memory = "haiku_skills_graphiti_memory:create_skill"
+
+[tool.uv.sources]
+haiku-skills = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

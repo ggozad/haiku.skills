@@ -82,6 +82,7 @@ dev = [
     "haiku-skills-web",
     "haiku-skills-image-generation",
     "haiku-skills-code-execution",
+    "haiku-skills-graphiti-memory",
     "ag-ui-protocol>=0.1.13",
     "jsonpatch>=1.33",
     "mkdocs>=1.6.1,<2.0.0",
@@ -110,6 +111,7 @@ line-ending = "auto"
 haiku-skills-web = { workspace = true }
 haiku-skills-image-generation = { workspace = true }
 haiku-skills-code-execution = { workspace = true }
+haiku-skills-graphiti-memory = { workspace = true }
 
 
 [tool.uv.workspace]
@@ -132,7 +134,7 @@ source = [
     "skills/web/haiku_skills_web",
     "skills/image-generation/haiku_skills_image_generation",
     "skills/code-execution/haiku_skills_code_execution",
-
+    "skills/graphiti-memory/haiku_skills_graphiti_memory",
 ]
 omit = ["haiku/skills/chat/*", "haiku/skills/cli.py"]
 
