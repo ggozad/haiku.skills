@@ -1,14 +1,31 @@
 import asyncio
+import json
 import os
 import shlex
 import sys
-from collections.abc import Callable
+import uuid
+from collections.abc import AsyncIterable, Awaitable, Callable
 from pathlib import Path
 from typing import Any
 
+from ag_ui.core import (
+    BaseEvent,
+    EventType,
+    ToolCallArgsEvent,
+    ToolCallEndEvent,
+    ToolCallResultEvent,
+    ToolCallStartEvent,
+)
 from pydantic import BaseModel
 from pydantic_ai import Agent, RunContext, ToolReturn, UsageLimits
-from pydantic_ai.messages import ModelMessage, ModelRequest, ToolReturnPart
+from pydantic_ai.messages import (
+    AgentStreamEvent,
+    FunctionToolCallEvent,
+    FunctionToolResultEvent,
+    ModelMessage,
+    ModelRequest,
+    ToolReturnPart,
+)
 from pydantic_ai.models import Model
 from pydantic_ai.toolsets import FunctionToolset, ToolsetTool
 
@@ -53,6 +70,52 @@ def _last_tool_result(messages: list[ModelMessage]) -> str | None:
                 if isinstance(part, ToolReturnPart):
                     return part.model_response_str()
     return None
+
+
+def _events_to_agui(skill_name: str, events: list[Any]) -> list[BaseEvent]:
+    """Convert pydantic-ai tool events to AG-UI events.
+
+    Args:
+        skill_name: Skill name used to prefix tool call IDs.
+        events: List of FunctionToolCallEvent/FunctionToolResultEvent.
+    """
+    result: list[BaseEvent] = []
+    for event in events:
+        if isinstance(event, FunctionToolCallEvent):
+            tool_call_id = f"{skill_name}:{event.tool_call_id}"
+            args = event.part.args
+            args_str = args if isinstance(args, str) else json.dumps(args or {})
+            result.append(
+                ToolCallStartEvent(
+                    type=EventType.TOOL_CALL_START,
+                    tool_call_id=tool_call_id,
+                    tool_call_name=event.part.tool_name,
+                )
+            )
+            result.append(
+                ToolCallArgsEvent(
+                    type=EventType.TOOL_CALL_ARGS,
+                    tool_call_id=tool_call_id,
+                    delta=args_str,
+                )
+            )
+            result.append(
+                ToolCallEndEvent(
+                    type=EventType.TOOL_CALL_END,
+                    tool_call_id=tool_call_id,
+                )
+            )
+        elif isinstance(event, FunctionToolResultEvent):
+            tool_call_id = f"{skill_name}:{event.tool_call_id}"
+            result.append(
+                ToolCallResultEvent(
+                    type=EventType.TOOL_CALL_RESULT,
+                    tool_call_id=tool_call_id,
+                    message_id=str(uuid.uuid4()),
+                    content=event.result.model_response_str(),
+                )
+            )
+    return result
 
 
 def _create_read_resource(skill: Skill) -> Callable[..., Any]:
@@ -126,7 +189,8 @@ async def _run_skill(
     skill: Skill,
     request: str,
     state: BaseModel | None = None,
-) -> str:
+    event_sink: Callable[[BaseEvent], Awaitable[None]] | None = None,
+) -> tuple[str, list[Any]]:
     instructions = skill.instructions or "No specific instructions."
     resource_section = ""
     scripts_section = ""
@@ -162,8 +226,24 @@ async def _run_skill(
         resource_section=resource_section,
         scripts_section=scripts_section,
     )
-    deps = SkillRunDeps(state=state) if state else None
-    agent = Agent[SkillRunDeps | None, str](
+
+    collected_events: list[Any] = []
+    skill_name = skill.metadata.name
+
+    async def event_handler(
+        ctx: RunContext[SkillRunDeps],
+        events: AsyncIterable[AgentStreamEvent],
+    ) -> None:
+        async for event in events:
+            if isinstance(event, (FunctionToolCallEvent, FunctionToolResultEvent)):
+                if event_sink is not None:
+                    for agui_event in _events_to_agui(skill_name, [event]):
+                        await event_sink(agui_event)
+                else:
+                    collected_events.append(event)
+
+    deps = SkillRunDeps(state=state)
+    agent = Agent[SkillRunDeps, str](
         model,
         system_prompt=system_prompt,
         tools=tools,
@@ -173,8 +253,10 @@ async def _run_skill(
         request,
         deps=deps,
         usage_limits=UsageLimits(request_limit=20),
+        event_stream_handler=event_handler,
     )
-    return _last_tool_result(result.all_messages()) or result.output
+    text = _last_tool_result(result.all_messages()) or result.output
+    return text, collected_events
 
 
 class SkillToolset(FunctionToolset[Any]):
@@ -193,6 +275,7 @@ class SkillToolset(FunctionToolset[Any]):
         self._namespaces: dict[str, BaseModel] = {}
         self._last_restored_state: dict[str, Any] | None = None
         self._skill_model = skill_model
+        self._event_sink: Callable[[BaseEvent], Awaitable[None]] | None = None
         if skills:
             for skill in skills:
                 self._registry.register(skill)
@@ -313,15 +396,112 @@ class SkillToolset(FunctionToolset[Any]):
                 else None
             )
 
+            event_sink = self._event_sink
+
             try:
-                result = await _run_skill(skill_model, skill, request, state=state)
+                result, collected_events = await _run_skill(
+                    skill_model, skill, request, state=state, event_sink=event_sink
+                )
             except Exception as e:
                 return f"Error: {e}"
+
+            metadata: list[BaseEvent] = []
+            if not event_sink:
+                metadata.extend(_events_to_agui(skill.metadata.name, collected_events))
 
             if old_snapshot is not None and namespace and state:
                 new_snapshot = {namespace: state.model_dump(mode="json")}
                 delta = compute_state_delta(old_snapshot, new_snapshot)
                 if delta is not None:
-                    return ToolReturn(return_value=result, metadata=[delta])
+                    metadata.append(delta)
 
+            if metadata:
+                return ToolReturn(return_value=result, metadata=metadata)
             return result
+
+
+class AguiEventStream:
+    """Merges main-agent and sub-agent AG-UI events into a single stream.
+
+    Use as an async context manager + async iterator::
+
+        async with run_agui_stream(toolset, adapter) as stream:
+            async for event in stream:
+                ...
+
+    The context manager ensures the event sink is properly cleaned up,
+    even if the consumer breaks early.
+    """
+
+    def __init__(
+        self,
+        toolset: SkillToolset,
+        adapter: Any,
+        **run_kwargs: Any,
+    ) -> None:
+        self._toolset = toolset
+        self._adapter = adapter
+        self._run_kwargs = run_kwargs
+        self._queue: asyncio.Queue[BaseEvent | None] = asyncio.Queue()
+        self._task: asyncio.Task[None] | None = None
+
+    async def __aenter__(self) -> "AguiEventStream":
+        async def event_sink(event: BaseEvent) -> None:
+            self._queue.put_nowait(event)
+
+        self._toolset._event_sink = event_sink
+
+        async def run_adapter() -> None:
+            try:
+                async for event in self._adapter.run_stream(**self._run_kwargs):
+                    if isinstance(event, BaseEvent):
+                        self._queue.put_nowait(event)
+            finally:
+                self._toolset._event_sink = None
+                self._queue.put_nowait(None)
+
+        self._task = asyncio.create_task(run_adapter())
+        return self
+
+    async def __aexit__(self, *exc_info: Any) -> None:
+        self._toolset._event_sink = None
+        if self._task is not None and not self._task.done():
+            self._task.cancel()
+            try:
+                await self._task
+            except asyncio.CancelledError:
+                pass
+
+    def __aiter__(self) -> "AguiEventStream":
+        return self
+
+    async def __anext__(self) -> BaseEvent:
+        event = await self._queue.get()
+        if event is None:
+            raise StopAsyncIteration
+        return event
+
+
+def run_agui_stream(
+    toolset: SkillToolset,
+    adapter: Any,
+    **run_kwargs: Any,
+) -> AguiEventStream:
+    """Stream AG-UI events with real-time sub-agent tool events.
+
+    Wraps ``adapter.run_stream()`` and merges main-agent events with
+    sub-agent tool events (search, fetch, etc.) that would otherwise
+    be batched until ``execute_skill`` returns.
+
+    Use as an async context manager::
+
+        async with run_agui_stream(toolset, adapter) as stream:
+            async for event in stream:
+                ...
+
+    Args:
+        toolset: The SkillToolset whose sub-agents should stream events.
+        adapter: An AGUIAdapter instance.
+        **run_kwargs: Forwarded to ``adapter.run_stream()``.
+    """
+    return AguiEventStream(toolset, adapter, **run_kwargs)

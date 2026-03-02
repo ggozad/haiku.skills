@@ -1,11 +1,27 @@
 import os
+from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
 import pytest
+from ag_ui.core import (
+    BaseEvent,
+    EventType,
+    ToolCallArgsEvent,
+    ToolCallEndEvent,
+    ToolCallResultEvent,
+    ToolCallStartEvent,
+)
 from pydantic import BaseModel
 from pydantic_ai import Agent, RunContext
+from pydantic_ai.messages import (
+    FunctionToolCallEvent,
+    FunctionToolResultEvent,
+    ModelRequest,
+    ToolCallPart,
+    ToolReturnPart,
+)
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.result import RunUsage
 from pydantic_ai.toolsets.function import FunctionToolset
@@ -15,9 +31,11 @@ from haiku.skills.agent import (
     SkillToolset,
     _create_read_resource,
     _create_run_script,
+    _events_to_agui,
     _last_tool_result,
     _run_skill,
     resolve_model,
+    run_agui_stream,
 )
 from haiku.skills.models import (
     Skill,
@@ -108,8 +126,11 @@ class TestRunSkill:
         toolset = SkillToolset(skill_paths=[FIXTURES])
         skill = toolset.registry.get("simple-skill")
         assert skill is not None
-        result = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
+        result, events = await _run_skill(
+            TestModel(call_tools=[]), skill, "Do something."
+        )
         assert result
+        assert events == []
 
     async def test_run_skill_with_tools(self, allow_model_requests: None):
         def greet(name: str) -> str:
@@ -123,8 +144,13 @@ class TestRunSkill:
             instructions="Use the greet tool.",
             tools=[greet],
         )
-        result = await _run_skill(TestModel(), skill, "Greet Alice.")
+        result, events = await _run_skill(TestModel(), skill, "Greet Alice.")
         assert result
+        assert len(events) >= 2
+        call_events = [e for e in events if isinstance(e, FunctionToolCallEvent)]
+        result_events = [e for e in events if isinstance(e, FunctionToolResultEvent)]
+        assert len(call_events) >= 1
+        assert len(result_events) >= 1
 
     async def test_run_skill_with_toolsets(self, allow_model_requests: None):
         def greet(name: str) -> str:
@@ -140,8 +166,36 @@ class TestRunSkill:
             instructions="Use the greet toolset.",
             toolsets=[toolset],
         )
-        result = await _run_skill(TestModel(), skill, "Greet Alice.")
+        result, events = await _run_skill(TestModel(), skill, "Greet Alice.")
         assert result
+        assert len(events) >= 2
+
+    async def test_run_skill_with_event_sink(self, allow_model_requests: None):
+        """When event_sink is provided, events stream through sink, collected_events empty."""
+        sinked: list[Any] = []
+
+        async def sink(event: Any) -> None:
+            sinked.append(event)
+
+        def greet(name: str) -> str:
+            """Greet someone by name."""
+            return f"Hello, {name}!"
+
+        meta = SkillMetadata(name="greeter", description="Greets people.")
+        skill = Skill(
+            metadata=meta,
+            source=SkillSource.FILESYSTEM,
+            instructions="Use the greet tool.",
+            tools=[greet],
+        )
+        result, collected = await _run_skill(
+            TestModel(), skill, "Greet Alice.", event_sink=sink
+        )
+        assert result
+        assert collected == []
+        assert len(sinked) >= 2
+        assert any(isinstance(e, ToolCallStartEvent) for e in sinked)
+        assert any(isinstance(e, ToolCallResultEvent) for e in sinked)
 
 
 class TestLastToolResult:
@@ -149,7 +203,7 @@ class TestLastToolResult:
         assert _last_tool_result([]) is None
 
     def test_returns_none_when_no_tool_returns(self):
-        from pydantic_ai.messages import ModelRequest, UserPromptPart
+        from pydantic_ai.messages import UserPromptPart
 
         messages = [ModelRequest(parts=[UserPromptPart(content="hello")])]
         assert _last_tool_result(messages) is None
@@ -233,7 +287,7 @@ class TestRunSkillWithResources:
             instructions="Use references.",
             resources=["references/REFERENCE.md", "assets/template.txt"],
         )
-        result = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
+        result, _ = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
         assert result
 
     async def test_no_resources_no_section(self, allow_model_requests: None):
@@ -242,7 +296,7 @@ class TestRunSkillWithResources:
             source=SkillSource.ENTRYPOINT,
             instructions="Do things.",
         )
-        result = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
+        result, _ = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
         assert result
 
 
@@ -290,7 +344,6 @@ class TestAgent:
         self, monkeypatch: pytest.MonkeyPatch, allow_model_requests: None
     ):
         """Exception during _run_skill returns an error string."""
-        from pydantic_ai.messages import ModelRequest, ToolReturnPart
 
         def exploding_tool() -> str:
             """Always raises."""
@@ -576,7 +629,7 @@ class TestRunSkillWithState:
         assert captured_deps[0].state is state
 
     async def test_run_skill_without_state(self, allow_model_requests: None):
-        """Without state, deps is None."""
+        """Without state, deps has state=None."""
         captured_deps: list[SkillRunDeps | None] = []
 
         def capture_tool(ctx: RunContext[SkillRunDeps | None]) -> str:
@@ -592,7 +645,205 @@ class TestRunSkillWithState:
         )
         await _run_skill(TestModel(), skill, "Do it.")
         assert len(captured_deps) == 1
-        assert captured_deps[0] is None
+        assert captured_deps[0] is not None
+        assert captured_deps[0].state is None
+
+
+class TestExecuteSkillEvents:
+    async def test_tool_events_in_metadata(self, allow_model_requests: None):
+        """execute_skill returns ToolReturn with AG-UI tool events in metadata."""
+
+        def greet(name: str) -> str:
+            """Greet someone."""
+            return f"Hello, {name}!"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Greets."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use greet tool.",
+            tools=[greet],
+        )
+        toolset = SkillToolset(skills=[skill])
+        agent = Agent(
+            TestModel(),
+            instructions=build_system_prompt(toolset.skill_catalog),
+            toolsets=[toolset],
+        )
+        result = await agent.run("Greet someone.")
+        tool_returns = [
+            part
+            for msg in result.all_messages()
+            if isinstance(msg, ModelRequest)
+            for part in msg.parts
+            if isinstance(part, ToolReturnPart)
+        ]
+        has_agui_events = any(
+            isinstance(ev, (ToolCallStartEvent, ToolCallResultEvent))
+            for tr in tool_returns
+            if tr.metadata
+            for ev in tr.metadata
+        )
+        assert has_agui_events
+
+    async def test_no_tool_events_without_sub_tools(self, allow_model_requests: None):
+        """Skills without tools produce no AG-UI tool events in metadata."""
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Plain skill."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do things.",
+        )
+        toolset = SkillToolset(skills=[skill])
+        agent = Agent(
+            TestModel(),
+            instructions=build_system_prompt(toolset.skill_catalog),
+            toolsets=[toolset],
+        )
+        result = await agent.run("Do something.")
+        assert result.output
+        tool_returns = [
+            part
+            for msg in result.all_messages()
+            if isinstance(msg, ModelRequest)
+            for part in msg.parts
+            if isinstance(part, ToolReturnPart)
+        ]
+        has_agui_events = any(
+            isinstance(ev, (ToolCallStartEvent, ToolCallResultEvent))
+            for tr in tool_returns
+            if tr.metadata
+            for ev in tr.metadata
+        )
+        assert not has_agui_events
+
+    async def test_events_and_state_delta_in_metadata(self, allow_model_requests: None):
+        """Both AG-UI tool events and StateDeltaEvent in metadata."""
+        from ag_ui.core import StateDeltaEvent
+
+        def modify_state(ctx: RunContext[SkillRunDeps]) -> str:
+            """Modify state."""
+            assert isinstance(ctx.deps.state, CounterState)
+            ctx.deps.state.count += 1
+            return "incremented"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Counts."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use modify_state.",
+            tools=[modify_state],
+            state_type=CounterState,
+            state_namespace="ns.counter",
+        )
+        toolset = SkillToolset(skills=[skill])
+        agent = Agent(
+            TestModel(),
+            instructions=build_system_prompt(toolset.skill_catalog),
+            toolsets=[toolset],
+        )
+        result = await agent.run("Count.")
+        tool_returns = [
+            part
+            for msg in result.all_messages()
+            if isinstance(msg, ModelRequest)
+            for part in msg.parts
+            if isinstance(part, ToolReturnPart) and part.metadata
+        ]
+        assert tool_returns
+        metadata = tool_returns[0].metadata
+        assert metadata is not None
+        has_tool_events = any(isinstance(ev, ToolCallStartEvent) for ev in metadata)
+        has_delta = any(isinstance(ev, StateDeltaEvent) for ev in metadata)
+        assert has_tool_events
+        assert has_delta
+
+    async def test_sink_skips_tool_events_in_metadata(self, allow_model_requests: None):
+        """With _event_sink set, tool events go through sink, not metadata."""
+        sinked: list[Any] = []
+
+        async def sink(event: Any) -> None:
+            sinked.append(event)
+
+        def greet(name: str) -> str:
+            """Greet someone."""
+            return f"Hello, {name}!"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Greets."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use greet tool.",
+            tools=[greet],
+        )
+        toolset = SkillToolset(skills=[skill])
+        toolset._event_sink = sink
+        agent = Agent(
+            TestModel(),
+            instructions=build_system_prompt(toolset.skill_catalog),
+            toolsets=[toolset],
+        )
+        result = await agent.run("Greet someone.")
+        tool_returns = [
+            part
+            for msg in result.all_messages()
+            if isinstance(msg, ModelRequest)
+            for part in msg.parts
+            if isinstance(part, ToolReturnPart)
+        ]
+        has_agui_tool_events = any(
+            isinstance(ev, (ToolCallStartEvent, ToolCallResultEvent))
+            for tr in tool_returns
+            if tr.metadata
+            for ev in tr.metadata
+        )
+        assert not has_agui_tool_events
+        assert len(sinked) >= 2
+        assert any(isinstance(e, ToolCallStartEvent) for e in sinked)
+
+    async def test_sink_preserves_state_delta_in_metadata(
+        self, allow_model_requests: None
+    ):
+        """With _event_sink set, StateDeltaEvent still appears in metadata."""
+        from ag_ui.core import StateDeltaEvent
+
+        sinked: list[Any] = []
+
+        async def sink(event: Any) -> None:
+            sinked.append(event)
+
+        def modify_state(ctx: RunContext[SkillRunDeps]) -> str:
+            """Modify state."""
+            assert isinstance(ctx.deps.state, CounterState)
+            ctx.deps.state.count += 1
+            return "incremented"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Counts."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use modify_state.",
+            tools=[modify_state],
+            state_type=CounterState,
+            state_namespace="ns.counter",
+        )
+        toolset = SkillToolset(skills=[skill])
+        toolset._event_sink = sink
+        agent = Agent(
+            TestModel(),
+            instructions=build_system_prompt(toolset.skill_catalog),
+            toolsets=[toolset],
+        )
+        result = await agent.run("Count.")
+        tool_returns = [
+            part
+            for msg in result.all_messages()
+            if isinstance(msg, ModelRequest)
+            for part in msg.parts
+            if isinstance(part, ToolReturnPart) and part.metadata
+        ]
+        assert tool_returns
+        metadata = tool_returns[0].metadata
+        assert metadata is not None
+        has_delta = any(isinstance(ev, StateDeltaEvent) for ev in metadata)
+        assert has_delta
+        has_tool_events = any(isinstance(ev, ToolCallStartEvent) for ev in metadata)
+        assert not has_tool_events
 
 
 class TestExecuteSkillWithState:
@@ -1021,7 +1272,7 @@ class TestCreateRunScript:
             path=tmp_path,
             instructions="Use scripts.",
         )
-        result = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
+        result, _ = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
         assert result
         # Verify all script types appear in the prompt by checking
         # via the skill prompt construction path
@@ -1050,7 +1301,7 @@ class TestRunSkillWithScripts:
             path=tmp_path,
             instructions="Use scripts.",
         )
-        result = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
+        result, _ = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
         assert result
 
     async def test_no_run_script_without_scripts_dir(self, allow_model_requests: None):
@@ -1059,10 +1310,203 @@ class TestRunSkillWithScripts:
             source=SkillSource.ENTRYPOINT,
             instructions="Do things.",
         )
-        result = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
+        result, _ = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
         assert result
+
+
+class TestEventsToAgui:
+    def test_empty_events(self):
+        assert _events_to_agui("skill", []) == []
+
+    def test_converts_tool_call_event(self):
+        part = ToolCallPart(
+            tool_name="search", args='{"query": "test"}', tool_call_id="call-1"
+        )
+        event = FunctionToolCallEvent(part=part)
+
+        result = _events_to_agui("web", [event])
+        assert len(result) == 3
+
+        assert isinstance(result[0], ToolCallStartEvent)
+        assert result[0].tool_call_id == "web:call-1"
+        assert result[0].tool_call_name == "search"
+
+        assert isinstance(result[1], ToolCallArgsEvent)
+        assert result[1].tool_call_id == "web:call-1"
+        assert result[1].delta == '{"query": "test"}'
+
+        assert isinstance(result[2], ToolCallEndEvent)
+        assert result[2].tool_call_id == "web:call-1"
+
+    def test_converts_tool_result_event(self):
+        result_part = ToolReturnPart(
+            tool_call_id="call-1", tool_name="search", content="results"
+        )
+        event = FunctionToolResultEvent(result=result_part)
+
+        result = _events_to_agui("web", [event])
+        assert len(result) == 1
+
+        assert isinstance(result[0], ToolCallResultEvent)
+        assert result[0].tool_call_id == "web:call-1"
+        assert result[0].content == "results"
+
+    def test_mixed_events(self):
+        part = ToolCallPart(tool_name="search", args="{}", tool_call_id="call-1")
+        call_event = FunctionToolCallEvent(part=part)
+        result_part = ToolReturnPart(
+            tool_call_id="call-1", tool_name="search", content="results"
+        )
+        result_event = FunctionToolResultEvent(result=result_part)
+
+        result = _events_to_agui("web", [call_event, result_event])
+        assert len(result) == 4  # 3 from call + 1 from result
+
+    def test_dict_args_serialized_to_json(self):
+        """Dict args are serialized to JSON string."""
+        part = ToolCallPart(
+            tool_name="search", args={"query": "test"}, tool_call_id="call-1"
+        )
+        event = FunctionToolCallEvent(part=part)
+
+        result = _events_to_agui("web", [event])
+        assert isinstance(result[1], ToolCallArgsEvent)
+        assert result[1].delta == '{"query": "test"}'
+
+    def test_none_args_serialized_to_empty_object(self):
+        """None args are serialized to empty JSON object."""
+        part = ToolCallPart(tool_name="search", args=None, tool_call_id="call-1")
+        event = FunctionToolCallEvent(part=part)
+
+        result = _events_to_agui("web", [event])
+        assert isinstance(result[1], ToolCallArgsEvent)
+        assert result[1].delta == "{}"
+
+    def test_ignores_other_event_types(self):
+        """Non-tool events are skipped."""
+        result = _events_to_agui("skill", ["not_an_event", 42])
+        assert result == []
 
 
 class TestPromptScriptsSection:
     def test_prompt_has_scripts_placeholder(self):
         assert "{scripts_section}" in SKILL_PROMPT
+
+
+class TestRunAguiStream:
+    async def test_yields_adapter_events(self):
+        """Events from adapter.run_stream() are yielded."""
+        event = ToolCallStartEvent(
+            type=EventType.TOOL_CALL_START,
+            tool_call_id="t1",
+            tool_call_name="test",
+        )
+
+        class FakeAdapter:
+            async def run_stream(self, **kwargs: Any) -> AsyncIterator[BaseEvent]:
+                yield event
+
+        toolset = SkillToolset()
+        collected = []
+        async with run_agui_stream(toolset, FakeAdapter()) as stream:
+            async for e in stream:
+                collected.append(e)
+        assert collected == [event]
+
+    async def test_yields_sink_events(self, allow_model_requests: None):
+        """Sub-agent tool events stream through the sink in real-time."""
+
+        def greet(name: str) -> str:
+            """Greet someone."""
+            return f"Hello, {name}!"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Greets."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use greet tool.",
+            tools=[greet],
+        )
+        toolset = SkillToolset(skills=[skill])
+        agent = Agent(
+            TestModel(),
+            instructions=build_system_prompt(toolset.skill_catalog),
+            toolsets=[toolset],
+        )
+        from pydantic_ai.ag_ui import AGUIAdapter
+
+        run_input = _make_run_input("Greet someone.")
+        adapter = AGUIAdapter(agent=agent, run_input=run_input)
+        events = []
+        async with run_agui_stream(toolset, adapter) as stream:
+            async for e in stream:
+                events.append(e)
+        sub_tool_events = [
+            e
+            for e in events
+            if isinstance(e, ToolCallStartEvent) and e.tool_call_name != "execute_skill"
+        ]
+        assert len(sub_tool_events) >= 1
+
+    async def test_clears_sink_after_stream(self):
+        """Sink is cleared after the stream completes."""
+
+        class FakeAdapter:
+            async def run_stream(self, **kwargs: Any) -> AsyncIterator[BaseEvent]:
+                if False:
+                    yield
+
+        toolset = SkillToolset()
+        async with run_agui_stream(toolset, FakeAdapter()) as stream:
+            async for _ in stream:
+                pass
+        assert toolset._event_sink is None
+
+    async def test_clears_sink_on_early_break(self):
+        """Sink is cleared and adapter task cancelled when consumer breaks early."""
+        import asyncio
+
+        adapter_started = asyncio.Event()
+
+        class FakeAdapter:
+            async def run_stream(self, **kwargs: Any) -> AsyncIterator[BaseEvent]:
+                adapter_started.set()
+                await asyncio.sleep(999)
+                yield
+
+        toolset = SkillToolset()
+
+        async def push_after_start() -> None:
+            await adapter_started.wait()
+            assert toolset._event_sink is not None
+            await toolset._event_sink(
+                ToolCallStartEvent(
+                    type=EventType.TOOL_CALL_START,
+                    tool_call_id="t1",
+                    tool_call_name="test",
+                )
+            )
+
+        asyncio.create_task(push_after_start())
+        async with run_agui_stream(toolset, FakeAdapter()) as stream:
+            async for _ in stream:
+                break
+        assert toolset._event_sink is None
+
+
+def _make_run_input(message: str) -> Any:
+    """Create a minimal RunAgentInput for testing."""
+    import uuid
+
+    from ag_ui.core import RunAgentInput, UserMessage
+
+    return RunAgentInput(
+        thread_id="test",
+        run_id=str(uuid.uuid4()),
+        messages=[
+            UserMessage(id=str(uuid.uuid4()), role="user", content=message),
+        ],
+        state={},
+        tools=[],
+        context=[],
+        forwarded_props={},
+    )
