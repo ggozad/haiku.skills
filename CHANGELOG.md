@@ -6,6 +6,10 @@
 
 - **Graphiti memory skill** (`haiku-skills-graphiti-memory`): Store, recall, and forget memories using a knowledge graph powered by [Graphiti](https://github.com/getzep/graphiti) and [FalkorDB](https://www.falkordb.com/) — with per-skill state tracking
 
+### Changed
+
+- **`SkillMetadata.allowed_tools` accepts strings**: Now accepts both `str` (space-separated) and `list[str]` as input, always stores `list[str]` — eliminates conversion overhead for consumers using the spec's string format ([#19](https://github.com/ggozad/haiku.skills/issues/19))
+
 ### Fixed
 
 - **Ollama base URL handling**: `resolve_model()` now appends `/v1` to `OLLAMA_BASE_URL` instead of expecting it in the env var, consistent with Ollama's convention
