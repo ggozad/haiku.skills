@@ -6,6 +6,7 @@ from typing import Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator
 from pydantic_ai import Tool
+from pydantic_ai.models import Model
 from pydantic_ai.toolsets import AbstractToolset
 
 
@@ -61,7 +62,7 @@ class Skill(BaseModel):
     path: Path | None = None
     instructions: str | None = None
     resources: list[str] = Field(default_factory=list)
-    model: str | None = None
+    model: str | Model | None = None
     _tools: list[Tool | Callable[..., Any]] = PrivateAttr(default_factory=list)
     _toolsets: list[AbstractToolset[Any]] = PrivateAttr(default_factory=list)
     _state_type: type[BaseModel] | None = PrivateAttr(default=None)

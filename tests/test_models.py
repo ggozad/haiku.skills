@@ -234,6 +234,14 @@ class TestSkill:
         assert skill.state_type is MyState
         assert skill.state_namespace == "ns"
 
+    def test_with_model_instance(self):
+        from pydantic_ai.models.test import TestModel
+
+        meta = SkillMetadata(name="test", description="Test skill.")
+        model = TestModel()
+        skill = Skill(metadata=meta, source=SkillSource.FILESYSTEM, model=model)
+        assert skill.model is model
+
     def test_state_excluded_from_serialization(self):
         class MyState(BaseModel):
             value: int = 0

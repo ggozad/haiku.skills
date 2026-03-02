@@ -356,6 +356,23 @@ class TestAgent:
         result = await agent.run("Do something.")
         assert result.output
 
+    async def test_skill_model_instance_on_skill(self, allow_model_requests: None):
+        """A Model instance on skill.model flows through to the sub-agent."""
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test skill."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do things.",
+            model=TestModel(),
+        )
+        toolset = SkillToolset(skills=[skill])
+        agent = Agent(
+            TestModel(),
+            instructions=build_system_prompt(toolset.skill_catalog),
+            toolsets=[toolset],
+        )
+        result = await agent.run("Do something.")
+        assert result.output
+
     async def test_skill_model_param_used_as_fallback(self, allow_model_requests: None):
         """skill_model param is used when skill has no model and env var unset."""
         skill = Skill(
