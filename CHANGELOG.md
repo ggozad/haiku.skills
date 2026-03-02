@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-03-02
+
 ### Added
 
 - **Graphiti memory skill** (`haiku-skills-graphiti-memory`): Store, recall, and forget memories using a knowledge graph powered by [Graphiti](https://github.com/getzep/graphiti) and [FalkorDB](https://www.falkordb.com/) — with per-skill state tracking
@@ -126,7 +128,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.5.1...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.5.2...HEAD
+[0.5.2]: https://github.com/ggozad/haiku.skills/compare/0.5.1...0.5.2
 [0.5.1]: https://github.com/ggozad/haiku.skills/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/ggozad/haiku.skills/compare/0.4.2...0.5.0
 [0.4.2]: https://github.com/ggozad/haiku.skills/compare/0.4.1...0.4.2
