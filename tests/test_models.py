@@ -79,6 +79,36 @@ class TestSkillMetadata:
         with pytest.raises(ValidationError):
             SkillMetadata(name="ok", description="x" * 1025)
 
+    def test_allowed_tools_from_string(self):
+        meta = SkillMetadata(
+            name="test",
+            description="Test.",
+            allowed_tools="Read Write",  # type: ignore[arg-type]
+        )
+        assert meta.allowed_tools == ["Read", "Write"]
+
+    def test_allowed_tools_from_empty_string(self):
+        meta = SkillMetadata(
+            name="test",
+            description="Test.",
+            allowed_tools="",  # type: ignore[arg-type]
+        )
+        assert meta.allowed_tools == []
+
+    def test_allowed_tools_from_whitespace_string(self):
+        meta = SkillMetadata(
+            name="test",
+            description="Test.",
+            allowed_tools="  ",  # type: ignore[arg-type]
+        )
+        assert meta.allowed_tools == []
+
+    def test_allowed_tools_from_list(self):
+        meta = SkillMetadata(
+            name="test", description="Test.", allowed_tools=["Read", "Write"]
+        )
+        assert meta.allowed_tools == ["Read", "Write"]
+
     def test_unknown_field_rejected(self):
         with pytest.raises(ValidationError, match="extra_field"):
             SkillMetadata(

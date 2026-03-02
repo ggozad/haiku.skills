@@ -39,6 +39,13 @@ class SkillMetadata(BaseModel):
     def validate_name(cls, v: str) -> str:
         return _validate_skill_name(v)
 
+    @field_validator("allowed_tools", mode="before")
+    @classmethod
+    def validate_allowed_tools(cls, v: str | list[str]) -> list[str]:
+        if isinstance(v, str):
+            return v.split() if v.strip() else []
+        return v
+
 
 class SkillSource(StrEnum):
     FILESYSTEM = "filesystem"
