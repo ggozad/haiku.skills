@@ -6,32 +6,40 @@ from haiku.skills.parser import parse_skill_md
 from haiku.skills.script_tools import discover_script_tools
 
 
+def _load_skill_from_directory(skill_dir: Path) -> Skill:
+    """Load a single skill from a directory containing SKILL.md."""
+    skill_md = skill_dir / "SKILL.md"
+    metadata, instructions = parse_skill_md(skill_md)
+    if metadata.name != skill_dir.name:
+        raise ValueError(
+            f"Skill name '{metadata.name}' does not match "
+            f"directory name '{skill_dir.name}'"
+        )
+    return Skill(
+        metadata=metadata,
+        source=SkillSource.FILESYSTEM,
+        path=skill_dir,
+        instructions=instructions,
+        tools=discover_script_tools(skill_dir),
+        resources=discover_resources(skill_dir),
+    )
+
+
 def discover_from_paths(paths: list[Path]) -> list[Skill]:
     """Scan directories for subdirectories containing SKILL.md."""
     skills: list[Skill] = []
     for path in paths:
         if not path.exists():
             raise FileNotFoundError(f"Skill path does not exist: {path}")
+        if (path / "SKILL.md").exists():
+            skills.append(_load_skill_from_directory(path))
+            continue
         for child in sorted(path.iterdir()):
-            skill_md = child / "SKILL.md"
-            if not child.is_dir() or not skill_md.exists():
+            if child.name.startswith("."):
                 continue
-            metadata, instructions = parse_skill_md(skill_md)
-            if metadata.name != child.name:
-                raise ValueError(
-                    f"Skill name '{metadata.name}' does not match "
-                    f"directory name '{child.name}'"
-                )
-            skills.append(
-                Skill(
-                    metadata=metadata,
-                    source=SkillSource.FILESYSTEM,
-                    path=child,
-                    instructions=instructions,
-                    tools=discover_script_tools(child),
-                    resources=discover_resources(child),
-                )
-            )
+            if not child.is_dir() or not (child / "SKILL.md").exists():
+                continue
+            skills.append(_load_skill_from_directory(child))
     return skills
 
 

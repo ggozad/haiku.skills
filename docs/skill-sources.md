@@ -31,7 +31,7 @@ from haiku.skills import SkillToolset
 toolset = SkillToolset(skill_paths=[Path("./skills")])
 ```
 
-If you point to a parent directory, all immediate subdirectories containing a `SKILL.md` are discovered. The directory name is used as the skill name (unless overridden in the frontmatter).
+Each path can be either a **parent directory** (all immediate subdirectories containing `SKILL.md` are discovered) or a **skill directory itself** (a directory that directly contains `SKILL.md`). The directory name must match the skill name in the frontmatter.
 
 Filesystem skills automatically pick up:
 

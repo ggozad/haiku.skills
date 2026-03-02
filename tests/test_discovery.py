@@ -67,6 +67,33 @@ class TestDiscoverFromPaths:
         with pytest.raises(FileNotFoundError):
             discover_from_paths([Path("/nonexistent/path")])
 
+    def test_path_is_skill_directory(self, tmp_path: Path):
+        skill_dir = tmp_path / "my-skill"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text(
+            "---\nname: my-skill\ndescription: A skill.\n---\nBody.\n"
+        )
+        skills = discover_from_paths([skill_dir])
+        assert len(skills) == 1
+        assert skills[0].metadata.name == "my-skill"
+        assert skills[0].path == skill_dir
+
+    def test_skips_dot_directories(self, tmp_path: Path):
+        dot_dir = tmp_path / ".hidden-skill"
+        dot_dir.mkdir()
+        (dot_dir / "SKILL.md").write_text(
+            "---\nname: hidden-skill\ndescription: Hidden.\n---\nBody.\n"
+        )
+        visible_dir = tmp_path / "visible-skill"
+        visible_dir.mkdir()
+        (visible_dir / "SKILL.md").write_text(
+            "---\nname: visible-skill\ndescription: Visible.\n---\nBody.\n"
+        )
+        skills = discover_from_paths([tmp_path])
+        names = {s.metadata.name for s in skills}
+        assert "visible-skill" in names
+        assert "hidden-skill" not in names
+
     def test_multiple_paths(self, tmp_path: Path):
         dir_a = tmp_path / "a"
         dir_a.mkdir()

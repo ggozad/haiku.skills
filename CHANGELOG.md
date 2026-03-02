@@ -10,6 +10,7 @@
 
 - **`SkillMetadata.allowed_tools` accepts strings**: Now accepts both `str` (space-separated) and `list[str]` as input, always stores `list[str]` — eliminates conversion overhead for consumers using the spec's string format ([#19](https://github.com/ggozad/haiku.skills/issues/19))
 - **`Skill.model` accepts `Model` instances**: Widened from `str | None` to `str | Model | None` so consumers can pass configured model objects directly ([#20](https://github.com/ggozad/haiku.skills/issues/20))
+- **`discover_from_paths` accepts single-skill directories**: Paths that contain `SKILL.md` directly are now treated as skill directories, in addition to parent directories containing skill subdirectories. Dot-directories are skipped during child iteration.
 
 ### Fixed
 
