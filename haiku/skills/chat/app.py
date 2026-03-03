@@ -336,6 +336,13 @@ class ChatApp(App):
                     preview = request[:80] + ("…" if len(request) > 80 else "")
                     desc += f": {preview}"
                 widget.update_description(desc)
+        else:
+            parts = [f"{k}={v!r}" for k, v in args.items()]
+            inline = ", ".join(parts)
+            desc = f"{tool_name}({inline})"
+            if len(desc) > 120:
+                desc = desc[:117] + "…)"
+            widget.update_description(desc)
 
     def action_view_state(self) -> None:
         self.push_screen(StateScreen(self._state))
