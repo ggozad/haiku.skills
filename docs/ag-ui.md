@@ -83,6 +83,46 @@ When `execute_skill` runs a skill whose tools modify state, the toolset computes
 
 Frontends can apply these patches incrementally to keep their view of the agent's state in sync without polling or full state transfers.
 
+## Real-time sub-agent events
+
+By default, when `execute_skill` delegates to a sub-agent, the sub-agent's internal tool calls (search, fetch, etc.) are invisible to the AG-UI client until the skill finishes. They arrive as a batch in `ToolReturn.metadata`.
+
+`run_agui_stream()` solves this by merging main-agent events with sub-agent events into a single real-time stream:
+
+```python
+from pydantic_ai.ag_ui import AGUIAdapter
+from haiku.skills import SkillToolset, run_agui_stream
+
+toolset = SkillToolset(skills=[skill])
+agent = Agent(model, instructions=..., toolsets=[toolset])
+adapter = AGUIAdapter(agent=agent, run_input=run_input)
+
+async with run_agui_stream(toolset, adapter) as stream:
+    async for event in stream:
+        # All events — main agent text, tool calls,
+        # AND sub-agent tool calls — arrive here in real-time
+        ...
+```
+
+The `async with` context manager ensures proper cleanup of the background adapter task, even if the consumer exits early.
+
+For HTTP endpoints, wrap the context manager inside an async generator:
+
+```python
+async def stream_chat(request):
+    adapter = AGUIAdapter(agent=agent, run_input=run_input, accept=accept)
+
+    async def event_stream():
+        async with run_agui_stream(toolset, adapter, deps=SkillDeps()) as stream:
+            async for chunk in adapter.encode_stream(stream):
+                yield chunk
+
+    return StreamingResponse(event_stream(), media_type=accept)
+```
+
+!!! note
+    `adapter.run_stream()` still works without `run_agui_stream` — sub-agent tool events will arrive in batch via `ToolReturn.metadata` as before.
+
 ## State round-tripping
 
 When serving an agent via AG-UI (using `handle_ag_ui_request` or `AGUIAdapter`), the frontend sends state with each request. The adapter injects that state into `deps.state` if the deps object implements pydantic-ai's `StateHandler` protocol. `SkillToolset` then automatically restores per-namespace state from `deps.state` at the start of each run, closing the loop between frontend and backend.

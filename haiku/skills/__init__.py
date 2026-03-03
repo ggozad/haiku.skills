@@ -1,4 +1,9 @@
-from haiku.skills.agent import SkillToolset, resolve_model
+from haiku.skills.agent import (
+    AguiEventStream,
+    SkillToolset,
+    resolve_model,
+    run_agui_stream,
+)
 from haiku.skills.mcp import skill_from_mcp
 from haiku.skills.models import (
     Skill,

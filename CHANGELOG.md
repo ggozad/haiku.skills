@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Real-time sub-agent event streaming**: `run_agui_stream()` merges main-agent and sub-agent AG-UI events into a single stream, so sub-agent tool calls (search, fetch, etc.) appear in real-time instead of batching until `execute_skill` returns
+
+### Changed
+
+- **Event sink on `SkillToolset`**: `_run_skill` accepts an optional `event_sink` callback; when active, sub-agent tool events stream through the sink immediately rather than collecting in batch
+- **`SkillRunDeps` simplified**: Removed `_collected_events` field — event collection is now closure-based inside `_run_skill`
+
 ## [0.5.2] - 2026-03-02
 
 ### Added
