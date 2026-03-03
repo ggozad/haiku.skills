@@ -32,7 +32,6 @@ from haiku.skills.agent import (
     _create_read_resource,
     _create_run_script,
     _events_to_agui,
-    _last_tool_result,
     _run_skill,
     resolve_model,
     run_agui_stream,
@@ -196,17 +195,6 @@ class TestRunSkill:
         assert len(sinked) >= 2
         assert any(isinstance(e, ToolCallStartEvent) for e in sinked)
         assert any(isinstance(e, ToolCallResultEvent) for e in sinked)
-
-
-class TestLastToolResult:
-    def test_returns_none_for_empty_messages(self):
-        assert _last_tool_result([]) is None
-
-    def test_returns_none_when_no_tool_returns(self):
-        from pydantic_ai.messages import UserPromptPart
-
-        messages = [ModelRequest(parts=[UserPromptPart(content="hello")])]
-        assert _last_tool_result(messages) is None
 
 
 class TestCreateReadResource:

@@ -22,9 +22,6 @@ from pydantic_ai.messages import (
     AgentStreamEvent,
     FunctionToolCallEvent,
     FunctionToolResultEvent,
-    ModelMessage,
-    ModelRequest,
-    ToolReturnPart,
 )
 from pydantic_ai.models import Model
 from pydantic_ai.toolsets import FunctionToolset, ToolsetTool
@@ -60,16 +57,6 @@ def resolve_model(model: str) -> Model:
     from pydantic_ai.models import infer_model
 
     return infer_model(model)
-
-
-def _last_tool_result(messages: list[ModelMessage]) -> str | None:
-    """Extract the content of the last tool return from messages."""
-    for message in reversed(messages):
-        if isinstance(message, ModelRequest):
-            for part in reversed(message.parts):
-                if isinstance(part, ToolReturnPart):
-                    return part.model_response_str()
-    return None
 
 
 def _events_to_agui(skill_name: str, events: list[Any]) -> list[BaseEvent]:
@@ -255,7 +242,7 @@ async def _run_skill(
         usage_limits=UsageLimits(request_limit=20),
         event_stream_handler=event_handler,
     )
-    text = _last_tool_result(result.all_messages()) or result.output
+    text = result.output
     return text, collected_events
 
 

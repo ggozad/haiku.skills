@@ -8,6 +8,7 @@
 
 ### Changed
 
+- **Sub-agent output**: `_run_skill` now returns the model's final response (`result.output`) instead of the last tool's raw return value — state and structured data are already handled via the snapshot/delta mechanism
 - **Event sink on `SkillToolset`**: `_run_skill` accepts an optional `event_sink` callback; when active, sub-agent tool events stream through the sink immediately rather than collecting in batch
 - **`SkillRunDeps` simplified**: Removed `_collected_events` field — event collection is now closure-based inside `_run_skill`
 
