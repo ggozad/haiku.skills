@@ -15,3 +15,8 @@ Use the **fetch_page** tool to visit a URL and extract its readable content.
 3. Summarize findings and cite sources with URLs.
 
 Use a maximum of 3 search queries per task.
+
+## Guidelines
+
+- Always cite sources with URLs when presenting findings.
+- Prefer specific search queries over broad ones.

@@ -1,9 +1,26 @@
 [project]
 name = "haiku-skills-image-generation"
-version = "0.1.0"
+version = "0.7.0"
 description = "Image generation skill for haiku.skills"
+authors = [{ name = "Yiorgis Gozadinos", email = "ggozadinos@gmail.com" }]
+license = { text = "MIT" }
+readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.13"
-dependencies = ["haiku.skills>=0.1.0", "httpx>=0.28.0"]
+keywords = ["haiku-skills", "agent-skills", "pydantic-ai", "image-generation", "ollama"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
+dependencies = ["haiku.skills>=0.7.0", "httpx>=0.28.0"]
+
+[project.urls]
+Homepage = "https://github.com/ggozad/haiku.skills"
+Repository = "https://github.com/ggozad/haiku.skills"
+Issues = "https://github.com/ggozad/haiku.skills/issues"
 
 [project.entry-points."haiku.skills"]
 image-generation = "haiku_skills_image_generation:create_skill"

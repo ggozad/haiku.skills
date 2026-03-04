@@ -1,9 +1,26 @@
 [project]
 name = "haiku-skills-graphiti-memory"
-version = "0.1.0"
+version = "0.7.0"
 description = "Knowledge graph memory skill for haiku.skills using Graphiti and FalkorDB"
+authors = [{ name = "Yiorgis Gozadinos", email = "ggozadinos@gmail.com" }]
+license = { text = "MIT" }
+readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.13"
-dependencies = ["haiku.skills>=0.1.0", "graphiti-core[falkordb]"]
+keywords = ["haiku-skills", "agent-skills", "pydantic-ai", "knowledge-graph", "graphiti"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
+dependencies = ["haiku.skills>=0.7.0", "graphiti-core[falkordb]"]
+
+[project.urls]
+Homepage = "https://github.com/ggozad/haiku.skills"
+Repository = "https://github.com/ggozad/haiku.skills"
+Issues = "https://github.com/ggozad/haiku.skills/issues"
 
 [project.entry-points."haiku.skills"]
 graphiti-memory = "haiku_skills_graphiti_memory:create_skill"

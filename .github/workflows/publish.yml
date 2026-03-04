@@ -6,6 +6,7 @@ on:
 
 jobs:
   publish-root:
+    if: ${{ !startsWith(github.event.release.tag_name, 'skills-') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,4 +20,28 @@ jobs:
       - name: Build haiku.skills
         run: uv build
       - name: Publish haiku.skills
+        run: uvx twine upload -u __token__ -p ${{ secrets.PYPI_API_TOKEN }} dist/* --non-interactive --skip-existing
+
+  publish-skills:
+    if: ${{ startsWith(github.event.release.tag_name, 'skills-') }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package:
+          - haiku-skills-web
+          - haiku-skills-image-generation
+          - haiku-skills-code-execution
+          - haiku-skills-graphiti-memory
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyproject.toml"
+      - name: Build ${{ matrix.package }}
+        run: uv build --package ${{ matrix.package }}
+      - name: Publish ${{ matrix.package }}
         run: uvx twine upload -u __token__ -p ${{ secrets.PYPI_API_TOKEN }} dist/* --non-interactive --skip-existing

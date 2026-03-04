@@ -220,8 +220,8 @@ class TestImageGeneration:
         from haiku_skills_image_generation.scripts.generate_image import main
 
         result = main("a red circle on white background", width=64, height=64)
-        assert result.startswith("![")
-        assert result.endswith(")")
+        assert result.endswith(".png")
+        assert Path(result).exists()
 
     @pytest.mark.vcr()
     def test_generate_image_tool_with_state(self):
@@ -232,9 +232,10 @@ class TestImageGeneration:
         result = generate_image(
             ctx, "a red circle on white background", width=64, height=64
         )
-        assert result.startswith("![")
+        assert result.endswith(".png")
         assert len(state.images) == 1
         assert state.images[0].prompt == "a red circle on white background"
+        assert state.images[0].path == result
         assert state.images[0].width == 64
         assert state.images[0].height == 64
 
@@ -256,7 +257,7 @@ class TestImageGeneration:
         )
         runpy.run_path(str(script), run_name="__main__")
 
-        assert "![" in captured.getvalue()
+        assert captured.getvalue().strip().endswith(".png")
 
 
 class TestCodeExecution:

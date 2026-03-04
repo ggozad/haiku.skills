@@ -18,6 +18,7 @@ _spec.loader.exec_module(_mod)
 get_current_version = _mod.get_current_version
 update_version_in_file = _mod.update_version_in_file
 update_changelog = _mod.update_changelog
+update_skill_dependency = _mod.update_skill_dependency
 main = _mod.main
 
 CHANGELOG_TEMPLATE = """\
@@ -53,6 +54,16 @@ def workspace(tmp_path: Path) -> Path:
 
     # CHANGELOG.md
     (root / "CHANGELOG.md").write_text(CHANGELOG_TEMPLATE)
+
+    # Skill packages
+    skills_dir = root / "skills"
+    for name in ("web", "code-execution"):
+        skill_dir = skills_dir / name
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "pyproject.toml").write_text(
+            f'[project]\nname = "haiku-skills-{name}"\nversion = "0.1.0"\n'
+            f'dependencies = ["haiku.skills>=0.1.0"]\n'
+        )
 
     return root
 
@@ -125,6 +136,28 @@ class TestUpdateChangelog:
         assert "## [0.1.0] - 2026-02-16" in content
 
 
+class TestUpdateSkillDependency:
+    def test_updates_dependency_constraint(self, tmp_path: Path):
+        f = tmp_path / "pyproject.toml"
+        f.write_text(
+            '[project]\nname = "haiku-skills-web"\nversion = "0.1.0"\n'
+            'dependencies = ["haiku.skills>=0.1.0"]\n'
+        )
+        update_skill_dependency(f, "0.2.0")
+        assert 'dependencies = ["haiku.skills>=0.2.0"]' in f.read_text()
+
+    def test_preserves_other_content(self, tmp_path: Path):
+        f = tmp_path / "pyproject.toml"
+        f.write_text(
+            '[project]\nname = "haiku-skills-web"\nversion = "0.1.0"\n'
+            'dependencies = ["haiku.skills>=0.1.0", "httpx>=0.28.0"]\n'
+        )
+        update_skill_dependency(f, "0.2.0")
+        result = f.read_text()
+        assert '"httpx>=0.28.0"' in result
+        assert 'name = "haiku-skills-web"' in result
+
+
 class TestMain:
     def test_invalid_version_format(self, workspace: Path):
         with pytest.raises(SystemExit, match="1"):
@@ -158,6 +191,12 @@ class TestMain:
             "[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.2.0...HEAD"
             in changelog_content
         )
+
+        # Skill versions and dependency constraints updated
+        for name in ("web", "code-execution"):
+            skill_content = (workspace / "skills" / name / "pyproject.toml").read_text()
+            assert 'version = "0.2.0"' in skill_content
+            assert '"haiku.skills>=0.2.0"' in skill_content
 
         # uv sync was called
         mock_run.assert_called_once_with(["uv", "sync"], check=True, cwd=workspace)

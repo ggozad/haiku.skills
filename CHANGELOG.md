@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Independent skill package publishing**: Skill packages (`haiku-skills-web`, etc.) can now be published to PyPI independently from the core package using `skills-v*` release tags ([#27](https://github.com/ggozad/haiku.skills/issues/27))
+- **Bump script updates skill packages**: `bump_version.py` now updates version and `haiku.skills>=` dependency constraint in all `skills/*/pyproject.toml` files
+- **Skill package PyPI metadata**: All 4 skill packages now include authors, license, readme, keywords, classifiers, and project URLs
+- **Skill package READMEs**: `haiku-skills-web`, `haiku-skills-image-generation`, and `haiku-skills-code-execution` now have READMEs with prerequisites, configuration, tools, and installation instructions
+
+### Changed
+
+- **`generate_image` returns file path**: The image generation tool now returns the file path directly instead of a markdown image reference
+- **Main agent prompt**: Instructs the agent to present skill results exactly as returned, without fabricating or rewriting content
+
 ## [0.7.0] - 2026-03-04
 
 ### Changed

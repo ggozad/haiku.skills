@@ -50,7 +50,7 @@ def main(
     output_path = output_dir / f"{hash(prompt) & 0xFFFFFFFF:08x}.png"
     output_path.write_bytes(image_data)
 
-    return f"![{prompt}]({output_path})"
+    return str(output_path)
 
 
 if __name__ == "__main__":
