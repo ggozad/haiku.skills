@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-03-04
+
 ### Changed
 
 - **`discover_from_paths` collects all validation errors**: Returns `tuple[list[Skill], list[SkillValidationError]]` instead of raising on the first broken skill — valid skills are still loaded while errors are collected ([#25](https://github.com/ggozad/haiku.skills/issues/25))
@@ -152,7 +154,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.6.0...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.7.0...HEAD
+[0.7.0]: https://github.com/ggozad/haiku.skills/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/ggozad/haiku.skills/compare/0.5.2...0.6.0
 [0.5.2]: https://github.com/ggozad/haiku.skills/compare/0.5.1...0.5.2
 [0.5.1]: https://github.com/ggozad/haiku.skills/compare/0.5.0...0.5.1
