@@ -8,40 +8,44 @@ from haiku.skills.discovery import (
     discover_from_paths,
     discover_resources,
 )
-from haiku.skills.models import Skill, SkillMetadata, SkillSource
+from haiku.skills.models import Skill, SkillMetadata, SkillSource, SkillValidationError
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
 class TestDiscoverFromPaths:
     def test_discovers_skills_in_directory(self):
-        skills = discover_from_paths([FIXTURES])
+        skills, errors = discover_from_paths([FIXTURES])
         names = {s.metadata.name for s in skills}
         assert "simple-skill" in names
         assert "skill-with-refs" in names
+        assert errors == []
 
     def test_returns_filesystem_source(self):
-        skills = discover_from_paths([FIXTURES])
+        skills, errors = discover_from_paths([FIXTURES])
         for skill in skills:
             assert skill.source == SkillSource.FILESYSTEM
+        assert errors == []
 
     def test_sets_path_to_skill_directory(self):
-        skills = discover_from_paths([FIXTURES])
+        skills, errors = discover_from_paths([FIXTURES])
         by_name = {s.metadata.name: s for s in skills}
         assert by_name["simple-skill"].path == FIXTURES / "simple-skill"
+        assert errors == []
 
     def test_instructions_loaded(self):
-        skills = discover_from_paths([FIXTURES])
+        skills, errors = discover_from_paths([FIXTURES])
         for skill in skills:
             assert skill.instructions is not None
+        assert errors == []
 
     def test_script_tools_loaded(self):
-        skills = discover_from_paths([FIXTURES])
+        skills, errors = discover_from_paths([FIXTURES])
         by_name = {s.metadata.name: s for s in skills}
         assert len(by_name["simple-skill"].tools) == 1
 
     def test_resources_loaded(self):
-        skills = discover_from_paths([FIXTURES])
+        skills, errors = discover_from_paths([FIXTURES])
         by_name = {s.metadata.name: s for s in skills}
         assert "references/REFERENCE.md" in by_name["skill-with-refs"].resources
         assert "assets/template.txt" in by_name["skill-with-refs"].resources
@@ -52,20 +56,28 @@ class TestDiscoverFromPaths:
         (skill_dir / "SKILL.md").write_text(
             "---\nname: wrong-name\ndescription: Mismatch.\n---\nBody.\n"
         )
-        with pytest.raises(ValueError, match="does not match"):
-            discover_from_paths([tmp_path])
+        skills, errors = discover_from_paths([tmp_path])
+        assert skills == []
+        assert len(errors) == 1
+        assert "does not match" in str(errors[0])
+        assert errors[0].path == skill_dir
 
     def test_skips_non_skill_entries(self, tmp_path: Path):
         # A file (not a directory) should be skipped
         (tmp_path / "readme.txt").write_text("not a skill")
         # A directory without SKILL.md should be skipped
         (tmp_path / "not-a-skill").mkdir()
-        skills = discover_from_paths([tmp_path])
+        skills, errors = discover_from_paths([tmp_path])
         assert skills == []
+        assert errors == []
 
-    def test_nonexistent_path_raises(self):
-        with pytest.raises(FileNotFoundError):
-            discover_from_paths([Path("/nonexistent/path")])
+    def test_nonexistent_path_returns_error(self):
+        bad_path = Path("/nonexistent/path")
+        skills, errors = discover_from_paths([bad_path])
+        assert skills == []
+        assert len(errors) == 1
+        assert isinstance(errors[0], SkillValidationError)
+        assert errors[0].path == bad_path
 
     def test_path_is_skill_directory(self, tmp_path: Path):
         skill_dir = tmp_path / "my-skill"
@@ -73,10 +85,11 @@ class TestDiscoverFromPaths:
         (skill_dir / "SKILL.md").write_text(
             "---\nname: my-skill\ndescription: A skill.\n---\nBody.\n"
         )
-        skills = discover_from_paths([skill_dir])
+        skills, errors = discover_from_paths([skill_dir])
         assert len(skills) == 1
         assert skills[0].metadata.name == "my-skill"
         assert skills[0].path == skill_dir
+        assert errors == []
 
     def test_skips_dot_directories(self, tmp_path: Path):
         dot_dir = tmp_path / ".hidden-skill"
@@ -89,10 +102,11 @@ class TestDiscoverFromPaths:
         (visible_dir / "SKILL.md").write_text(
             "---\nname: visible-skill\ndescription: Visible.\n---\nBody.\n"
         )
-        skills = discover_from_paths([tmp_path])
+        skills, errors = discover_from_paths([tmp_path])
         names = {s.metadata.name for s in skills}
         assert "visible-skill" in names
         assert "hidden-skill" not in names
+        assert errors == []
 
     def test_multiple_paths(self, tmp_path: Path):
         dir_a = tmp_path / "a"
@@ -111,9 +125,48 @@ class TestDiscoverFromPaths:
             "---\nname: skill-b\ndescription: Skill B.\n---\nBody B.\n"
         )
 
-        skills = discover_from_paths([dir_a, dir_b])
+        skills, errors = discover_from_paths([dir_a, dir_b])
         names = {s.metadata.name for s in skills}
         assert names == {"skill-a", "skill-b"}
+        assert errors == []
+
+    def test_collects_multiple_errors(self, tmp_path: Path):
+        # Two broken skills and one valid
+        valid = tmp_path / "valid-skill"
+        valid.mkdir()
+        (valid / "SKILL.md").write_text(
+            "---\nname: valid-skill\ndescription: Good.\n---\nBody.\n"
+        )
+
+        bad1 = tmp_path / "bad-one"
+        bad1.mkdir()
+        (bad1 / "SKILL.md").write_text(
+            "---\nname: wrong-name\ndescription: Mismatch.\n---\nBody.\n"
+        )
+
+        bad2 = tmp_path / "bad-two"
+        bad2.mkdir()
+        (bad2 / "SKILL.md").write_text(
+            "---\nname: also-wrong\ndescription: Mismatch.\n---\nBody.\n"
+        )
+
+        skills, errors = discover_from_paths([tmp_path])
+        assert len(skills) == 1
+        assert skills[0].metadata.name == "valid-skill"
+        assert len(errors) == 2
+        error_paths = {e.path for e in errors}
+        assert error_paths == {bad1, bad2}
+
+    def test_pydantic_validation_error_collected(self, tmp_path: Path):
+        skill_dir = tmp_path / "bad-skill"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text(
+            "---\nname: BAD-SKILL\ndescription: Invalid name.\n---\nBody.\n"
+        )
+        skills, errors = discover_from_paths([tmp_path])
+        assert skills == []
+        assert len(errors) == 1
+        assert errors[0].path == skill_dir
 
 
 class TestDiscoverResources:

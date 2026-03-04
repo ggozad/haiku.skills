@@ -33,6 +33,8 @@ toolset = SkillToolset(skill_paths=[Path("./skills")])
 
 Each path can be either a **parent directory** (all immediate subdirectories containing `SKILL.md` are discovered) or a **skill directory itself** (a directory that directly contains `SKILL.md`). The directory name must match the skill name in the frontmatter.
 
+When a skill directory has validation errors (bad frontmatter, name mismatch, etc.), the error is collected as a `SkillValidationError` and discovery continues with the remaining directories. Non-existent paths are also collected as errors rather than aborting. The CLI commands print these errors as warnings to stderr.
+
 Filesystem skills automatically pick up:
 
 - **Script tools** — Python scripts in a `scripts/` subdirectory (see [Skills — Script tools](skills.md#script-tools))

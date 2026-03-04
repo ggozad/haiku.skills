@@ -10,6 +10,14 @@ from pydantic_ai.models import Model
 from pydantic_ai.toolsets import AbstractToolset
 
 
+class SkillValidationError(ValueError):
+    """A validation error associated with a specific skill path."""
+
+    def __init__(self, message: str, path: Path):
+        self.path = path
+        super().__init__(message)
+
+
 def _validate_skill_name(name: str) -> str:
     name = unicodedata.normalize("NFKC", name)
     if name != name.lower():

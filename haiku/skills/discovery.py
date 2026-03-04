@@ -1,7 +1,9 @@
 from importlib.metadata import entry_points
 from pathlib import Path
 
-from haiku.skills.models import Skill, SkillSource
+from pydantic import ValidationError
+
+from haiku.skills.models import Skill, SkillSource, SkillValidationError
 from haiku.skills.parser import parse_skill_md
 from haiku.skills.script_tools import discover_script_tools
 
@@ -25,22 +27,35 @@ def _load_skill_from_directory(skill_dir: Path) -> Skill:
     )
 
 
-def discover_from_paths(paths: list[Path]) -> list[Skill]:
+def discover_from_paths(
+    paths: list[Path],
+) -> tuple[list[Skill], list[SkillValidationError]]:
     """Scan directories for subdirectories containing SKILL.md."""
     skills: list[Skill] = []
+    errors: list[SkillValidationError] = []
+
+    def _try_load(skill_dir: Path) -> None:
+        try:
+            skills.append(_load_skill_from_directory(skill_dir))
+        except (ValueError, ValidationError) as exc:
+            errors.append(SkillValidationError(str(exc), skill_dir))
+
     for path in paths:
         if not path.exists():
-            raise FileNotFoundError(f"Skill path does not exist: {path}")
+            errors.append(
+                SkillValidationError(f"Skill path does not exist: {path}", path)
+            )
+            continue
         if (path / "SKILL.md").exists():
-            skills.append(_load_skill_from_directory(path))
+            _try_load(path)
             continue
         for child in sorted(path.iterdir()):
             if child.name.startswith("."):
                 continue
             if not child.is_dir() or not (child / "SKILL.md").exists():
                 continue
-            skills.append(_load_skill_from_directory(child))
-    return skills
+            _try_load(child)
+    return skills, errors
 
 
 def discover_resources(skill_path: Path) -> list[str]:

@@ -30,7 +30,9 @@ def _resolve_discovery(
         ).lower() in ("1", "true", "yes")
 
     registry = SkillRegistry()
-    registry.discover(paths=paths or None, use_entrypoints=use_entrypoints)
+    errors = registry.discover(paths=paths or None, use_entrypoints=use_entrypoints)
+    for error in errors:
+        typer.echo(f"Warning: {error.path}: {error}", err=True)
     return registry
 
 

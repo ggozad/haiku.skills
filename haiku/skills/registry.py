@@ -4,7 +4,7 @@ from haiku.skills.discovery import (
     discover_from_entrypoints,
     discover_from_paths,
 )
-from haiku.skills.models import Skill, SkillMetadata
+from haiku.skills.models import Skill, SkillMetadata, SkillValidationError
 
 
 class SkillRegistry:
@@ -33,11 +33,15 @@ class SkillRegistry:
         self,
         paths: list[Path] | None = None,
         use_entrypoints: bool = False,
-    ) -> None:
+    ) -> list[SkillValidationError]:
+        errors: list[SkillValidationError] = []
         if paths:
-            for skill in discover_from_paths(paths):
+            skills, path_errors = discover_from_paths(paths)
+            errors.extend(path_errors)
+            for skill in skills:
                 self.register(skill)
         if use_entrypoints:
             for skill in discover_from_entrypoints():
                 if skill.metadata.name not in self._skills:
                     self.register(skill)
+        return errors
