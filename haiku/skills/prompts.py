@@ -14,7 +14,9 @@ _MAIN_AGENT_PROMPT = """\
 Include everything the skill needs in the request
 - For multi-step tasks, call skills sequentially — pass results from earlier \
 calls into later requests
-- Skills cannot see each other's results unless you pass them explicitly\
+- Skills cannot see each other's results unless you pass them explicitly
+- Present skill results to the user exactly as returned. Never fabricate, \
+rewrite, or replace content such as file paths or URLs\
 """
 
 

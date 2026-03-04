@@ -34,23 +34,19 @@ def generate_image(
     """
     from haiku_skills_image_generation.scripts.generate_image import main
 
-    result = main(prompt, width=width, height=height)
+    path = main(prompt, width=width, height=height)
 
     if ctx.deps and ctx.deps.state and isinstance(ctx.deps.state, ImageState):
-        # Parse the markdown image: ![prompt](path)
-        if result.startswith("![") and result.endswith(")"):
-            paren_start = result.rfind("(")
-            image_path = result[paren_start + 1 : -1]
-            ctx.deps.state.images.append(
-                GeneratedImage(
-                    prompt=prompt,
-                    path=image_path,
-                    width=width,
-                    height=height,
-                )
+        ctx.deps.state.images.append(
+            GeneratedImage(
+                prompt=prompt,
+                path=path,
+                width=width,
+                height=height,
             )
+        )
 
-    return result
+    return path
 
 
 def create_skill() -> Skill:
