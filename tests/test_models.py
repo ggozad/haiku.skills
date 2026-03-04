@@ -8,7 +8,23 @@ from haiku.skills.models import (
     Skill,
     SkillMetadata,
     SkillSource,
+    SkillValidationError,
 )
+
+
+class TestSkillValidationError:
+    def test_is_value_error(self):
+        err = SkillValidationError("something went wrong", Path("/skills/broken"))
+        assert isinstance(err, ValueError)
+
+    def test_stores_path(self):
+        p = Path("/skills/broken")
+        err = SkillValidationError("bad", p)
+        assert err.path is p
+
+    def test_str_returns_message(self):
+        err = SkillValidationError("something went wrong", Path("/skills/broken"))
+        assert str(err) == "something went wrong"
 
 
 class TestSkillMetadata:

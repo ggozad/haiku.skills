@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from haiku.skills.models import Skill, SkillMetadata, SkillSource
+from haiku.skills.models import Skill, SkillMetadata, SkillSource, SkillValidationError
 from haiku.skills.registry import SkillRegistry
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -57,34 +57,38 @@ class TestSkillRegistry:
 
     def test_discover_from_paths(self):
         registry = SkillRegistry()
-        registry.discover(paths=[FIXTURES])
+        errors = registry.discover(paths=[FIXTURES])
         assert "simple-skill" in registry.names
         assert "skill-with-refs" in registry.names
+        assert errors == []
 
     def test_discover_loads_instructions(self):
         registry = SkillRegistry()
-        registry.discover(paths=[FIXTURES])
+        errors = registry.discover(paths=[FIXTURES])
         skill = registry.get("simple-skill")
         assert skill is not None
         assert skill.instructions is not None
         assert "# Simple Skill" in skill.instructions
+        assert errors == []
 
     def test_discover_loads_script_tools(self):
         registry = SkillRegistry()
-        registry.discover(paths=[FIXTURES])
+        errors = registry.discover(paths=[FIXTURES])
         skill = registry.get("simple-skill")
         assert skill is not None
         assert len(skill.tools) == 1
         tool = skill.tools[0]
         assert hasattr(tool, "name") and tool.name == "greet"
+        assert errors == []
 
     def test_discover_loads_resources(self):
         registry = SkillRegistry()
-        registry.discover(paths=[FIXTURES])
+        errors = registry.discover(paths=[FIXTURES])
         skill = registry.get("skill-with-refs")
         assert skill is not None
         assert "references/REFERENCE.md" in skill.resources
         assert "assets/template.txt" in skill.resources
+        assert errors == []
 
     def test_discover_from_entrypoints(self, monkeypatch: pytest.MonkeyPatch):
         skill = _make_skill("ep-skill", source=SkillSource.ENTRYPOINT)
@@ -94,8 +98,9 @@ class TestSkillRegistry:
             lambda group: [mock_ep],
         )
         registry = SkillRegistry()
-        registry.discover(use_entrypoints=True)
+        errors = registry.discover(use_entrypoints=True)
         assert "ep-skill" in registry.names
+        assert errors == []
 
     def test_entrypoint_skips_already_registered(self, monkeypatch: pytest.MonkeyPatch):
         ep_skill = _make_skill("overlap", source=SkillSource.ENTRYPOINT)
@@ -109,5 +114,24 @@ class TestSkillRegistry:
         )
         registry = SkillRegistry()
         registry.register(manual_skill)
-        registry.discover(use_entrypoints=True)
+        errors = registry.discover(use_entrypoints=True)
         assert registry.get("overlap") is manual_skill
+        assert errors == []
+
+    def test_discover_returns_errors(self, tmp_path: Path):
+        valid = tmp_path / "good-skill"
+        valid.mkdir()
+        (valid / "SKILL.md").write_text(
+            "---\nname: good-skill\ndescription: Good.\n---\nBody.\n"
+        )
+        broken = tmp_path / "broken-skill"
+        broken.mkdir()
+        (broken / "SKILL.md").write_text(
+            "---\nname: wrong-name\ndescription: Broken.\n---\nBody.\n"
+        )
+        registry = SkillRegistry()
+        errors = registry.discover(paths=[tmp_path])
+        assert "good-skill" in registry.names
+        assert len(errors) == 1
+        assert isinstance(errors[0], SkillValidationError)
+        assert errors[0].path == broken

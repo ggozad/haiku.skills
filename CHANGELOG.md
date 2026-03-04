@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **`discover_from_paths` collects all validation errors**: Returns `tuple[list[Skill], list[SkillValidationError]]` instead of raising on the first broken skill — valid skills are still loaded while errors are collected ([#25](https://github.com/ggozad/haiku.skills/issues/25))
+- **`SkillRegistry.discover` returns errors**: Returns `list[SkillValidationError]` instead of `None`, propagating errors from `discover_from_paths`
+- **CLI prints discovery warnings**: `list` and `chat` commands print validation errors as warnings to stderr instead of aborting
+
+### Added
+
+- **`SkillValidationError`**: `ValueError` subclass with a `.path` attribute, exported from `haiku.skills`
+
 ## [0.6.0] - 2026-03-03
 
 ### Added

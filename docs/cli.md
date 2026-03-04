@@ -27,6 +27,8 @@ haiku-skills list --use-entrypoints
 haiku-skills list -s ./skills --use-entrypoints
 ```
 
+If any skill directories have validation errors, they are printed as warnings to stderr while valid skills are still listed.
+
 ## `chat`
 
 A debug/development chat TUI built with [Textual](https://textual.textualize.io/). Requires the `tui` extra:
