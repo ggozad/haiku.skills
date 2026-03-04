@@ -272,3 +272,46 @@ class TestSkill:
         data = skill.model_dump()
         assert "state_type" not in data
         assert "state_namespace" not in data
+
+    def test_state_metadata_with_state(self):
+        class MyState(BaseModel):
+            value: int = 0
+
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(
+            metadata=meta,
+            source=SkillSource.FILESYSTEM,
+            state_type=MyState,
+            state_namespace="ns",
+        )
+        result = skill.state_metadata()
+        assert result is not None
+        assert result.namespace == "ns"
+        assert result.type is MyState
+        assert result.schema == MyState.model_json_schema()
+
+    def test_state_metadata_without_state(self):
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(metadata=meta, source=SkillSource.FILESYSTEM)
+        assert skill.state_metadata() is None
+
+    def test_state_metadata_partial_type_without_namespace(self):
+        class MyState(BaseModel):
+            value: int = 0
+
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(
+            metadata=meta,
+            source=SkillSource.FILESYSTEM,
+            state_type=MyState,
+        )
+        assert skill.state_metadata() is None
+
+    def test_state_metadata_partial_namespace_without_type(self):
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(
+            metadata=meta,
+            source=SkillSource.FILESYSTEM,
+            state_namespace="ns",
+        )
+        assert skill.state_metadata() is None

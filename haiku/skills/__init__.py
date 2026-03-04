@@ -10,6 +10,7 @@ from haiku.skills.models import (
     SkillMetadata,
     SkillSource,
     SkillValidationError,
+    StateMetadata,
 )
 from haiku.skills.prompts import build_system_prompt
 from haiku.skills.registry import SkillRegistry
