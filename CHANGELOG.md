@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Independent skill package publishing**: Skill packages (`haiku-skills-web`, etc.) can now be published to PyPI independently from the core package using `skills-v*` release tags ([#27](https://github.com/ggozad/haiku.skills/issues/27))
+- **Bump script updates skill packages**: `bump_version.py` now updates version and `haiku.skills>=` dependency constraint in all `skills/*/pyproject.toml` files
+
 ## [0.7.0] - 2026-03-04
 
 ### Changed

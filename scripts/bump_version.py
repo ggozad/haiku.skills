@@ -32,6 +32,15 @@ def update_version_in_file(file_path: Path, new_version: str) -> None:
     print(f"  Updated {file_path}")
 
 
+def update_skill_dependency(file_path: Path, new_version: str) -> None:
+    """Update the haiku.skills dependency constraint in a skill's pyproject.toml."""
+    content = file_path.read_text()
+    updated = re.sub(
+        r'"haiku\.skills>=([^"]+)"', f'"haiku.skills>={new_version}"', content
+    )
+    file_path.write_text(updated)
+
+
 def update_changelog(changelog_path: Path, new_version: str) -> None:
     """Update CHANGELOG.md with new version."""
     content = changelog_path.read_text()
@@ -100,6 +109,11 @@ def main():
 
     print()
     update_version_in_file(root_pyproject, new_version)
+
+    skill_pyprojects = sorted((ROOT / "skills").glob("*/pyproject.toml"))
+    for skill_pyproject in skill_pyprojects:
+        update_version_in_file(skill_pyproject, new_version)
+        update_skill_dependency(skill_pyproject, new_version)
 
     changelog = ROOT / "CHANGELOG.md"
     if changelog.exists():
