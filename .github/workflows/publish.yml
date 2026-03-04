@@ -23,7 +23,7 @@ jobs:
         run: uvx twine upload -u __token__ -p ${{ secrets.PYPI_API_TOKEN }} dist/* --non-interactive --skip-existing
 
   publish-skills:
-    if: ${{ startsWith(github.event.release.tag_name, 'skills-v') }}
+    if: ${{ startsWith(github.event.release.tag_name, 'skills-') }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
