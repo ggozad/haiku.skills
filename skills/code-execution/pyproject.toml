@@ -2,8 +2,25 @@
 name = "haiku-skills-code-execution"
 version = "0.1.0"
 description = "Code execution skill for haiku.skills"
+authors = [{ name = "Yiorgis Gozadinos", email = "ggozadinos@gmail.com" }]
+license = { text = "MIT" }
+readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.13"
+keywords = ["haiku-skills", "agent-skills", "pydantic-ai", "code-execution", "sandbox"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
 dependencies = ["haiku.skills>=0.1.0", "pydantic-monty>=0.0.4"]
+
+[project.urls]
+Homepage = "https://github.com/ggozad/haiku.skills"
+Repository = "https://github.com/ggozad/haiku.skills"
+Issues = "https://github.com/ggozad/haiku.skills/issues"
 
 [project.entry-points."haiku.skills"]
 code-execution = "haiku_skills_code_execution:create_skill"
