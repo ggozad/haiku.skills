@@ -11,6 +11,8 @@
 ### Added
 
 - **`SkillValidationError`**: `ValueError` subclass with a `.path` attribute, exported from `haiku.skills`
+- **`StateMetadata`**: Frozen dataclass with `namespace`, `type`, and `schema` fields, exported from `haiku.skills`
+- **`Skill.state_metadata()`**: Returns a `StateMetadata` for skills that declare state; `None` otherwise
 
 ## [0.6.0] - 2026-03-03
 

@@ -161,3 +161,14 @@ print(toolset.build_state_snapshot())  # {"calculator": {"history": []}}
 ```
 
 When `execute_skill` runs a skill whose tools modify state, the toolset computes a JSON Patch delta and returns it as a `StateDeltaEvent` — compatible with the [AG-UI protocol](https://docs.ag-ui.com). See [AG-UI protocol](ag-ui.md) for details.
+
+### Introspecting state
+
+Use `state_metadata()` to inspect a skill's state configuration without running it:
+
+```python
+meta = skill.state_metadata()
+# StateMetadata(namespace="calculator", type=<class 'CalculatorState'>, schema={...})
+```
+
+Returns `None` for skills without state. The `schema` attribute contains the JSON Schema from `model_json_schema()`.

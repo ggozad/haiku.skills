@@ -1,5 +1,6 @@
 import unicodedata
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Any
@@ -8,6 +9,13 @@ from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator
 from pydantic_ai import Tool
 from pydantic_ai.models import Model
 from pydantic_ai.toolsets import AbstractToolset
+
+
+@dataclass(frozen=True)
+class StateMetadata:
+    namespace: str
+    type: type[BaseModel]
+    schema: dict[str, Any]
 
 
 class SkillValidationError(ValueError):
@@ -122,3 +130,12 @@ class Skill(BaseModel):
     @state_namespace.setter
     def state_namespace(self, value: str | None) -> None:
         self._state_namespace = value
+
+    def state_metadata(self) -> StateMetadata | None:
+        if self._state_type is None or self._state_namespace is None:
+            return None
+        return StateMetadata(
+            namespace=self._state_namespace,
+            type=self._state_type,
+            schema=self._state_type.model_json_schema(),
+        )
