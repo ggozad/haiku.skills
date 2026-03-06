@@ -357,7 +357,9 @@ class TestGraphitiMemory:
         client = AsyncMock()
         client.build_indices_and_constraints = AsyncMock()
         client.add_episode = AsyncMock()
-        client.search = AsyncMock(return_value=[])
+        empty_results = MagicMock()
+        empty_results.edges = []
+        client.search_ = AsyncMock(return_value=empty_results)
         client.driver = MagicMock()
         return client
 
@@ -424,8 +426,11 @@ class TestGraphitiMemory:
         edge2 = MagicMock()
         edge2.fact = "Yiorgis works on haiku.skills"
 
+        results = MagicMock()
+        results.edges = [edge1, edge2]
+
         client = self._mock_client()
-        client.search = AsyncMock(return_value=[edge1, edge2])
+        client.search_ = AsyncMock(return_value=results)
         monkeypatch.setattr(mod, "_get_client", AsyncMock(return_value=client))
 
         state = MemoryState()
@@ -434,11 +439,10 @@ class TestGraphitiMemory:
 
         assert "- Yiorgis likes coffee" in result
         assert "- Yiorgis works on haiku.skills" in result
-        client.search.assert_called_once()
-        call_kwargs = client.search.call_args.kwargs
+        client.search_.assert_called_once()
+        call_kwargs = client.search_.call_args.kwargs
         assert call_kwargs["query"] == "what does Yiorgis like?"
         assert call_kwargs["group_ids"] == ["default"]
-        assert call_kwargs["num_results"] == 10
         assert len(state.recalls) == 1
         assert state.recalls[0].query == "what does Yiorgis like?"
         assert len(state.recalls[0].facts) == 2
@@ -448,7 +452,6 @@ class TestGraphitiMemory:
         from haiku_skills_graphiti_memory import MemoryState, recall
 
         client = self._mock_client()
-        client.search = AsyncMock(return_value=[])
         monkeypatch.setattr(mod, "_get_client", AsyncMock(return_value=client))
 
         state = MemoryState()
@@ -464,7 +467,7 @@ class TestGraphitiMemory:
         from haiku_skills_graphiti_memory import recall
 
         client = self._mock_client()
-        client.search.side_effect = RuntimeError("search failed")
+        client.search_.side_effect = RuntimeError("search failed")
         monkeypatch.setattr(mod, "_get_client", AsyncMock(return_value=client))
 
         ctx = _make_ctx()
@@ -482,8 +485,11 @@ class TestGraphitiMemory:
         edge2 = AsyncMock()
         edge2.fact = "outdated fact 2"
 
+        results = MagicMock()
+        results.edges = [edge1, edge2]
+
         client = self._mock_client()
-        client.search = AsyncMock(return_value=[edge1, edge2])
+        client.search_ = AsyncMock(return_value=results)
         monkeypatch.setattr(mod, "_get_client", AsyncMock(return_value=client))
 
         ctx = _make_ctx()
@@ -500,7 +506,6 @@ class TestGraphitiMemory:
         from haiku_skills_graphiti_memory import forget
 
         client = self._mock_client()
-        client.search = AsyncMock(return_value=[])
         monkeypatch.setattr(mod, "_get_client", AsyncMock(return_value=client))
 
         ctx = _make_ctx()
@@ -513,7 +518,7 @@ class TestGraphitiMemory:
         from haiku_skills_graphiti_memory import forget
 
         client = self._mock_client()
-        client.search.side_effect = RuntimeError("search failed")
+        client.search_.side_effect = RuntimeError("search failed")
         monkeypatch.setattr(mod, "_get_client", AsyncMock(return_value=client))
 
         ctx = _make_ctx()
@@ -631,6 +636,8 @@ class TestGraphitiMemory:
         assert embedder.config.base_url == "http://myhost:9999/v1"
 
     def test_build_cross_encoder(self, monkeypatch: pytest.MonkeyPatch):
+        from openai import AsyncOpenAI
+
         monkeypatch.delenv("OLLAMA_BASE_URL", raising=False)
         monkeypatch.delenv("GRAPHITI_LLM_MODEL", raising=False)
         monkeypatch.delenv("GRAPHITI_SMALL_LLM_MODEL", raising=False)
@@ -639,6 +646,7 @@ class TestGraphitiMemory:
 
         cross_encoder = _build_cross_encoder()
         assert cross_encoder.config.model == "gpt-oss"
+        assert isinstance(cross_encoder.client, AsyncOpenAI)
 
     def test_parse_falkordb_uri(self):
         from haiku_skills_graphiti_memory import _parse_falkordb_uri
