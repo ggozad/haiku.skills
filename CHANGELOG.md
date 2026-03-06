@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-03-06
+
 ### Added
 
 - **Independent skill package publishing**: Skill packages (`haiku-skills-web`, etc.) can now be published to PyPI independently from the core package using `skills-v*` release tags ([#27](https://github.com/ggozad/haiku.skills/issues/27))
@@ -172,7 +174,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.7.0...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.7.1...HEAD
+[0.7.1]: https://github.com/ggozad/haiku.skills/compare/0.7.0...0.7.1
 [0.7.0]: https://github.com/ggozad/haiku.skills/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/ggozad/haiku.skills/compare/0.5.2...0.6.0
 [0.5.2]: https://github.com/ggozad/haiku.skills/compare/0.5.1...0.5.2
