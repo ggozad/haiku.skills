@@ -10,13 +10,15 @@ _MAIN_AGENT_PROMPT = """\
 ## Instructions
 
 - For general conversation or questions that don't need skills, respond directly
-- Use execute_skill to delegate work to a skill. \
-Include everything the skill needs in the request
-- For multi-step tasks, call skills sequentially — pass results from earlier \
-calls into later requests
-- Skills cannot see each other's results unless you pass them explicitly
-- Present skill results to the user exactly as returned. Never fabricate, \
-rewrite, or replace content such as file paths or URLs\
+- Use execute_skill to delegate work to a skill
+- Each skill runs as an isolated agent with NO shared memory or context. \
+A skill can only see what you put in its request — it has no access to \
+the conversation, previous skill results, or any other context
+- When chaining skills, you MUST include the actual data in the request. \
+Never say "store what was found" or "use the previous results" — \
+paste the concrete information into the request text
+- The user cannot see skill responses directly. You must synthesize the \
+information returned by skills into your own reply\
 """
 
 
