@@ -9,6 +9,10 @@
 - **Skill package PyPI metadata**: All 4 skill packages now include authors, license, readme, keywords, classifiers, and project URLs
 - **Skill package READMEs**: `haiku-skills-web`, `haiku-skills-image-generation`, and `haiku-skills-code-execution` now have READMEs with prerequisites, configuration, tools, and installation instructions
 
+### Fixed
+
+- **Missing core dependencies**: `ag-ui-protocol` and `jsonpatch` moved from optional `[ag-ui]` extra to core dependencies — a clean install of `haiku.skills` no longer fails with `ModuleNotFoundError: No module named 'ag_ui'`
+
 ### Changed
 
 - **`generate_image` returns file path**: The image generation tool now returns the file path directly instead of a markdown image reference
