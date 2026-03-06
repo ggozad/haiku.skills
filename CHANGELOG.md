@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **Missing `openai` extra in core dependency**: `pydantic-ai-slim[mcp]` → `pydantic-ai-slim[mcp,openai]` — most users hit `ImportError: Please install openai` on first use
+- **CLI unusable without `[tui]` extra**: `typer` and `python-dotenv` are now lazy-loaded with a friendly error message instead of crashing with `ModuleNotFoundError`
+
 ## [0.7.1] - 2026-03-06
 
 ### Added

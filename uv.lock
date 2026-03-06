@@ -504,7 +504,7 @@ dependencies = [
     { name = "ag-ui-protocol" },
     { name = "jsonpatch" },
     { name = "pydantic" },
-    { name = "pydantic-ai-slim", extra = ["mcp"] },
+    { name = "pydantic-ai-slim", extra = ["mcp", "openai"] },
     { name = "pyyaml" },
     { name = "skills-ref" },
 ]
@@ -545,7 +545,7 @@ requires-dist = [
     { name = "jsonpatch", specifier = ">=1.33" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pydantic-ai-slim", extras = ["logfire"], marker = "extra == 'tui'", specifier = ">=1.63.0" },
-    { name = "pydantic-ai-slim", extras = ["mcp"], specifier = ">=1.63.0" },
+    { name = "pydantic-ai-slim", extras = ["mcp", "openai"], specifier = ">=1.63.0" },
     { name = "python-dotenv", marker = "extra == 'tui'", specifier = ">=1.2.1" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "skills-ref", specifier = ">=0.1.1" },

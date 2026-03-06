@@ -31,7 +31,7 @@ dependencies = [
     "ag-ui-protocol>=0.1.13",
     "jsonpatch>=1.33",
     "pydantic>=2.12.5",
-    "pydantic-ai-slim[mcp]>=1.63.0",
+    "pydantic-ai-slim[mcp,openai]>=1.63.0",
     "pyyaml>=6.0.3",
     "skills-ref>=0.1.1",
 ]
