@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-03-06
+
 ### Fixed
 
 - **Missing `openai` extra in core dependency**: `pydantic-ai-slim[mcp]` → `pydantic-ai-slim[mcp,openai]` — most users hit `ImportError: Please install openai` on first use
@@ -179,7 +181,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.7.1...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.7.2...HEAD
+[0.7.2]: https://github.com/ggozad/haiku.skills/compare/0.7.1...0.7.2
 [0.7.1]: https://github.com/ggozad/haiku.skills/compare/0.7.0...0.7.1
 [0.7.0]: https://github.com/ggozad/haiku.skills/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/ggozad/haiku.skills/compare/0.5.2...0.6.0
