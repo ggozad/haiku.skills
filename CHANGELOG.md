@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.7.4] - 2026-03-06
+
 ### Changed
 
 - **Main agent prompt**: Emphasize that skills are isolated agents with no shared context — the main agent must include concrete data when chaining skills and must synthesize skill responses for the user
@@ -187,7 +189,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.7.3...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.7.4...HEAD
+[0.7.4]: https://github.com/ggozad/haiku.skills/compare/0.7.3...0.7.4
 [0.7.3]: https://github.com/ggozad/haiku.skills/compare/0.7.2...0.7.3
 [0.7.2]: https://github.com/ggozad/haiku.skills/compare/0.7.1...0.7.2
 [0.7.1]: https://github.com/ggozad/haiku.skills/compare/0.7.0...0.7.1
