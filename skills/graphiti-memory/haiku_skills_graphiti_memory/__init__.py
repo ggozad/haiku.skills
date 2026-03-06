@@ -4,6 +4,12 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+from graphiti_core.search.search_config import (
+    EdgeReranker,
+    EdgeSearchConfig,
+    EdgeSearchMethod,
+    SearchConfig,
+)
 from pydantic import BaseModel
 from pydantic_ai import RunContext
 
@@ -80,9 +86,14 @@ def _build_embedder() -> Any:
 
 def _build_cross_encoder() -> Any:
     from graphiti_core.cross_encoder.openai_reranker_client import OpenAIRerankerClient
+    from graphiti_core.llm_client.config import LLMConfig
+    from openai import AsyncOpenAI
 
-    llm_client = _build_llm_client()
-    return OpenAIRerankerClient(client=llm_client, config=llm_client.config)
+    base_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
+    model = os.environ.get("GRAPHITI_LLM_MODEL", "gpt-oss")
+    config = LLMConfig(api_key="ollama", model=model, base_url=f"{base_url}/v1")
+    client = AsyncOpenAI(api_key=config.api_key, base_url=config.base_url)
+    return OpenAIRerankerClient(client=client, config=config)
 
 
 async def _get_client() -> Any:
@@ -108,6 +119,20 @@ async def _get_client() -> Any:
 
 def _get_group_id() -> str:
     return os.environ.get("GRAPHITI_GROUP_ID", "default")
+
+
+_SEARCH_CONFIG = SearchConfig(
+    edge_config=EdgeSearchConfig(
+        search_methods=[
+            EdgeSearchMethod.bm25,
+            EdgeSearchMethod.cosine_similarity,
+            EdgeSearchMethod.bfs,
+        ],
+        reranker=EdgeReranker.rrf,
+        sim_min_score=0.0,
+    ),
+    limit=20,
+)
 
 
 async def remember(
@@ -149,25 +174,23 @@ async def remember(
 async def recall(
     ctx: RunContext[SkillRunDeps],
     query: str,
-    num_results: int = 10,
 ) -> str:
     """Search the knowledge graph for relevant memories.
 
     Args:
         query: The search query.
-        num_results: Maximum number of results to return.
     """
     try:
         client = await _get_client()
-        edges = await client.search(
+        results = await client.search_(
             query=query,
+            config=_SEARCH_CONFIG,
             group_ids=[_get_group_id()],
-            num_results=num_results,
         )
     except Exception as e:
         return f"Error: {e}"
 
-    facts = [edge.fact for edge in edges]
+    facts = [edge.fact for edge in results.edges]
 
     if ctx.deps and ctx.deps.state and isinstance(ctx.deps.state, MemoryState):
         ctx.deps.state.recalls.append(RecallResult(query=query, facts=facts))
@@ -182,21 +205,20 @@ async def recall(
 async def forget(
     ctx: RunContext[SkillRunDeps],
     query: str,
-    num_results: int = 10,
 ) -> str:
     """Remove matching facts from the knowledge graph.
 
     Args:
         query: Search query to find memories to remove.
-        num_results: Maximum number of memories to remove.
     """
     try:
         client = await _get_client()
-        edges = await client.search(
+        results = await client.search_(
             query=query,
+            config=_SEARCH_CONFIG,
             group_ids=[_get_group_id()],
-            num_results=num_results,
         )
+        edges = results.edges
     except Exception as e:
         return f"Error: {e}"
 

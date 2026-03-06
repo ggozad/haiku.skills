@@ -12,6 +12,8 @@
 ### Fixed
 
 - **Missing core dependencies**: `ag-ui-protocol` and `jsonpatch` moved from optional `[ag-ui]` extra to core dependencies — a clean install of `haiku.skills` no longer fails with `ModuleNotFoundError: No module named 'ag_ui'`
+- **graphiti-memory recall returns empty results**: Switch `recall()` and `forget()` from `client.search()` to `client.search_()` with BM25 + cosine + BFS graph traversal, RRF reranking, and `sim_min_score=0.0` so cosine always returns candidates for BFS to expand on
+- **graphiti-memory cross-encoder crash**: `_build_cross_encoder()` now passes an `AsyncOpenAI` client directly to `OpenAIRerankerClient` instead of the graphiti `OpenAIGenericClient` wrapper, which lacked the `.chat` attribute the reranker needs
 
 ### Changed
 
