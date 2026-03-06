@@ -1,9 +1,5 @@
 # pragma: no cover
 import sys
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    import typer
 
 
 def cli() -> None:
@@ -23,7 +19,7 @@ def cli() -> None:
     app()
 
 
-def _build_cli() -> typer.Typer:
+def _build_cli():
     import os
     from pathlib import Path
 

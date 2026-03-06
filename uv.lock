@@ -498,7 +498,7 @@ wheels = [
 
 [[package]]
 name = "haiku-skills"
-version = "0.7.2"
+version = "0.7.3"
 source = { editable = "." }
 dependencies = [
     { name = "ag-ui-protocol" },
@@ -578,7 +578,7 @@ dev = [
 
 [[package]]
 name = "haiku-skills-code-execution"
-version = "0.7.2"
+version = "0.7.3"
 source = { editable = "skills/code-execution" }
 dependencies = [
     { name = "haiku-skills" },
@@ -593,7 +593,7 @@ requires-dist = [
 
 [[package]]
 name = "haiku-skills-graphiti-memory"
-version = "0.7.2"
+version = "0.7.3"
 source = { editable = "skills/graphiti-memory" }
 dependencies = [
     { name = "graphiti-core", extra = ["falkordb"] },
@@ -608,7 +608,7 @@ requires-dist = [
 
 [[package]]
 name = "haiku-skills-image-generation"
-version = "0.7.2"
+version = "0.7.3"
 source = { editable = "skills/image-generation" }
 dependencies = [
     { name = "haiku-skills" },
@@ -623,7 +623,7 @@ requires-dist = [
 
 [[package]]
 name = "haiku-skills-web"
-version = "0.7.2"
+version = "0.7.3"
 source = { editable = "skills/web" }
 dependencies = [
     { name = "haiku-skills" },
