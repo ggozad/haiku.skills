@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Main agent prompt**: Emphasize that skills are isolated agents with no shared context — the main agent must include concrete data when chaining skills and must synthesize skill responses for the user
+
 ## [0.7.3] - 2026-03-06
 
 ## [0.7.2] - 2026-03-06

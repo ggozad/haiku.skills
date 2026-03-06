@@ -359,9 +359,14 @@ class SkillToolset(FunctionToolset[Any]):
         ) -> str | ToolReturn:
             """Execute a skill by name.
 
+            Skills are isolated agents — they cannot see the conversation or
+            prior skill results. The request MUST contain all information the
+            skill needs to complete its task.
+
             Args:
                 skill_name: The exact name of the skill to use.
-                request: A clear description of what you need the skill to do.
+                request: Self-contained description including all data and
+                    context the skill needs. Never reference external context.
             """
             skill = registry.get(skill_name)
             if skill is None:

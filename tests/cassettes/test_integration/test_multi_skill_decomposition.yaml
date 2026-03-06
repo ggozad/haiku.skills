@@ -8,556 +8,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '1440'
-      content-type:
-      - application/json
-      host:
-      - localhost:11434
-    method: POST
-    parsed_body:
-      messages:
-      - content: |-
-          You are a helpful assistant with access to specialized skills.
-
-          ## Available skills
-
-          - **simple-skill**: A simple test skill that does basic operations.
-          - **skill-with-refs**: A skill with references, metadata, and all optional fields.
-          - **summarizer**: Summarize text into concise bullet points.
-          - **translator**: Translate text between languages.
-
-          ## Instructions
-
-          - For general conversation or questions that don't need skills, respond directly
-          - Use execute_skill to delegate work to a skill. Call it once per task. Include everything the skill needs in the request.
-        role: system
-      - content: 'First summarize the following text, then translate the summary to French: Machine learning is a subset of
-          artificial intelligence that enables systems to learn and improve from experience without being explicitly programmed.
-          It focuses on developing algorithms that can access data and use it to learn for themselves.'
-        role: user
-      model: gpt-oss
-      stream: false
-      tool_choice: auto
-      tools:
-      - function:
-          description: Execute a skill by name.
-          name: execute_skill
-          parameters:
-            additionalProperties: false
-            properties:
-              request:
-                description: A clear description of what you need the skill to do.
-                type: string
-              skill_name:
-                description: The exact name of the skill to use.
-                type: string
-            required:
-            - skill_name
-            - request
-            type: object
-          strict: true
-        type: function
-    uri: http://localhost:11434/v1/chat/completions
-  response:
-    headers:
-      content-type:
-      - application/json
-      transfer-encoding:
-      - chunked
-    parsed_body:
-      choices:
-      - finish_reason: tool_calls
-        index: 0
-        message:
-          content: ''
-          reasoning: |-
-            We need to perform two tasks in sequence: summarize and translate to French. We have a summarizer skill and translator skill. We should call the summarizer first, then translator. The instruction: "Use execute_skill to delegate work to a skill. Call it once per task." So need two separate calls. Probably call summarizer and then translator with that result. We'll need to provide request strings accordingly. Let's craft first call: summarizer with text. Then second call: translator with summary. We'll output the final French translation. In these interactions, we might chain? But per instruction, each skill call separate. So we send first skill. The assistant must output only the skill call? Actually the conversation is: user asks. We respond accordingly. We need to produce function call. We can chain? We might need to call summarizer, get result, then call translator. But we can't get back the summarizer output within same turn unless we manage? Usually we can embed function call as one to summarizer with request, and skill returns summary; we then do translator. But the conversation might need to wait for function responses. Might need two separate messages: first call summarizer, then after we get summary we call translator. But as per spec, we should respond to user directly. The best is to perform summarization and translation in one go, but using skills. Since we can only call one skill per turn, maybe we need to do summarizer and translator sequentially across turns. But we can call summarizer first; after it returns summary, we use translator.
-
-            But question: "First summarize the following text, then translate the summary to French." So we need final French output. We can't just produce calls. But we can do summarizer then translator. Suppose we call summarizer. After that returns summary, we call translator with that summary as the request.
-
-            Probably the system expects us to call summarizer, then translator. So we produce two function calls in sequence. The conversation could be:
-
-            Assistant: call summarizer skill.
-
-            Then in response, we get summary. Then we call translator.
-
-            But it's ambiguous. But we can combine into one response: call summarizer, then call translator with placeholder? No.
-
-            Better: call summarizer first, get summary. We'll then call translator. So we need to send two function calls in two messages. Let's do it. We'll call summarizer with "request" containing text. Then after the skill returns summary string, we call translator. We can simulate this. The system will handle function calls. So let's produce first function call.
-          role: assistant
-          tool_calls:
-          - function:
-              arguments: '{"request":"Summarize the following text: Machine learning is a subset of artificial intelligence
-                that enables systems to learn and improve from experience without being explicitly programmed. It focuses
-                on developing algorithms that can access data and use it to learn for themselves.","skill_name":"summarizer"}'
-              name: execute_skill
-            id: call_bjh2rahe
-            index: 0
-            type: function
-      created: 1771148118
-      id: chatcmpl-807
-      model: gpt-oss
-      object: chat.completion
-      system_fingerprint: fp_ollama
-      usage:
-        completion_tokens: 596
-        prompt_tokens: 327
-        total_tokens: 923
-    status:
-      code: 200
-      message: OK
-- request:
-    headers:
-      accept:
-      - application/json
-      accept-encoding:
-      - gzip, deflate
-      connection:
-      - keep-alive
-      content-length:
-      - '1172'
-      content-type:
-      - application/json
-      host:
-      - localhost:11434
-    method: POST
-    parsed_body:
-      messages:
-      - content: |-
-          You are a focused execution agent. Complete the following task using the skills and instructions provided.
-
-          ## Task
-
-          Summarize the following text: Machine learning is a subset of artificial intelligence that enables systems to learn and improve from experience without being explicitly programmed. It focuses on developing algorithms that can access data and use it to learn for themselves.
-
-          ## Skill instructions
-
-          # Summarizer
-
-          You are a text summarization assistant. When given text:
-
-          1. Identify the key points
-          2. Condense them into concise bullet points
-          3. Preserve the essential meaning
-          4. Return a markdown bulleted list
-
-          ## Guidelines
-
-          - Follow the skill instructions carefully
-          - Stay focused on the specific task described above
-          - Provide a clear, complete result
-        role: system
-      - content: 'Summarize the following text: Machine learning is a subset of artificial intelligence that enables systems
-          to learn and improve from experience without being explicitly programmed. It focuses on developing algorithms that
-          can access data and use it to learn for themselves.'
-        role: user
-      model: gpt-oss
-      stream: false
-    uri: http://localhost:11434/v1/chat/completions
-  response:
-    headers:
-      content-length:
-      - '931'
-      content-type:
-      - application/json
-    parsed_body:
-      choices:
-      - finish_reason: stop
-        index: 0
-        message:
-          content: "- Machine learning is a branch of artificial intelligence that allows systems to learn and improve from
-            experience without explicit programming.  \n- It centers on creating algorithms that can access and process data
-            to learn on their own.  \n- The key capability is autonomous learning and self‑improvement driven by data."
-          reasoning: 'We need to output a markdown bulleted list summarizing the text. Identify key points: ML subset of AI;
-            enables learning and improvement from experience without explicit programming; focuses on algorithms that access
-            data and learn for themselves. condense into concise bullet points. Let''s do three bullets.'
-          role: assistant
-      created: 1771148120
-      id: chatcmpl-49
-      model: gpt-oss
-      object: chat.completion
-      system_fingerprint: fp_ollama
-      usage:
-        completion_tokens: 124
-        prompt_tokens: 269
-        total_tokens: 393
-    status:
-      code: 200
-      message: OK
-- request:
-    headers:
-      accept:
-      - application/json
-      accept-encoding:
-      - gzip, deflate
-      connection:
-      - keep-alive
-      content-length:
-      - '4916'
-      content-type:
-      - application/json
-      host:
-      - localhost:11434
-    method: POST
-    parsed_body:
-      messages:
-      - content: |-
-          You are a helpful assistant with access to specialized skills.
-
-          ## Available skills
-
-          - **simple-skill**: A simple test skill that does basic operations.
-          - **skill-with-refs**: A skill with references, metadata, and all optional fields.
-          - **summarizer**: Summarize text into concise bullet points.
-          - **translator**: Translate text between languages.
-
-          ## Instructions
-
-          - For general conversation or questions that don't need skills, respond directly
-          - Use execute_skill to delegate work to a skill. Call it once per task. Include everything the skill needs in the request.
-        role: system
-      - content: 'First summarize the following text, then translate the summary to French: Machine learning is a subset of
-          artificial intelligence that enables systems to learn and improve from experience without being explicitly programmed.
-          It focuses on developing algorithms that can access data and use it to learn for themselves.'
-        role: user
-      - content: null
-        reasoning: |-
-          We need to perform two tasks in sequence: summarize and translate to French. We have a summarizer skill and translator skill. We should call the summarizer first, then translator. The instruction: "Use execute_skill to delegate work to a skill. Call it once per task." So need two separate calls. Probably call summarizer and then translator with that result. We'll need to provide request strings accordingly. Let's craft first call: summarizer with text. Then second call: translator with summary. We'll output the final French translation. In these interactions, we might chain? But per instruction, each skill call separate. So we send first skill. The assistant must output only the skill call? Actually the conversation is: user asks. We respond accordingly. We need to produce function call. We can chain? We might need to call summarizer, get result, then call translator. But we can't get back the summarizer output within same turn unless we manage? Usually we can embed function call as one to summarizer with request, and skill returns summary; we then do translator. But the conversation might need to wait for function responses. Might need two separate messages: first call summarizer, then after we get summary we call translator. But as per spec, we should respond to user directly. The best is to perform summarization and translation in one go, but using skills. Since we can only call one skill per turn, maybe we need to do summarizer and translator sequentially across turns. But we can call summarizer first; after it returns summary, we use translator.
-
-          But question: "First summarize the following text, then translate the summary to French." So we need final French output. We can't just produce calls. But we can do summarizer then translator. Suppose we call summarizer. After that returns summary, we call translator with that summary as the request.
-
-          Probably the system expects us to call summarizer, then translator. So we produce two function calls in sequence. The conversation could be:
-
-          Assistant: call summarizer skill.
-
-          Then in response, we get summary. Then we call translator.
-
-          But it's ambiguous. But we can combine into one response: call summarizer, then call translator with placeholder? No.
-
-          Better: call summarizer first, get summary. We'll then call translator. So we need to send two function calls in two messages. Let's do it. We'll call summarizer with "request" containing text. Then after the skill returns summary string, we call translator. We can simulate this. The system will handle function calls. So let's produce first function call.
-        role: assistant
-        tool_calls:
-        - function:
-            arguments: '{"request":"Summarize the following text: Machine learning is a subset of artificial intelligence
-              that enables systems to learn and improve from experience without being explicitly programmed. It focuses on
-              developing algorithms that can access data and use it to learn for themselves.","skill_name":"summarizer"}'
-            name: execute_skill
-          id: call_bjh2rahe
-          type: function
-      - content: "- Machine learning is a branch of artificial intelligence that allows systems to learn and improve from
-          experience without explicit programming.  \n- It centers on creating algorithms that can access and process data
-          to learn on their own.  \n- The key capability is autonomous learning and self‑improvement driven by data."
-        role: tool
-        tool_call_id: call_bjh2rahe
-      model: gpt-oss
-      stream: false
-      tool_choice: auto
-      tools:
-      - function:
-          description: Execute a skill by name.
-          name: execute_skill
-          parameters:
-            additionalProperties: false
-            properties:
-              request:
-                description: A clear description of what you need the skill to do.
-                type: string
-              skill_name:
-                description: The exact name of the skill to use.
-                type: string
-            required:
-            - skill_name
-            - request
-            type: object
-          strict: true
-        type: function
-    uri: http://localhost:11434/v1/chat/completions
-  response:
-    headers:
-      content-length:
-      - '911'
-      content-type:
-      - application/json
-    parsed_body:
-      choices:
-      - finish_reason: tool_calls
-        index: 0
-        message:
-          content: ''
-          reasoning: Now we need to translate that summary to French. We'll call translator.
-          role: assistant
-          tool_calls:
-          - function:
-              arguments: '{"request":"Translate the following summary into French: - Machine learning is a branch of artificial
-                intelligence that allows systems to learn and improve from experience without explicit programming.\n- It
-                centers on creating algorithms that can access and process data to learn on their own.\n- The key capability
-                is autonomous learning and self‑improvement driven by data.","skill_name":"translator"}'
-              name: execute_skill
-            id: call_6wamneg0
-            index: 0
-            type: function
-      created: 1771148123
-      id: chatcmpl-314
-      model: gpt-oss
-      object: chat.completion
-      system_fingerprint: fp_ollama
-      usage:
-        completion_tokens: 106
-        prompt_tokens: 992
-        total_tokens: 1098
-    status:
-      code: 200
-      message: OK
-- request:
-    headers:
-      accept:
-      - application/json
-      accept-encoding:
-      - gzip, deflate
-      connection:
-      - keep-alive
-      content-length:
-      - '1398'
-      content-type:
-      - application/json
-      host:
-      - localhost:11434
-    method: POST
-    parsed_body:
-      messages:
-      - content: |-
-          You are a focused execution agent. Complete the following task using the skills and instructions provided.
-
-          ## Task
-
-          Translate the following summary into French: - Machine learning is a branch of artificial intelligence that allows systems to learn and improve from experience without explicit programming.
-          - It centers on creating algorithms that can access and process data to learn on their own.
-          - The key capability is autonomous learning and self‑improvement driven by data.
-
-          ## Skill instructions
-
-          # Translator
-
-          You are a translation assistant. When given text and a target language:
-
-          1. Identify the source language
-          2. Translate the text accurately to the target language
-          3. Preserve the original meaning and tone
-          4. Return only the translated text
-
-          ## Guidelines
-
-          - Follow the skill instructions carefully
-          - Stay focused on the specific task described above
-          - Provide a clear, complete result
-        role: system
-      - content: |-
-          Translate the following summary into French: - Machine learning is a branch of artificial intelligence that allows systems to learn and improve from experience without explicit programming.
-          - It centers on creating algorithms that can access and process data to learn on their own.
-          - The key capability is autonomous learning and self‑improvement driven by data.
-        role: user
-      model: gpt-oss
-      stream: false
-    uri: http://localhost:11434/v1/chat/completions
-  response:
-    headers:
-      content-type:
-      - application/json
-      transfer-encoding:
-      - chunked
-    parsed_body:
-      choices:
-      - finish_reason: stop
-        index: 0
-        message:
-          content: "- L'apprentissage automatique est une branche de l'intelligence artificielle qui permet aux systèmes d'apprendre
-            et de s'améliorer à partir de l'expérience sans programmation explicite.  \n- Il se concentre sur la création
-            d'algorithmes capables d'accéder et de traiter des données pour apprendre de façon autonome.  \n- La capacité
-            clé est l'apprentissage autonome et l'auto‑amélioration alimentés par les données."
-          reasoning: |-
-            We need to translate that summary into French. The summary consists of three bullet points. The translation should preserve original meaning and tone. No extra commentary. Output only translated text. Let's translate:
-
-            - Machine learning is a branch of artificial intelligence that allows systems to learn and improve from experience without explicit programming.
-            => "L'apprentissage automatique est une branche de l'intelligence artificielle qui permet aux systèmes d'apprendre et de s'améliorer à partir de l'expérience sans programmation explicite."
-
-            - It centers on creating algorithms that can access and process data to learn on their own.
-            => "Il se concentre sur la création d'algorithmes capables d'accéder et de traiter des données pour apprendre de manière autonome."
-
-            - The key capability is autonomous learning and self‑improvement driven by data.
-            => "La capacité clé est l'apprentissage autonome et l'amélioration autonome alimentés par les données."
-
-            Check consistency: use "automatique" as in French "apprentissage automatique". Also "self‑improvement" -> "amélioration autonome" or "auto-amélioration". "driven by data" -> "alimenés par les données". Could be "développés par les données" but "alimentés par". "self‑improvement" maybe "auto-amélioration" but likely "autonome" used: "l'apprentissage autonome et l'amélioration autonome alimentés par les données." Might double use of "autonome" but okay.
-
-            Better: "L'apprentissage automatique" is used; French uses "l'apprentissage automatique".
-
-            Second: "Il se concentre sur la création d'algorithms qui peuvent accéder et traiter des données afin d'apprendre de façon autonome." could be "Il se concentre sur la création d'algorithmes capables d'accéder et de traiter des données pour apprendre par eux-mêmes." Let's keep "apprendre de façon autonome".
-
-            Third: "La capacité clé est l'apprentissage autonome et l'auto-amélioration alimentés par les données." That seems best.
-
-            Thus translation:
-
-            - L'apprentissage automatique est une branche de l'intelligence artificielle qui permet aux systèmes d'apprendre et de s'améliorer à partir de l'expérience sans programmation explicite.
-            - Il se concentre sur la création d'algorithmes capables d'accéder et de traiter des données pour apprendre de façon autonome.
-            - La capacité clé est l'apprentissage autonome et l'auto-amélioration alimentés par les données.
-
-            Return only that.
-          role: assistant
-      created: 1771148136
-      id: chatcmpl-464
-      model: gpt-oss
-      object: chat.completion
-      system_fingerprint: fp_ollama
-      usage:
-        completion_tokens: 606
-        prompt_tokens: 305
-        total_tokens: 911
-    status:
-      code: 200
-      message: OK
-- request:
-    headers:
-      accept:
-      - application/json
-      accept-encoding:
-      - gzip, deflate
-      connection:
-      - keep-alive
-      content-length:
-      - '6051'
-      content-type:
-      - application/json
-      host:
-      - localhost:11434
-    method: POST
-    parsed_body:
-      messages:
-      - content: |-
-          You are a helpful assistant with access to specialized skills.
-
-          ## Available skills
-
-          - **simple-skill**: A simple test skill that does basic operations.
-          - **skill-with-refs**: A skill with references, metadata, and all optional fields.
-          - **summarizer**: Summarize text into concise bullet points.
-          - **translator**: Translate text between languages.
-
-          ## Instructions
-
-          - For general conversation or questions that don't need skills, respond directly
-          - Use execute_skill to delegate work to a skill. Call it once per task. Include everything the skill needs in the request.
-        role: system
-      - content: 'First summarize the following text, then translate the summary to French: Machine learning is a subset of
-          artificial intelligence that enables systems to learn and improve from experience without being explicitly programmed.
-          It focuses on developing algorithms that can access data and use it to learn for themselves.'
-        role: user
-      - content: null
-        reasoning: |-
-          We need to perform two tasks in sequence: summarize and translate to French. We have a summarizer skill and translator skill. We should call the summarizer first, then translator. The instruction: "Use execute_skill to delegate work to a skill. Call it once per task." So need two separate calls. Probably call summarizer and then translator with that result. We'll need to provide request strings accordingly. Let's craft first call: summarizer with text. Then second call: translator with summary. We'll output the final French translation. In these interactions, we might chain? But per instruction, each skill call separate. So we send first skill. The assistant must output only the skill call? Actually the conversation is: user asks. We respond accordingly. We need to produce function call. We can chain? We might need to call summarizer, get result, then call translator. But we can't get back the summarizer output within same turn unless we manage? Usually we can embed function call as one to summarizer with request, and skill returns summary; we then do translator. But the conversation might need to wait for function responses. Might need two separate messages: first call summarizer, then after we get summary we call translator. But as per spec, we should respond to user directly. The best is to perform summarization and translation in one go, but using skills. Since we can only call one skill per turn, maybe we need to do summarizer and translator sequentially across turns. But we can call summarizer first; after it returns summary, we use translator.
-
-          But question: "First summarize the following text, then translate the summary to French." So we need final French output. We can't just produce calls. But we can do summarizer then translator. Suppose we call summarizer. After that returns summary, we call translator with that summary as the request.
-
-          Probably the system expects us to call summarizer, then translator. So we produce two function calls in sequence. The conversation could be:
-
-          Assistant: call summarizer skill.
-
-          Then in response, we get summary. Then we call translator.
-
-          But it's ambiguous. But we can combine into one response: call summarizer, then call translator with placeholder? No.
-
-          Better: call summarizer first, get summary. We'll then call translator. So we need to send two function calls in two messages. Let's do it. We'll call summarizer with "request" containing text. Then after the skill returns summary string, we call translator. We can simulate this. The system will handle function calls. So let's produce first function call.
-        role: assistant
-        tool_calls:
-        - function:
-            arguments: '{"request":"Summarize the following text: Machine learning is a subset of artificial intelligence
-              that enables systems to learn and improve from experience without being explicitly programmed. It focuses on
-              developing algorithms that can access data and use it to learn for themselves.","skill_name":"summarizer"}'
-            name: execute_skill
-          id: call_bjh2rahe
-          type: function
-      - content: "- Machine learning is a branch of artificial intelligence that allows systems to learn and improve from
-          experience without explicit programming.  \n- It centers on creating algorithms that can access and process data
-          to learn on their own.  \n- The key capability is autonomous learning and self‑improvement driven by data."
-        role: tool
-        tool_call_id: call_bjh2rahe
-      - content: null
-        reasoning: Now we need to translate that summary to French. We'll call translator.
-        role: assistant
-        tool_calls:
-        - function:
-            arguments: '{"request":"Translate the following summary into French: - Machine learning is a branch of artificial
-              intelligence that allows systems to learn and improve from experience without explicit programming.\n- It centers
-              on creating algorithms that can access and process data to learn on their own.\n- The key capability is autonomous
-              learning and self‑improvement driven by data.","skill_name":"translator"}'
-            name: execute_skill
-          id: call_6wamneg0
-          type: function
-      - content: "- L'apprentissage automatique est une branche de l'intelligence artificielle qui permet aux systèmes d'apprendre
-          et de s'améliorer à partir de l'expérience sans programmation explicite.  \n- Il se concentre sur la création d'algorithmes
-          capables d'accéder et de traiter des données pour apprendre de façon autonome.  \n- La capacité clé est l'apprentissage
-          autonome et l'auto‑amélioration alimentés par les données."
-        role: tool
-        tool_call_id: call_6wamneg0
-      model: gpt-oss
-      stream: false
-      tool_choice: auto
-      tools:
-      - function:
-          description: Execute a skill by name.
-          name: execute_skill
-          parameters:
-            additionalProperties: false
-            properties:
-              request:
-                description: A clear description of what you need the skill to do.
-                type: string
-              skill_name:
-                description: The exact name of the skill to use.
-                type: string
-            required:
-            - skill_name
-            - request
-            type: object
-          strict: true
-        type: function
-    uri: http://localhost:11434/v1/chat/completions
-  response:
-    headers:
-      content-length:
-      - '758'
-      content-type:
-      - application/json
-    parsed_body:
-      choices:
-      - finish_reason: stop
-        index: 0
-        message:
-          content: "**Résumé traduit en français :**\n\n- L'apprentissage automatique est une branche de l'intelligence artificielle
-            qui permet aux systèmes d'apprendre et de s'améliorer à partir de l'expérience sans programmation explicite.  \n-
-            Il se concentre sur la création d'algorithmes capables d'accéder et de traiter des données pour apprendre de façon
-            autonome.  \n- La capacité clé est l'apprentissage autonome et l'auto‑amélioration alimentés par les données."
-          role: assistant
-      created: 1771148139
-      id: chatcmpl-420
-      model: gpt-oss
-      object: chat.completion
-      system_fingerprint: fp_ollama
-      usage:
-        completion_tokens: 101
-        prompt_tokens: 1198
-        total_tokens: 1299
-    status:
-      code: 200
-      message: OK
-- request:
-    headers:
-      accept:
-      - application/json
-      accept-encoding:
-      - gzip, deflate
-      connection:
-      - keep-alive
-      content-length:
-      - '1440'
+      - '2125'
       content-type:
       - application/json
       host:
@@ -578,7 +29,10 @@ interactions:
           ## Instructions
 
           - For general conversation or questions that don't need skills, respond directly
-          - Use execute_skill to delegate work to a skill. Call it once per task. Include everything the skill needs in the request.
+          - Use execute_skill to delegate work to a skill
+          - Each skill runs as an isolated agent with NO shared memory or context. A skill can only see what you put in its request — it has no access to the conversation, previous skill results, or any other context
+          - When chaining skills, you MUST include the actual data in the request. Never say "store what was found" or "use the previous results" — paste the concrete information into the request text
+          - The user cannot see skill responses directly. You must synthesize the information returned by skills into your own reply
         role: system
       - content: 'First summarize the following text, then translate the summary to French: Machine learning is a subset of
           artificial intelligence that enables systems to learn and improve from experience without being explicitly programmed.
@@ -589,13 +43,405 @@ interactions:
       tool_choice: auto
       tools:
       - function:
-          description: Execute a skill by name.
+          description: |-
+            Execute a skill by name.
+
+            Skills are isolated agents — they cannot see the conversation or
+            prior skill results. The request MUST contain all information the
+            skill needs to complete its task.
           name: execute_skill
           parameters:
             additionalProperties: false
             properties:
               request:
-                description: A clear description of what you need the skill to do.
+                description: |-
+                  Self-contained description including all data and
+                  context the skill needs. Never reference external context.
+                type: string
+              skill_name:
+                description: The exact name of the skill to use.
+                type: string
+            required:
+            - skill_name
+            - request
+            type: object
+          strict: true
+        type: function
+    uri: http://127.0.0.1:11434/v1/chat/completions
+  response:
+    headers:
+      content-type:
+      - application/json
+      transfer-encoding:
+      - chunked
+    parsed_body:
+      choices:
+      - finish_reason: tool_calls
+        index: 0
+        message:
+          content: ''
+          reasoning: |-
+            We need to summarize the text into bullet points? The summary should be concise. Then translate the summary to French. Must use the skills for summarization and translation. I must not rely on skills' internal context; I have to supply the text. Use summarizer skill. Then translation skill. But the instruction says: "When chaining skills, you MUST include the actual data in the request." So I must feed the "text" into the summarization skill. Then take the output summary and feed into translator skill. The final answer: French translation. I should also produce the summary? The user wants "First summarize the following text, then translate the summary to French". So the final output must include the summary (in English) and the French translation? The instruction: "the user cannot see skill responses directly. You must synthesize the information returned by skills into your own reply". So we need to produce the final output with the summary and the French translation. We’ll call summarizer skill. Then translator skill.
+
+            We need to chain. We'll call summarizer first.
+
+            Let's produce request to summarizer skill: "Summarize the following text into concise bullet points: [text]" Use the skill. Then take the result. Then translator: translate [summary] to French. Then combine. Let's do that.
+          role: assistant
+          tool_calls:
+          - function:
+              arguments: '{"request":"Summarize the following text into concise bullet points: Machine learning is a subset
+                of artificial intelligence that enables systems to learn and improve from experience without being explicitly
+                programmed. It focuses on developing algorithms that can access data and use it to learn for themselves.","skill_name":"summarizer"}'
+              name: execute_skill
+            id: call_cmfa68bw
+            index: 0
+            type: function
+      created: 1772802106
+      id: chatcmpl-225
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 344
+        prompt_tokens: 455
+        total_tokens: 799
+    status:
+      code: 200
+      message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '1265'
+      content-type:
+      - application/json
+      host:
+      - 127.0.0.1:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a focused execution agent. Complete the following task using the skills and instructions provided.
+
+          ## Task
+
+          Summarize the following text into concise bullet points: Machine learning is a subset of artificial intelligence that enables systems to learn and improve from experience without being explicitly programmed. It focuses on developing algorithms that can access data and use it to learn for themselves.
+
+          ## Skill instructions
+
+          # Summarizer
+
+          You are a text summarization assistant. When given text:
+
+          1. Identify the key points
+          2. Condense them into concise bullet points
+          3. Preserve the essential meaning
+          4. Return a markdown bulleted list
+
+          ## Guidelines
+
+          - Follow the skill instructions carefully
+          - Stay focused on the specific task described above
+          - Provide a clear, complete result
+        role: system
+      - content: 'Summarize the following text into concise bullet points: Machine learning is a subset of artificial intelligence
+          that enables systems to learn and improve from experience without being explicitly programmed. It focuses on developing
+          algorithms that can access data and use it to learn for themselves.'
+        role: user
+      model: gpt-oss
+      stream: true
+      stream_options:
+        include_usage: true
+    uri: http://127.0.0.1:11434/v1/chat/completions
+  response:
+    body:
+      string: |+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"We"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" need"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" to"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" summarize"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" into"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" concise"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" bullet"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" points"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" Provide"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" markdown"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" bul"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"leted"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" list"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" Probably"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" two"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" bullets"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":":"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" "},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"1"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":")"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" ML"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" subset"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" of"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" AI"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802107,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" enabling"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" systems"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" to"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" learn"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"/im"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"prove"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" from"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" experience"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" without"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" explicit"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" programming"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" "},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"2"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":")"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" Focus"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"es"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" on"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" developing"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" algorithms"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" that"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" access"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" data"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" and"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" learn"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" for"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" themselves"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802108,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"-"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" Machine"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" learning"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" is"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" a"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" subset"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" of"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" artificial"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" intelligence"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" that"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" lets"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" systems"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" learn"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" and"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" improve"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" from"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" experience"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" without"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" explicit"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" programming"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"  \n"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"-"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" It"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" focuses"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" on"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" creating"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" algorithms"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802109,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" that"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802110,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" access"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802110,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" data"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802110,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" and"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802110,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" use"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802110,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" it"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802110,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" to"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802110,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" learn"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802110,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" on"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802110,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" their"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802110,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" own"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802110,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802110,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":""},"finish_reason":"stop"}]}
+
+        data: {"id":"chatcmpl-744","object":"chat.completion.chunk","created":1772802110,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[],"usage":{"prompt_tokens":277,"completion_tokens":104,"total_tokens":381}}
+
+        data: [DONE]
+
+    headers:
+      content-type:
+      - text/event-stream
+      transfer-encoding:
+      - chunked
+    status:
+      code: 200
+      message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '4242'
+      content-type:
+      - application/json
+      host:
+      - 127.0.0.1:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a helpful assistant with access to specialized skills.
+
+          ## Available skills
+
+          - **simple-skill**: A simple test skill that does basic operations.
+          - **skill-with-refs**: A skill with references, metadata, and all optional fields.
+          - **summarizer**: Summarize text into concise bullet points.
+          - **translator**: Translate text between languages.
+
+          ## Instructions
+
+          - For general conversation or questions that don't need skills, respond directly
+          - Use execute_skill to delegate work to a skill
+          - Each skill runs as an isolated agent with NO shared memory or context. A skill can only see what you put in its request — it has no access to the conversation, previous skill results, or any other context
+          - When chaining skills, you MUST include the actual data in the request. Never say "store what was found" or "use the previous results" — paste the concrete information into the request text
+          - The user cannot see skill responses directly. You must synthesize the information returned by skills into your own reply
+        role: system
+      - content: 'First summarize the following text, then translate the summary to French: Machine learning is a subset of
+          artificial intelligence that enables systems to learn and improve from experience without being explicitly programmed.
+          It focuses on developing algorithms that can access data and use it to learn for themselves.'
+        role: user
+      - content: null
+        reasoning: |-
+          We need to summarize the text into bullet points? The summary should be concise. Then translate the summary to French. Must use the skills for summarization and translation. I must not rely on skills' internal context; I have to supply the text. Use summarizer skill. Then translation skill. But the instruction says: "When chaining skills, you MUST include the actual data in the request." So I must feed the "text" into the summarization skill. Then take the output summary and feed into translator skill. The final answer: French translation. I should also produce the summary? The user wants "First summarize the following text, then translate the summary to French". So the final output must include the summary (in English) and the French translation? The instruction: "the user cannot see skill responses directly. You must synthesize the information returned by skills into your own reply". So we need to produce the final output with the summary and the French translation. We’ll call summarizer skill. Then translator skill.
+
+          We need to chain. We'll call summarizer first.
+
+          Let's produce request to summarizer skill: "Summarize the following text into concise bullet points: [text]" Use the skill. Then take the result. Then translator: translate [summary] to French. Then combine. Let's do that.
+        role: assistant
+        tool_calls:
+        - function:
+            arguments: '{"request":"Summarize the following text into concise bullet points: Machine learning is a subset
+              of artificial intelligence that enables systems to learn and improve from experience without being explicitly
+              programmed. It focuses on developing algorithms that can access data and use it to learn for themselves.","skill_name":"summarizer"}'
+            name: execute_skill
+          id: call_cmfa68bw
+          type: function
+      - content: "- Machine learning is a subset of artificial intelligence that lets systems learn and improve from experience
+          without explicit programming.  \n- It focuses on creating algorithms that access data and use it to learn on their
+          own."
+        role: tool
+        tool_call_id: call_cmfa68bw
+      model: gpt-oss
+      stream: false
+      tool_choice: auto
+      tools:
+      - function:
+          description: |-
+            Execute a skill by name.
+
+            Skills are isolated agents — they cannot see the conversation or
+            prior skill results. The request MUST contain all information the
+            skill needs to complete its task.
+          name: execute_skill
+          parameters:
+            additionalProperties: false
+            properties:
+              request:
+                description: |-
+                  Self-contained description including all data and
+                  context the skill needs. Never reference external context.
                 type: string
               skill_name:
                 description: The exact name of the skill to use.
@@ -610,7 +456,401 @@ interactions:
   response:
     headers:
       content-length:
-      - '1281'
+      - '817'
+      content-type:
+      - application/json
+    parsed_body:
+      choices:
+      - finish_reason: tool_calls
+        index: 0
+        message:
+          content: ''
+          reasoning: Now we need to translate that summary into French. We'll feed translator skill.
+          role: assistant
+          tool_calls:
+          - function:
+              arguments: '{"request":"Translate the following summary to French: - Machine learning is a subset of artificial
+                intelligence that lets systems learn and improve from experience without explicit programming. - It focuses
+                on creating algorithms that access data and use it to learn on their own.","skill_name":"translator"}'
+              name: execute_skill
+            id: call_5legtw88
+            index: 0
+            type: function
+      created: 1772802114
+      id: chatcmpl-38
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 88
+        prompt_tokens: 850
+        total_tokens: 938
+    status:
+      code: 200
+      message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '1243'
+      content-type:
+      - application/json
+      host:
+      - 127.0.0.1:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a focused execution agent. Complete the following task using the skills and instructions provided.
+
+          ## Task
+
+          Translate the following summary to French: - Machine learning is a subset of artificial intelligence that lets systems learn and improve from experience without explicit programming. - It focuses on creating algorithms that access data and use it to learn on their own.
+
+          ## Skill instructions
+
+          # Translator
+
+          You are a translation assistant. When given text and a target language:
+
+          1. Identify the source language
+          2. Translate the text accurately to the target language
+          3. Preserve the original meaning and tone
+          4. Return only the translated text
+
+          ## Guidelines
+
+          - Follow the skill instructions carefully
+          - Stay focused on the specific task described above
+          - Provide a clear, complete result
+        role: system
+      - content: 'Translate the following summary to French: - Machine learning is a subset of artificial intelligence that
+          lets systems learn and improve from experience without explicit programming. - It focuses on creating algorithms
+          that access data and use it to learn on their own.'
+        role: user
+      model: gpt-oss
+      stream: true
+      stream_options:
+        include_usage: true
+    uri: http://127.0.0.1:11434/v1/chat/completions
+  response:
+    body:
+      string: |+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"We"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" just"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" need"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" to"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" translate"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" the"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" given"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" summary"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" to"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" French"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" Must"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" preserve"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" meaning"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" and"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" tone"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" Provide"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" only"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" translated"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" text"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" Ok"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"-"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" L"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802115,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"'ap"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"prentissage"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" automatique"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" est"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" une"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" sous"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"-c"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"atég"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"orie"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" de"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" l"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"'int"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"elligence"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" artific"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"ielle"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" qui"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" permet"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" aux"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" systèmes"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" d"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"'ap"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"prendre"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" et"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" de"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" s"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"'améli"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"orer"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" grâce"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" à"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" l"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"'expérience"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":","},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" sans"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" programmation"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802116,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" explic"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"ite"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"  \n"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"-"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" Il"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" se"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" concent"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"re"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" sur"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" la"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" création"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" d"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"'"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"alg"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"orith"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"mes"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" capables"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" d"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"'acc"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"éder"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" aux"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" données"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" et"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" de"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" les"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" utiliser"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" pour"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" apprendre"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" de"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" façon"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" autonome"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802117,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802118,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":""},"finish_reason":"stop"}]}
+
+        data: {"id":"chatcmpl-304","object":"chat.completion.chunk","created":1772802118,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[],"usage":{"prompt_tokens":271,"completion_tokens":103,"total_tokens":374}}
+
+        data: [DONE]
+
+    headers:
+      content-type:
+      - text/event-stream
+      transfer-encoding:
+      - chunked
+    status:
+      code: 200
+      message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '5190'
+      content-type:
+      - application/json
+      host:
+      - 127.0.0.1:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a helpful assistant with access to specialized skills.
+
+          ## Available skills
+
+          - **simple-skill**: A simple test skill that does basic operations.
+          - **skill-with-refs**: A skill with references, metadata, and all optional fields.
+          - **summarizer**: Summarize text into concise bullet points.
+          - **translator**: Translate text between languages.
+
+          ## Instructions
+
+          - For general conversation or questions that don't need skills, respond directly
+          - Use execute_skill to delegate work to a skill
+          - Each skill runs as an isolated agent with NO shared memory or context. A skill can only see what you put in its request — it has no access to the conversation, previous skill results, or any other context
+          - When chaining skills, you MUST include the actual data in the request. Never say "store what was found" or "use the previous results" — paste the concrete information into the request text
+          - The user cannot see skill responses directly. You must synthesize the information returned by skills into your own reply
+        role: system
+      - content: 'First summarize the following text, then translate the summary to French: Machine learning is a subset of
+          artificial intelligence that enables systems to learn and improve from experience without being explicitly programmed.
+          It focuses on developing algorithms that can access data and use it to learn for themselves.'
+        role: user
+      - content: null
+        reasoning: |-
+          We need to summarize the text into bullet points? The summary should be concise. Then translate the summary to French. Must use the skills for summarization and translation. I must not rely on skills' internal context; I have to supply the text. Use summarizer skill. Then translation skill. But the instruction says: "When chaining skills, you MUST include the actual data in the request." So I must feed the "text" into the summarization skill. Then take the output summary and feed into translator skill. The final answer: French translation. I should also produce the summary? The user wants "First summarize the following text, then translate the summary to French". So the final output must include the summary (in English) and the French translation? The instruction: "the user cannot see skill responses directly. You must synthesize the information returned by skills into your own reply". So we need to produce the final output with the summary and the French translation. We’ll call summarizer skill. Then translator skill.
+
+          We need to chain. We'll call summarizer first.
+
+          Let's produce request to summarizer skill: "Summarize the following text into concise bullet points: [text]" Use the skill. Then take the result. Then translator: translate [summary] to French. Then combine. Let's do that.
+        role: assistant
+        tool_calls:
+        - function:
+            arguments: '{"request":"Summarize the following text into concise bullet points: Machine learning is a subset
+              of artificial intelligence that enables systems to learn and improve from experience without being explicitly
+              programmed. It focuses on developing algorithms that can access data and use it to learn for themselves.","skill_name":"summarizer"}'
+            name: execute_skill
+          id: call_cmfa68bw
+          type: function
+      - content: "- Machine learning is a subset of artificial intelligence that lets systems learn and improve from experience
+          without explicit programming.  \n- It focuses on creating algorithms that access data and use it to learn on their
+          own."
+        role: tool
+        tool_call_id: call_cmfa68bw
+      - content: null
+        reasoning: Now we need to translate that summary into French. We'll feed translator skill.
+        role: assistant
+        tool_calls:
+        - function:
+            arguments: '{"request":"Translate the following summary to French: - Machine learning is a subset of artificial
+              intelligence that lets systems learn and improve from experience without explicit programming. - It focuses
+              on creating algorithms that access data and use it to learn on their own.","skill_name":"translator"}'
+            name: execute_skill
+          id: call_5legtw88
+          type: function
+      - content: "- L'apprentissage automatique est une sous-catégorie de l'intelligence artificielle qui permet aux systèmes
+          d'apprendre et de s'améliorer grâce à l'expérience, sans programmation explicite.  \n- Il se concentre sur la création
+          d'algorithmes capables d'accéder aux données et de les utiliser pour apprendre de façon autonome."
+        role: tool
+        tool_call_id: call_5legtw88
+      model: gpt-oss
+      stream: false
+      tool_choice: auto
+      tools:
+      - function:
+          description: |-
+            Execute a skill by name.
+
+            Skills are isolated agents — they cannot see the conversation or
+            prior skill results. The request MUST contain all information the
+            skill needs to complete its task.
+          name: execute_skill
+          parameters:
+            additionalProperties: false
+            properties:
+              request:
+                description: |-
+                  Self-contained description including all data and
+                  context the skill needs. Never reference external context.
+                type: string
+              skill_name:
+                description: The exact name of the skill to use.
+                type: string
+            required:
+            - skill_name
+            - request
+            type: object
+          strict: true
+        type: function
+    uri: http://127.0.0.1:11434/v1/chat/completions
+  response:
+    headers:
+      content-length:
+      - '909'
       content-type:
       - application/json
     parsed_body:
@@ -618,25 +858,22 @@ interactions:
       - finish_reason: stop
         index: 0
         message:
-          content: "**Summary:**  \nMachine learning lets systems improve from data without explicit programming.\n\n**French
-            translation:**  \nL’apprentissage automatique permet aux systèmes de s’améliorer à partir des données sans programmation
-            explicite."
-          reasoning: |-
-            The user wants: first summarize the text, then translate the summary to French. So they need a summary, then a French translation of it. We can do both in simple response. We don't need a skill because summarization and translation are simple tasks.
-
-            We are allowed to respond directly. So let's provide a concise summary first, then the French translation. Use a bullet summary? They say "summarize" without formatting. We'll provide a concise sentence summary: "Machine learning lets systems improve based on data without explicit programming" Then translate: "L'apprentissage automatique permet aux systèmes de s'améliorer à partir des données sans programmation explicite."
-
-            We can do the translation. No skill needed.
+          content: "**Summary (English)**  \n- Machine learning is a subset of artificial intelligence that lets systems learn
+            and improve from experience without explicit programming.  \n- It focuses on creating algorithms that access data
+            and use it to learn on their own.  \n\n**Résumé (Français)**  \n- L'apprentissage automatique est une sous-catégorie
+            de l'intelligence artificielle qui permet aux systèmes d'apprendre et de s'améliorer grâce à l'expérience, sans
+            programmation explicite.  \n- Il se concentre sur la création d'algorithmes capables d'accéder aux données et
+            de les utiliser pour apprendre de façon autonome."
           role: assistant
-      created: 1771934100
-      id: chatcmpl-160
+      created: 1772802123
+      id: chatcmpl-651
       model: gpt-oss
       object: chat.completion
       system_fingerprint: fp_ollama
       usage:
-        completion_tokens: 189
-        prompt_tokens: 327
-        total_tokens: 516
+        completion_tokens: 127
+        prompt_tokens: 1018
+        total_tokens: 1145
     status:
       code: 200
       message: OK

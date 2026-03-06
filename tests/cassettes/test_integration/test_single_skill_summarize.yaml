@@ -8,11 +8,11 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '1456'
+      - '2141'
       content-type:
       - application/json
       host:
-      - localhost:11434
+      - 127.0.0.1:11434
     method: POST
     parsed_body:
       messages:
@@ -29,7 +29,10 @@ interactions:
           ## Instructions
 
           - For general conversation or questions that don't need skills, respond directly
-          - Use execute_skill to delegate work to a skill. Call it once per task. Include everything the skill needs in the request.
+          - Use execute_skill to delegate work to a skill
+          - Each skill runs as an isolated agent with NO shared memory or context. A skill can only see what you put in its request — it has no access to the conversation, previous skill results, or any other context
+          - When chaining skills, you MUST include the actual data in the request. Never say "store what was found" or "use the previous results" — paste the concrete information into the request text
+          - The user cannot see skill responses directly. You must synthesize the information returned by skills into your own reply
         role: system
       - content: 'Summarize the following: Python is a high-level programming language known for its readability and versatility.
           It supports multiple programming paradigms including procedural, object-oriented, and functional programming. Python
@@ -40,13 +43,20 @@ interactions:
       tool_choice: auto
       tools:
       - function:
-          description: Execute a skill by name.
+          description: |-
+            Execute a skill by name.
+
+            Skills are isolated agents — they cannot see the conversation or
+            prior skill results. The request MUST contain all information the
+            skill needs to complete its task.
           name: execute_skill
           parameters:
             additionalProperties: false
             properties:
               request:
-                description: A clear description of what you need the skill to do.
+                description: |-
+                  Self-contained description including all data and
+                  context the skill needs. Never reference external context.
                 type: string
               skill_name:
                 description: The exact name of the skill to use.
@@ -57,11 +67,11 @@ interactions:
             type: object
           strict: true
         type: function
-    uri: http://localhost:11434/v1/chat/completions
+    uri: http://127.0.0.1:11434/v1/chat/completions
   response:
     headers:
       content-length:
-      - '916'
+      - '844'
       content-type:
       - application/json
     parsed_body:
@@ -70,7 +80,7 @@ interactions:
         index: 0
         message:
           content: ''
-          reasoning: We need a summary. We should use summarizer skill. Use execute_skill with request and skill_name "summarizer".
+          reasoning: User wants summary. Use summarizer skill.
           role: assistant
           tool_calls:
           - function:
@@ -79,18 +89,18 @@ interactions:
                 programming. Python has a large standard library and an active community that contributes thousands of third-party
                 packages.","skill_name":"summarizer"}'
               name: execute_skill
-            id: call_ztcaa4z9
+            id: call_egplf37k
             index: 0
             type: function
-      created: 1771148069
-      id: chatcmpl-616
+      created: 1772802084
+      id: chatcmpl-500
       model: gpt-oss
       object: chat.completion
       system_fingerprint: fp_ollama
       usage:
-        completion_tokens: 108
-        prompt_tokens: 329
-        total_tokens: 437
+        completion_tokens: 92
+        prompt_tokens: 457
+        total_tokens: 549
     status:
       code: 200
       message: OK
@@ -103,11 +113,11 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '1292'
+      - '1331'
       content-type:
       - application/json
       host:
-      - localhost:11434
+      - 127.0.0.1:11434
     method: POST
     parsed_body:
       messages:
@@ -140,33 +150,154 @@ interactions:
           has a large standard library and an active community that contributes thousands of third-party packages.'
         role: user
       model: gpt-oss
-      stream: false
-    uri: http://localhost:11434/v1/chat/completions
+      stream: true
+      stream_options:
+        include_usage: true
+    uri: http://127.0.0.1:11434/v1/chat/completions
   response:
+    body:
+      string: |+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802084,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"Need"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802084,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" to"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802084,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" summarize"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" into"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" concise"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" bullet"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" points"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" Use"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" markdown"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" bullets"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"-"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" Python"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" is"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" a"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" high"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"‑"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"level"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":","},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" readable"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":","},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" and"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" versatile"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" programming"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" language"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"  \n"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"-"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" It"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802085,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" supports"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" procedural"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":","},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" object"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"‑"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"or"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"iented"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":","},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" and"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" functional"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" programming"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" paradig"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"ms"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"  \n"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"-"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" Comes"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" with"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" a"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" large"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" standard"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" library"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" and"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" a"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" vibrant"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" community"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" that"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" supplies"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" thousands"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" of"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" third"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"‑"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"party"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" packages"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":""},"finish_reason":"stop"}]}
+
+        data: {"id":"chatcmpl-169","object":"chat.completion.chunk","created":1772802086,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[],"usage":{"prompt_tokens":285,"completion_tokens":75,"total_tokens":360}}
+
+        data: [DONE]
+
     headers:
-      content-length:
-      - '625'
       content-type:
-      - application/json
-    parsed_body:
-      choices:
-      - finish_reason: stop
-        index: 0
-        message:
-          content: "- Python is a high‑level language renowned for readability and versatility.  \n- It supports procedural,
-            object‑oriented, and functional programming paradigms.  \n- The language comes with a large standard library and
-            a vibrant community that supplies thousands of third‑party packages."
-          reasoning: We generate concise bullet points.
-          role: assistant
-      created: 1771148071
-      id: chatcmpl-844
-      model: gpt-oss
-      object: chat.completion
-      system_fingerprint: fp_ollama
-      usage:
-        completion_tokens: 70
-        prompt_tokens: 285
-        total_tokens: 355
+      - text/event-stream
+      transfer-encoding:
+      - chunked
     status:
       code: 200
       message: OK
@@ -179,11 +310,11 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '2459'
+      - '3056'
       content-type:
       - application/json
       host:
-      - localhost:11434
+      - 127.0.0.1:11434
     method: POST
     parsed_body:
       messages:
@@ -200,14 +331,17 @@ interactions:
           ## Instructions
 
           - For general conversation or questions that don't need skills, respond directly
-          - Use execute_skill to delegate work to a skill. Call it once per task. Include everything the skill needs in the request.
+          - Use execute_skill to delegate work to a skill
+          - Each skill runs as an isolated agent with NO shared memory or context. A skill can only see what you put in its request — it has no access to the conversation, previous skill results, or any other context
+          - When chaining skills, you MUST include the actual data in the request. Never say "store what was found" or "use the previous results" — paste the concrete information into the request text
+          - The user cannot see skill responses directly. You must synthesize the information returned by skills into your own reply
         role: system
       - content: 'Summarize the following: Python is a high-level programming language known for its readability and versatility.
           It supports multiple programming paradigms including procedural, object-oriented, and functional programming. Python
           has a large standard library and an active community that contributes thousands of third-party packages.'
         role: user
       - content: null
-        reasoning: We need a summary. We should use summarizer skill. Use execute_skill with request and skill_name "summarizer".
+        reasoning: User wants summary. Use summarizer skill.
         role: assistant
         tool_calls:
         - function:
@@ -216,111 +350,32 @@ interactions:
               programming. Python has a large standard library and an active community that contributes thousands of third-party
               packages.","skill_name":"summarizer"}'
             name: execute_skill
-          id: call_ztcaa4z9
+          id: call_egplf37k
           type: function
-      - content: "- Python is a high‑level language renowned for readability and versatility.  \n- It supports procedural,
-          object‑oriented, and functional programming paradigms.  \n- The language comes with a large standard library and
-          a vibrant community that supplies thousands of third‑party packages."
+      - content: "- Python is a high‑level, readable, and versatile programming language.  \n- It supports procedural, object‑oriented,
+          and functional programming paradigms.  \n- Comes with a large standard library and a vibrant community that supplies
+          thousands of third‑party packages."
         role: tool
-        tool_call_id: call_ztcaa4z9
+        tool_call_id: call_egplf37k
       model: gpt-oss
       stream: false
       tool_choice: auto
       tools:
       - function:
-          description: Execute a skill by name.
+          description: |-
+            Execute a skill by name.
+
+            Skills are isolated agents — they cannot see the conversation or
+            prior skill results. The request MUST contain all information the
+            skill needs to complete its task.
           name: execute_skill
           parameters:
             additionalProperties: false
             properties:
               request:
-                description: A clear description of what you need the skill to do.
-                type: string
-              skill_name:
-                description: The exact name of the skill to use.
-                type: string
-            required:
-            - skill_name
-            - request
-            type: object
-          strict: true
-        type: function
-    uri: http://localhost:11434/v1/chat/completions
-  response:
-    headers:
-      content-length:
-      - '576'
-      content-type:
-      - application/json
-    parsed_body:
-      choices:
-      - finish_reason: stop
-        index: 0
-        message:
-          content: "- Python is a high‑level language renowned for readability and versatility.  \n- It supports procedural,
-            object‑oriented, and functional programming paradigms.  \n- The language comes with a large standard library and
-            a vibrant community that supplies thousands of third‑party packages."
-          role: assistant
-      created: 1771148072
-      id: chatcmpl-616
-      model: gpt-oss
-      object: chat.completion
-      system_fingerprint: fp_ollama
-      usage:
-        completion_tokens: 58
-        prompt_tokens: 502
-        total_tokens: 560
-    status:
-      code: 200
-      message: OK
-- request:
-    headers:
-      accept:
-      - application/json
-      accept-encoding:
-      - gzip, deflate
-      connection:
-      - keep-alive
-      content-length:
-      - '1456'
-      content-type:
-      - application/json
-      host:
-      - 127.0.0.1:11434
-    method: POST
-    parsed_body:
-      messages:
-      - content: |-
-          You are a helpful assistant with access to specialized skills.
-
-          ## Available skills
-
-          - **simple-skill**: A simple test skill that does basic operations.
-          - **skill-with-refs**: A skill with references, metadata, and all optional fields.
-          - **summarizer**: Summarize text into concise bullet points.
-          - **translator**: Translate text between languages.
-
-          ## Instructions
-
-          - For general conversation or questions that don't need skills, respond directly
-          - Use execute_skill to delegate work to a skill. Call it once per task. Include everything the skill needs in the request.
-        role: system
-      - content: 'Summarize the following: Python is a high-level programming language known for its readability and versatility.
-          It supports multiple programming paradigms including procedural, object-oriented, and functional programming. Python
-          has a large standard library and an active community that contributes thousands of third-party packages.'
-        role: user
-      model: gpt-oss
-      stream: false
-      tool_choice: auto
-      tools:
-      - function:
-          description: Execute a skill by name.
-          name: execute_skill
-          parameters:
-            additionalProperties: false
-            properties:
-              request:
-                description: A clear description of what you need the skill to do.
+                description: |-
+                  Self-contained description including all data and
+                  context the skill needs. Never reference external context.
                 type: string
               skill_name:
                 description: The exact name of the skill to use.
@@ -335,94 +390,7 @@ interactions:
   response:
     headers:
       content-length:
-      - '925'
-      content-type:
-      - application/json
-    parsed_body:
-      choices:
-      - finish_reason: tool_calls
-        index: 0
-        message:
-          content: ''
-          reasoning: We need to summarize the text. That's a summarization request. Use summarizer skill.
-          role: assistant
-          tool_calls:
-          - function:
-              arguments: '{"request":"Summarize the following text into concise bullet points:\n\nPython is a high-level programming
-                language known for its readability and versatility. It supports multiple programming paradigms including procedural,
-                object-oriented, and functional programming. Python has a large standard library and an active community that
-                contributes thousands of third-party packages.","skill_name":"summarizer"}'
-              name: execute_skill
-            id: call_yaql66dm
-            index: 0
-            type: function
-      created: 1771934087
-      id: chatcmpl-591
-      model: gpt-oss
-      object: chat.completion
-      system_fingerprint: fp_ollama
-      usage:
-        completion_tokens: 108
-        prompt_tokens: 329
-        total_tokens: 437
-    status:
-      code: 200
-      message: OK
-- request:
-    headers:
-      accept:
-      - application/json
-      accept-encoding:
-      - gzip, deflate
-      connection:
-      - keep-alive
-      content-length:
-      - '1362'
-      content-type:
-      - application/json
-      host:
-      - 127.0.0.1:11434
-    method: POST
-    parsed_body:
-      messages:
-      - content: |-
-          You are a focused execution agent. Complete the following task using the skills and instructions provided.
-
-          ## Task
-
-          Summarize the following text into concise bullet points:
-
-          Python is a high-level programming language known for its readability and versatility. It supports multiple programming paradigms including procedural, object-oriented, and functional programming. Python has a large standard library and an active community that contributes thousands of third-party packages.
-
-          ## Skill instructions
-
-          # Summarizer
-
-          You are a text summarization assistant. When given text:
-
-          1. Identify the key points
-          2. Condense them into concise bullet points
-          3. Preserve the essential meaning
-          4. Return a markdown bulleted list
-
-          ## Guidelines
-
-          - Follow the skill instructions carefully
-          - Stay focused on the specific task described above
-          - Provide a clear, complete result
-        role: system
-      - content: |-
-          Summarize the following text into concise bullet points:
-
-          Python is a high-level programming language known for its readability and versatility. It supports multiple programming paradigms including procedural, object-oriented, and functional programming. Python has a large standard library and an active community that contributes thousands of third-party packages.
-        role: user
-      model: gpt-oss
-      stream: false
-    uri: http://127.0.0.1:11434/v1/chat/completions
-  response:
-    headers:
-      content-length:
-      - '995'
+      - '586'
       content-type:
       - application/json
     parsed_body:
@@ -430,126 +398,19 @@ interactions:
       - finish_reason: stop
         index: 0
         message:
-          content: "- Python is a high‑level language prized for its readability and versatility.  \n- Supports procedural,
-            object‑oriented, and functional programming paradigms.  \n- Comes with a large standard library.  \n- Maintained
-            by an active community that provides thousands of third‑party packages."
-          reasoning: "The user wants a concise summary bullet points. Should follow guidelines: identify key points, condense,
-            preserve meaning, markdown bullet list.\n\nWe produce markdown list. Let's draft: \n- High-level, readable, versatile
-            language. \n- Supports procedural, object-oriented, functional paradigms. \n- Large standard library. \n- Active
-            community with thousands of third-party packages. That is enough."
+          content: "- Python is a high‑level, readable, and versatile language.  \n- It supports procedural, object‑oriented,
+            and functional programming paradigms.  \n- The language offers a comprehensive standard library and benefits from
+            a lively community that continuously adds thousands of third‑party packages."
           role: assistant
-      created: 1771934090
-      id: chatcmpl-811
+      created: 1772802089
+      id: chatcmpl-577
       model: gpt-oss
       object: chat.completion
       system_fingerprint: fp_ollama
       usage:
-        completion_tokens: 145
-        prompt_tokens: 295
-        total_tokens: 440
-    status:
-      code: 200
-      message: OK
-- request:
-    headers:
-      accept:
-      - application/json
-      accept-encoding:
-      - gzip, deflate
-      connection:
-      - keep-alive
-      content-length:
-      - '2470'
-      content-type:
-      - application/json
-      host:
-      - 127.0.0.1:11434
-    method: POST
-    parsed_body:
-      messages:
-      - content: |-
-          You are a helpful assistant with access to specialized skills.
-
-          ## Available skills
-
-          - **simple-skill**: A simple test skill that does basic operations.
-          - **skill-with-refs**: A skill with references, metadata, and all optional fields.
-          - **summarizer**: Summarize text into concise bullet points.
-          - **translator**: Translate text between languages.
-
-          ## Instructions
-
-          - For general conversation or questions that don't need skills, respond directly
-          - Use execute_skill to delegate work to a skill. Call it once per task. Include everything the skill needs in the request.
-        role: system
-      - content: 'Summarize the following: Python is a high-level programming language known for its readability and versatility.
-          It supports multiple programming paradigms including procedural, object-oriented, and functional programming. Python
-          has a large standard library and an active community that contributes thousands of third-party packages.'
-        role: user
-      - content: null
-        reasoning: We need to summarize the text. That's a summarization request. Use summarizer skill.
-        role: assistant
-        tool_calls:
-        - function:
-            arguments: '{"request":"Summarize the following text into concise bullet points:\n\nPython is a high-level programming
-              language known for its readability and versatility. It supports multiple programming paradigms including procedural,
-              object-oriented, and functional programming. Python has a large standard library and an active community that
-              contributes thousands of third-party packages.","skill_name":"summarizer"}'
-            name: execute_skill
-          id: call_yaql66dm
-          type: function
-      - content: "- Python is a high‑level language prized for its readability and versatility.  \n- Supports procedural,
-          object‑oriented, and functional programming paradigms.  \n- Comes with a large standard library.  \n- Maintained
-          by an active community that provides thousands of third‑party packages."
-        role: tool
-        tool_call_id: call_yaql66dm
-      model: gpt-oss
-      stream: false
-      tool_choice: auto
-      tools:
-      - function:
-          description: Execute a skill by name.
-          name: execute_skill
-          parameters:
-            additionalProperties: false
-            properties:
-              request:
-                description: A clear description of what you need the skill to do.
-                type: string
-              skill_name:
-                description: The exact name of the skill to use.
-                type: string
-            required:
-            - skill_name
-            - request
-            type: object
-          strict: true
-        type: function
-    uri: http://127.0.0.1:11434/v1/chat/completions
-  response:
-    headers:
-      content-length:
-      - '578'
-      content-type:
-      - application/json
-    parsed_body:
-      choices:
-      - finish_reason: stop
-        index: 0
-        message:
-          content: "- Python is a high‑level language prized for its readability and versatility.  \n- Supports procedural,
-            object‑oriented, and functional programming paradigms.  \n- Comes with a large standard library.  \n- Maintained
-            by an active community that provides thousands of third‑party packages."
-          role: assistant
-      created: 1771934091
-      id: chatcmpl-911
-      model: gpt-oss
-      object: chat.completion
-      system_fingerprint: fp_ollama
-      usage:
-        completion_tokens: 61
-        prompt_tokens: 505
-        total_tokens: 566
+        completion_tokens: 60
+        prompt_tokens: 613
+        total_tokens: 673
     status:
       code: 200
       message: OK
