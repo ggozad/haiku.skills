@@ -2,12 +2,6 @@
 
 haiku.skills supports the [AG-UI protocol](https://docs.ag-ui.com) for communicating state changes to frontend clients.
 
-## Installation
-
-```bash
-uv add "haiku.skills[ag-ui]"
-```
-
 ## Per-skill state
 
 Skills can declare a Pydantic state model and a namespace. State is passed to tool functions via `RunContext[SkillRunDeps]` and tracked per namespace on the `SkillToolset`.

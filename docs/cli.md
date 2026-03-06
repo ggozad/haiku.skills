@@ -61,7 +61,7 @@ Set the model to use for skill sub-agents (overrides `HAIKU_SKILL_MODEL` env var
 haiku-skills chat -s ./skills -m openai:gpt-4o --skill-model ollama:llama3
 ```
 
-The `tui` extra includes `ag-ui-protocol`. The chat TUI uses the AG-UI protocol adapter for event streaming, making it useful for debugging skills with [per-skill state](skills.md#per-skill-state):
+The chat TUI uses the AG-UI protocol adapter for event streaming, making it useful for debugging skills with [per-skill state](skills.md#per-skill-state):
 
 - **State deltas** are displayed inline as JSON Patch operations whenever a skill modifies state
 - **Full state snapshot** is available via the "View state" modal in the command palette

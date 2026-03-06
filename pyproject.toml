@@ -28,6 +28,8 @@ classifiers = [
 ]
 
 dependencies = [
+    "ag-ui-protocol>=0.1.13",
+    "jsonpatch>=1.33",
     "pydantic>=2.12.5",
     "pydantic-ai-slim[mcp]>=1.63.0",
     "pyyaml>=6.0.3",
@@ -35,14 +37,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-ag-ui = [
-    "ag-ui-protocol>=0.1.13",
-    "jsonpatch>=1.33",
-]
 tui = [
     "pydantic-ai-slim[logfire]>=1.63.0",
-    "ag-ui-protocol>=0.1.13",
-    "jsonpatch>=1.33",
     "textual>=8.0.0",
     "typer>=0.24.1",
     "python-dotenv>=1.2.1",
@@ -83,8 +79,6 @@ dev = [
     "haiku-skills-image-generation",
     "haiku-skills-code-execution",
     "haiku-skills-graphiti-memory",
-    "ag-ui-protocol>=0.1.13",
-    "jsonpatch>=1.33",
     "mkdocs>=1.6.1,<2.0.0",
     "mkdocs-material>=9.7.3",
 ]
