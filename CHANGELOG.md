@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **code-execution skill**: Updated pydantic-monty to >=0.0.8, rewritten SKILL.md sandbox limitations to reflect new capabilities (math, re, os.environ, getattr, dataclass methods, PEP 448 unpacking)
+
 ## [0.7.5] - 2026-03-12
 
 ### Fixed
