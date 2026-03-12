@@ -19,6 +19,7 @@ from pydantic_ai.messages import (
     FunctionToolCallEvent,
     FunctionToolResultEvent,
     ModelRequest,
+    RetryPromptPart,
     ToolCallPart,
     ToolReturnPart,
 )
@@ -1369,6 +1370,19 @@ class TestEventsToAgui:
         result = _events_to_agui("web", [event])
         assert isinstance(result[1], ToolCallArgsEvent)
         assert result[1].delta == "{}"
+
+    def test_converts_retry_prompt_result(self):
+        result_part = RetryPromptPart(
+            tool_call_id="call-1", tool_name="search", content="Invalid arguments"
+        )
+        event = FunctionToolResultEvent(result=result_part)
+
+        result = _events_to_agui("web", [event])
+        assert len(result) == 1
+
+        assert isinstance(result[0], ToolCallResultEvent)
+        assert result[0].tool_call_id == "web:call-1"
+        assert result[0].content == result_part.model_response()
 
     def test_ignores_other_event_types(self):
         """Non-tool events are skipped."""

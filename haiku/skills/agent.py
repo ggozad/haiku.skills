@@ -22,6 +22,7 @@ from pydantic_ai.messages import (
     AgentStreamEvent,
     FunctionToolCallEvent,
     FunctionToolResultEvent,
+    RetryPromptPart,
 )
 from pydantic_ai.models import Model
 from pydantic_ai.toolsets import FunctionToolset, ToolsetTool
@@ -99,7 +100,9 @@ def _events_to_agui(skill_name: str, events: list[Any]) -> list[BaseEvent]:
                     type=EventType.TOOL_CALL_RESULT,
                     tool_call_id=tool_call_id,
                     message_id=str(uuid.uuid4()),
-                    content=event.result.model_response_str(),
+                    content=event.result.model_response()
+                    if isinstance(event.result, RetryPromptPart)
+                    else event.result.model_response_str(),
                 )
             )
     return result
