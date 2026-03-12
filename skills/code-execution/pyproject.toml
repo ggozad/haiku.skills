@@ -1,6 +1,6 @@
 [project]
 name = "haiku-skills-code-execution"
-version = "0.7.4"
+version = "0.7.5"
 description = "Code execution skill for haiku.skills"
 authors = [{ name = "Yiorgis Gozadinos", email = "ggozadinos@gmail.com" }]
 license = { text = "MIT" }
@@ -15,7 +15,7 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Typing :: Typed",
 ]
-dependencies = ["haiku.skills>=0.7.4", "pydantic-monty>=0.0.4"]
+dependencies = ["haiku.skills>=0.7.5", "pydantic-monty>=0.0.4"]
 
 [project.urls]
 Homepage = "https://github.com/ggozad/haiku.skills"

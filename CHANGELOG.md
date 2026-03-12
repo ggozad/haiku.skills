@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.7.5] - 2026-03-12
+
 ### Fixed
 
 - **`_events_to_agui` crash on `RetryPromptPart`**: Handle `RetryPromptPart` results in `FunctionToolResultEvent` by calling `.model_response()` instead of `.model_response_str()` which doesn't exist on retry parts ([#35](https://github.com/ggozad/haiku.skills/issues/35))
@@ -193,7 +195,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.7.4...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.7.5...HEAD
+[0.7.5]: https://github.com/ggozad/haiku.skills/compare/0.7.4...0.7.5
 [0.7.4]: https://github.com/ggozad/haiku.skills/compare/0.7.3...0.7.4
 [0.7.3]: https://github.com/ggozad/haiku.skills/compare/0.7.2...0.7.3
 [0.7.2]: https://github.com/ggozad/haiku.skills/compare/0.7.1...0.7.2
