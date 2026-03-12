@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **`_events_to_agui` crash on `RetryPromptPart`**: Handle `RetryPromptPart` results in `FunctionToolResultEvent` by calling `.model_response()` instead of `.model_response_str()` which doesn't exist on retry parts ([#35](https://github.com/ggozad/haiku.skills/issues/35))
+
 ## [0.7.4] - 2026-03-06
 
 ### Changed
