@@ -79,9 +79,9 @@ Frontends can apply these patches incrementally to keep their view of the agent'
 
 ## Real-time sub-agent events
 
-By default, when `execute_skill` delegates to a sub-agent, the sub-agent's internal tool calls (search, fetch, etc.) are invisible to the AG-UI client until the skill finishes. They arrive as a batch in `ToolReturn.metadata`.
+When `execute_skill` delegates to a sub-agent, the sub-agent's internal tool calls (search, fetch, etc.) are emitted as `ActivitySnapshotEvent` messages with activity types `skill_tool_call` and `skill_tool_result`.
 
-`run_agui_stream()` solves this by merging main-agent events with sub-agent events into a single real-time stream:
+`run_agui_stream()` merges main-agent events with these activity events into a single real-time stream:
 
 ```python
 from pydantic_ai.ag_ui import AGUIAdapter
@@ -93,8 +93,8 @@ adapter = AGUIAdapter(agent=agent, run_input=run_input)
 
 async with run_agui_stream(toolset, adapter) as stream:
     async for event in stream:
-        # All events — main agent text, tool calls,
-        # AND sub-agent tool calls — arrive here in real-time
+        # Main-agent events (text, tool calls) and
+        # sub-agent activity events arrive here in real-time
         ...
 ```
 
@@ -115,7 +115,7 @@ async def stream_chat(request):
 ```
 
 !!! note
-    `adapter.run_stream()` still works without `run_agui_stream` — sub-agent tool events will arrive in batch via `ToolReturn.metadata` as before.
+    `adapter.run_stream()` still works without `run_agui_stream` — sub-agent activity events will arrive in batch via `ToolReturn.metadata` instead of streaming in real-time.
 
 ## State round-tripping
 

@@ -5,6 +5,7 @@
 ### Changed
 
 - **code-execution skill**: Updated pydantic-monty to >=0.0.8, rewritten SKILL.md sandbox limitations to reflect new capabilities (math, re, os.environ, getattr, dataclass methods, PEP 448 unpacking)
+- Sub-agent tool events emitted as `ActivitySnapshotEvent` instead of `ToolCall*` events, fixing AG-UI history replay crashes in conforming clients (CopilotKit/soliplex)
 
 ## [0.7.5] - 2026-03-12
 

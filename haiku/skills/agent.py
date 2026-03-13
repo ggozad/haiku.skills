@@ -9,12 +9,9 @@ from pathlib import Path
 from typing import Any
 
 from ag_ui.core import (
+    ActivitySnapshotEvent,
     BaseEvent,
     EventType,
-    ToolCallArgsEvent,
-    ToolCallEndEvent,
-    ToolCallResultEvent,
-    ToolCallStartEvent,
 )
 from pydantic import BaseModel
 from pydantic_ai import Agent, RunContext, ToolReturn, UsageLimits
@@ -60,49 +57,45 @@ def resolve_model(model: str) -> Model:
     return infer_model(model)
 
 
-def _events_to_agui(skill_name: str, events: list[Any]) -> list[BaseEvent]:
-    """Convert pydantic-ai tool events to AG-UI events.
+def _events_to_activity(skill_name: str, events: list[Any]) -> list[BaseEvent]:
+    """Convert pydantic-ai tool events to AG-UI ActivitySnapshotEvents.
 
     Args:
-        skill_name: Skill name used to prefix tool call IDs.
+        skill_name: Skill name used to prefix message IDs.
         events: List of FunctionToolCallEvent/FunctionToolResultEvent.
     """
     result: list[BaseEvent] = []
     for event in events:
         if isinstance(event, FunctionToolCallEvent):
-            tool_call_id = f"{skill_name}:{event.tool_call_id}"
             args = event.part.args
             args_str = args if isinstance(args, str) else json.dumps(args or {})
             result.append(
-                ToolCallStartEvent(
-                    type=EventType.TOOL_CALL_START,
-                    tool_call_id=tool_call_id,
-                    tool_call_name=event.part.tool_name,
-                )
-            )
-            result.append(
-                ToolCallArgsEvent(
-                    type=EventType.TOOL_CALL_ARGS,
-                    tool_call_id=tool_call_id,
-                    delta=args_str,
-                )
-            )
-            result.append(
-                ToolCallEndEvent(
-                    type=EventType.TOOL_CALL_END,
-                    tool_call_id=tool_call_id,
+                ActivitySnapshotEvent(
+                    type=EventType.ACTIVITY_SNAPSHOT,
+                    activity_type="skill_tool_call",
+                    message_id=f"{skill_name}:{event.tool_call_id}",
+                    content={
+                        "skill": skill_name,
+                        "tool_name": event.part.tool_name,
+                        "tool_call_id": event.tool_call_id,
+                        "args": args_str,
+                    },
                 )
             )
         elif isinstance(event, FunctionToolResultEvent):
-            tool_call_id = f"{skill_name}:{event.tool_call_id}"
             result.append(
-                ToolCallResultEvent(
-                    type=EventType.TOOL_CALL_RESULT,
-                    tool_call_id=tool_call_id,
+                ActivitySnapshotEvent(
+                    type=EventType.ACTIVITY_SNAPSHOT,
+                    activity_type="skill_tool_result",
                     message_id=str(uuid.uuid4()),
-                    content=event.result.model_response()
-                    if isinstance(event.result, RetryPromptPart)
-                    else event.result.model_response_str(),
+                    content={
+                        "skill": skill_name,
+                        "tool_name": event.result.tool_name,
+                        "tool_call_id": event.tool_call_id,
+                        "result": event.result.model_response()
+                        if isinstance(event.result, RetryPromptPart)
+                        else event.result.model_response_str(),
+                    },
                 )
             )
     return result
@@ -227,7 +220,7 @@ async def _run_skill(
         async for event in events:
             if isinstance(event, (FunctionToolCallEvent, FunctionToolResultEvent)):
                 if event_sink is not None:
-                    for agui_event in _events_to_agui(skill_name, [event]):
+                    for agui_event in _events_to_activity(skill_name, [event]):
                         await event_sink(agui_event)
                 else:
                     collected_events.append(event)
@@ -402,7 +395,9 @@ class SkillToolset(FunctionToolset[Any]):
 
             metadata: list[BaseEvent] = []
             if not event_sink:
-                metadata.extend(_events_to_agui(skill.metadata.name, collected_events))
+                metadata.extend(
+                    _events_to_activity(skill.metadata.name, collected_events)
+                )
 
             if old_snapshot is not None and namespace and state:
                 new_snapshot = {namespace: state.model_dump(mode="json")}
