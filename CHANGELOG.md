@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Skill versioning**: Optional `version` field on `SkillMetadata` with semver validation (e.g. `version: 1.2.3` or `version: 1.0.0-alpha.1` in SKILL.md frontmatter)
+
 ## [0.8.1] - 2026-03-17
 
 ### Added
