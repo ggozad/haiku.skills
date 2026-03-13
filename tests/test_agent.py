@@ -6,12 +6,9 @@ from unittest.mock import patch
 
 import pytest
 from ag_ui.core import (
+    ActivitySnapshotEvent,
     BaseEvent,
     EventType,
-    ToolCallArgsEvent,
-    ToolCallEndEvent,
-    ToolCallResultEvent,
-    ToolCallStartEvent,
 )
 from pydantic import BaseModel
 from pydantic_ai import Agent, RunContext
@@ -32,7 +29,7 @@ from haiku.skills.agent import (
     SkillToolset,
     _create_read_resource,
     _create_run_script,
-    _events_to_agui,
+    _events_to_activity,
     _run_skill,
     resolve_model,
     run_agui_stream,
@@ -194,8 +191,16 @@ class TestRunSkill:
         assert result
         assert collected == []
         assert len(sinked) >= 2
-        assert any(isinstance(e, ToolCallStartEvent) for e in sinked)
-        assert any(isinstance(e, ToolCallResultEvent) for e in sinked)
+        assert any(
+            isinstance(e, ActivitySnapshotEvent)
+            and e.activity_type == "skill_tool_call"
+            for e in sinked
+        )
+        assert any(
+            isinstance(e, ActivitySnapshotEvent)
+            and e.activity_type == "skill_tool_result"
+            for e in sinked
+        )
 
 
 class TestCreateReadResource:
@@ -667,7 +672,7 @@ class TestExecuteSkillEvents:
             if isinstance(part, ToolReturnPart)
         ]
         has_agui_events = any(
-            isinstance(ev, (ToolCallStartEvent, ToolCallResultEvent))
+            isinstance(ev, ActivitySnapshotEvent)
             for tr in tool_returns
             if tr.metadata
             for ev in tr.metadata
@@ -697,7 +702,7 @@ class TestExecuteSkillEvents:
             if isinstance(part, ToolReturnPart)
         ]
         has_agui_events = any(
-            isinstance(ev, (ToolCallStartEvent, ToolCallResultEvent))
+            isinstance(ev, ActivitySnapshotEvent)
             for tr in tool_returns
             if tr.metadata
             for ev in tr.metadata
@@ -739,7 +744,7 @@ class TestExecuteSkillEvents:
         assert tool_returns
         metadata = tool_returns[0].metadata
         assert metadata is not None
-        has_tool_events = any(isinstance(ev, ToolCallStartEvent) for ev in metadata)
+        has_tool_events = any(isinstance(ev, ActivitySnapshotEvent) for ev in metadata)
         has_delta = any(isinstance(ev, StateDeltaEvent) for ev in metadata)
         assert has_tool_events
         assert has_delta
@@ -777,14 +782,14 @@ class TestExecuteSkillEvents:
             if isinstance(part, ToolReturnPart)
         ]
         has_agui_tool_events = any(
-            isinstance(ev, (ToolCallStartEvent, ToolCallResultEvent))
+            isinstance(ev, ActivitySnapshotEvent)
             for tr in tool_returns
             if tr.metadata
             for ev in tr.metadata
         )
         assert not has_agui_tool_events
         assert len(sinked) >= 2
-        assert any(isinstance(e, ToolCallStartEvent) for e in sinked)
+        assert any(isinstance(e, ActivitySnapshotEvent) for e in sinked)
 
     async def test_sink_preserves_state_delta_in_metadata(
         self, allow_model_requests: None
@@ -831,7 +836,7 @@ class TestExecuteSkillEvents:
         assert metadata is not None
         has_delta = any(isinstance(ev, StateDeltaEvent) for ev in metadata)
         assert has_delta
-        has_tool_events = any(isinstance(ev, ToolCallStartEvent) for ev in metadata)
+        has_tool_events = any(isinstance(ev, ActivitySnapshotEvent) for ev in metadata)
         assert not has_tool_events
 
 
@@ -1303,9 +1308,9 @@ class TestRunSkillWithScripts:
         assert result
 
 
-class TestEventsToAgui:
+class TestEventsToActivity:
     def test_empty_events(self):
-        assert _events_to_agui("skill", []) == []
+        assert _events_to_activity("skill", []) == []
 
     def test_converts_tool_call_event(self):
         part = ToolCallPart(
@@ -1313,19 +1318,16 @@ class TestEventsToAgui:
         )
         event = FunctionToolCallEvent(part=part)
 
-        result = _events_to_agui("web", [event])
-        assert len(result) == 3
+        result = _events_to_activity("web", [event])
+        assert len(result) == 1
 
-        assert isinstance(result[0], ToolCallStartEvent)
-        assert result[0].tool_call_id == "web:call-1"
-        assert result[0].tool_call_name == "search"
-
-        assert isinstance(result[1], ToolCallArgsEvent)
-        assert result[1].tool_call_id == "web:call-1"
-        assert result[1].delta == '{"query": "test"}'
-
-        assert isinstance(result[2], ToolCallEndEvent)
-        assert result[2].tool_call_id == "web:call-1"
+        assert isinstance(result[0], ActivitySnapshotEvent)
+        assert result[0].activity_type == "skill_tool_call"
+        assert result[0].message_id == "web:call-1"
+        assert result[0].content["skill"] == "web"
+        assert result[0].content["tool_name"] == "search"
+        assert result[0].content["tool_call_id"] == "call-1"
+        assert result[0].content["args"] == '{"query": "test"}'
 
     def test_converts_tool_result_event(self):
         result_part = ToolReturnPart(
@@ -1333,12 +1335,15 @@ class TestEventsToAgui:
         )
         event = FunctionToolResultEvent(result=result_part)
 
-        result = _events_to_agui("web", [event])
+        result = _events_to_activity("web", [event])
         assert len(result) == 1
 
-        assert isinstance(result[0], ToolCallResultEvent)
-        assert result[0].tool_call_id == "web:call-1"
-        assert result[0].content == "results"
+        assert isinstance(result[0], ActivitySnapshotEvent)
+        assert result[0].activity_type == "skill_tool_result"
+        assert result[0].content["skill"] == "web"
+        assert result[0].content["tool_name"] == "search"
+        assert result[0].content["tool_call_id"] == "call-1"
+        assert result[0].content["result"] == "results"
 
     def test_mixed_events(self):
         part = ToolCallPart(tool_name="search", args="{}", tool_call_id="call-1")
@@ -1348,8 +1353,8 @@ class TestEventsToAgui:
         )
         result_event = FunctionToolResultEvent(result=result_part)
 
-        result = _events_to_agui("web", [call_event, result_event])
-        assert len(result) == 4  # 3 from call + 1 from result
+        result = _events_to_activity("web", [call_event, result_event])
+        assert len(result) == 2  # 1 from call + 1 from result
 
     def test_dict_args_serialized_to_json(self):
         """Dict args are serialized to JSON string."""
@@ -1358,18 +1363,18 @@ class TestEventsToAgui:
         )
         event = FunctionToolCallEvent(part=part)
 
-        result = _events_to_agui("web", [event])
-        assert isinstance(result[1], ToolCallArgsEvent)
-        assert result[1].delta == '{"query": "test"}'
+        result = _events_to_activity("web", [event])
+        assert isinstance(result[0], ActivitySnapshotEvent)
+        assert result[0].content["args"] == '{"query": "test"}'
 
     def test_none_args_serialized_to_empty_object(self):
         """None args are serialized to empty JSON object."""
         part = ToolCallPart(tool_name="search", args=None, tool_call_id="call-1")
         event = FunctionToolCallEvent(part=part)
 
-        result = _events_to_agui("web", [event])
-        assert isinstance(result[1], ToolCallArgsEvent)
-        assert result[1].delta == "{}"
+        result = _events_to_activity("web", [event])
+        assert isinstance(result[0], ActivitySnapshotEvent)
+        assert result[0].content["args"] == "{}"
 
     def test_converts_retry_prompt_result(self):
         result_part = RetryPromptPart(
@@ -1377,16 +1382,17 @@ class TestEventsToAgui:
         )
         event = FunctionToolResultEvent(result=result_part)
 
-        result = _events_to_agui("web", [event])
+        result = _events_to_activity("web", [event])
         assert len(result) == 1
 
-        assert isinstance(result[0], ToolCallResultEvent)
-        assert result[0].tool_call_id == "web:call-1"
-        assert result[0].content == result_part.model_response()
+        assert isinstance(result[0], ActivitySnapshotEvent)
+        assert result[0].activity_type == "skill_tool_result"
+        assert result[0].content["tool_call_id"] == "call-1"
+        assert result[0].content["result"] == result_part.model_response()
 
     def test_ignores_other_event_types(self):
         """Non-tool events are skipped."""
-        result = _events_to_agui("skill", ["not_an_event", 42])
+        result = _events_to_activity("skill", ["not_an_event", 42])
         assert result == []
 
 
@@ -1398,10 +1404,16 @@ class TestPromptScriptsSection:
 class TestRunAguiStream:
     async def test_yields_adapter_events(self):
         """Events from adapter.run_stream() are yielded."""
-        event = ToolCallStartEvent(
-            type=EventType.TOOL_CALL_START,
-            tool_call_id="t1",
-            tool_call_name="test",
+        event = ActivitySnapshotEvent(
+            type=EventType.ACTIVITY_SNAPSHOT,
+            activity_type="skill_tool_call",
+            message_id="t1",
+            content={
+                "skill": "test",
+                "tool_name": "test",
+                "tool_call_id": "t1",
+                "args": "{}",
+            },
         )
 
         class FakeAdapter:
@@ -1445,7 +1457,8 @@ class TestRunAguiStream:
         sub_tool_events = [
             e
             for e in events
-            if isinstance(e, ToolCallStartEvent) and e.tool_call_name != "execute_skill"
+            if isinstance(e, ActivitySnapshotEvent)
+            and e.activity_type == "skill_tool_call"
         ]
         assert len(sub_tool_events) >= 1
 
@@ -1481,10 +1494,16 @@ class TestRunAguiStream:
             await adapter_started.wait()
             assert toolset._event_sink is not None
             await toolset._event_sink(
-                ToolCallStartEvent(
-                    type=EventType.TOOL_CALL_START,
-                    tool_call_id="t1",
-                    tool_call_name="test",
+                ActivitySnapshotEvent(
+                    type=EventType.ACTIVITY_SNAPSHOT,
+                    activity_type="skill_tool_call",
+                    message_id="t1",
+                    content={
+                        "skill": "test",
+                        "tool_name": "test",
+                        "tool_call_id": "t1",
+                        "args": "{}",
+                    },
                 )
             )
 

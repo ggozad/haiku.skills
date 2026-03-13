@@ -26,6 +26,7 @@ try:
     import json
 
     from ag_ui.core import (
+        ActivitySnapshotEvent,
         AssistantMessage,
         EventType,
         RunAgentInput,
@@ -279,6 +280,33 @@ class ChatApp(App):
                         chat_history.update_tool_call(
                             event.tool_call_id, completed=True
                         )
+                    elif event.type == EventType.ACTIVITY_SNAPSHOT:
+                        assert isinstance(event, ActivitySnapshotEvent)
+                        content = event.content
+                        if event.activity_type == "skill_tool_call":
+                            tool_call_id = content["tool_call_id"]
+                            skill_name = content.get("skill", "")
+                            tool_name = content["tool_name"]
+                            display_name = (
+                                f"{skill_name} → {tool_name}"
+                                if skill_name
+                                else tool_name
+                            )
+                            args_str = content.get("args", "{}")
+                            chat_history.hide_thinking()
+                            await chat_history.show_tool_call(
+                                tool_call_id, display_name
+                            )
+                            self._update_tool_description(
+                                chat_history,
+                                tool_call_id,
+                                display_name,
+                                args_str,
+                            )
+                            await chat_history.show_thinking("Working...")
+                        elif event.activity_type == "skill_tool_result":
+                            tool_call_id = content["tool_call_id"]
+                            chat_history.update_tool_call(tool_call_id, completed=True)
                     elif event.type == EventType.STATE_DELTA:
                         assert isinstance(event, StateDeltaEvent)
                         patch = JsonPatch(event.delta)
