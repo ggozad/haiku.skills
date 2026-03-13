@@ -17,11 +17,11 @@ accomplish it and execute it using the run_code tool.
 Code runs in Monty, a minimal sandboxed Python interpreter. Only these
 features are available:
 
-- Basic types: int, float, str, bool, list, dict, tuple, None
+- Types: int, float, str, bool, list, dict, tuple, set, frozenset, None
 - Control flow: if/elif/else, for, while, break, continue
-- Functions: def, lambda, return (no classes)
-- Built-in modules: sys, typing, asyncio, dataclasses, json
-- Built-in functions: print, len, range, enumerate, zip, map, filter, sorted, reversed, min, max, sum, abs, round, isinstance, type, str, int, float, bool, list, dict, tuple, set
+- Functions: def, lambda, return, async/await (no classes, no match statements)
+- Built-in modules: sys, typing, asyncio, dataclasses, json, math, re, os (os.environ only)
+- Built-in functions: print, len, range, enumerate, zip, map, filter, sorted, reversed, min, max, sum, abs, round, isinstance, type, getattr, str, int, float, bool, list, dict, tuple, set, divmod
 
-**Not available**: standard library (os, math, re, etc.), third-party packages,
-file/network/environment access, classes, match statements.
+**Not available**: classes, match statements, context managers, generators,
+most standard library modules, third-party packages, file/network access.
