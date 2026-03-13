@@ -11,9 +11,7 @@ from pydantic_ai import Tool
 from pydantic_ai.models import Model
 from pydantic_ai.toolsets import AbstractToolset
 
-_SEMVER_RE = re.compile(
-    r"^\d+\.\d+\.\d+(-[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*)?$"
-)
+_SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+(-[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*)?$")
 
 
 @dataclass(frozen=True)
@@ -90,6 +88,7 @@ class Skill(BaseModel):
 
     metadata: SkillMetadata
     source: SkillSource
+    verified: bool = False
     path: Path | None = None
     instructions: str | None = None
     resources: list[str] = Field(default_factory=list)
