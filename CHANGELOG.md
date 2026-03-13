@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-03-13
+
 ### Changed
 
 - **code-execution skill**: Updated pydantic-monty to >=0.0.8, rewritten SKILL.md sandbox limitations to reflect new capabilities (math, re, os.environ, getattr, dataclass methods, PEP 448 unpacking)
@@ -200,7 +202,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.7.5...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.8.0...HEAD
+[0.8.0]: https://github.com/ggozad/haiku.skills/compare/0.7.5...0.8.0
 [0.7.5]: https://github.com/ggozad/haiku.skills/compare/0.7.4...0.7.5
 [0.7.4]: https://github.com/ggozad/haiku.skills/compare/0.7.3...0.7.4
 [0.7.3]: https://github.com/ggozad/haiku.skills/compare/0.7.2...0.7.3
