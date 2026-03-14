@@ -251,6 +251,116 @@ def read_email(
     return f"From: {sender}\nSubject: {subject}\nDate: {date}\n\n{body}"
 
 
+def send_email(
+    ctx: RunContext[SkillRunDeps],
+    to: str,
+    subject: str,
+    body: str,
+    cc: str = "",
+    bcc: str = "",
+) -> str:
+    """Send a new email.
+
+    Args:
+        to: Recipient email address.
+        subject: Email subject line.
+        body: Email body text.
+        cc: CC recipients (comma-separated).
+        bcc: BCC recipients (comma-separated).
+    """
+    try:
+        service = _get_service()
+        message = _build_message(to=to, subject=subject, body=body, cc=cc, bcc=bcc)
+        result = service.users().messages().send(userId="me", body=message).execute()
+    except Exception as e:
+        return f"Error: {e}"
+
+    msg_id = result["id"]
+    thread_id = result["threadId"]
+
+    if ctx.deps and ctx.deps.state and isinstance(ctx.deps.state, EmailState):
+        ctx.deps.state.sent_emails.append(
+            SentEmail(
+                message_id=msg_id,
+                thread_id=thread_id,
+                to=to,
+                subject=subject,
+            )
+        )
+
+    return f"Email sent successfully. Message ID: {msg_id}"
+
+
+def reply_to_email(
+    ctx: RunContext[SkillRunDeps],
+    message_id: str,
+    body: str,
+    reply_all: bool = False,
+) -> str:
+    """Reply to an email.
+
+    Args:
+        message_id: The Gmail message ID to reply to.
+        body: Reply body text.
+        reply_all: If True, reply to all recipients.
+    """
+    try:
+        service = _get_service()
+        original = (
+            service.users()
+            .messages()
+            .get(userId="me", id=message_id, format="metadata")
+            .execute()
+        )
+    except Exception as e:
+        return f"Error: {e}"
+
+    headers = original.get("payload", {}).get("headers", [])
+    orig_subject = _get_header(headers, "Subject")
+    orig_from = _get_header(headers, "From")
+    orig_message_id = _get_header(headers, "Message-ID")
+    thread_id = original.get("threadId", "")
+
+    subject = orig_subject if orig_subject.startswith("Re: ") else f"Re: {orig_subject}"
+
+    to = orig_from
+    cc = ""
+    if reply_all:
+        orig_to = _get_header(headers, "To")
+        orig_cc = _get_header(headers, "Cc")
+        cc_parts = [p.strip() for p in f"{orig_to}, {orig_cc}".split(",") if p.strip()]
+        cc = ", ".join(cc_parts)
+
+    message = _build_message(
+        to=to,
+        subject=subject,
+        body=body,
+        cc=cc,
+        in_reply_to=orig_message_id,
+        references=orig_message_id,
+    )
+    message["threadId"] = thread_id
+
+    try:
+        result = service.users().messages().send(userId="me", body=message).execute()
+    except Exception as e:
+        return f"Error: {e}"
+
+    msg_id = result["id"]
+
+    if ctx.deps and ctx.deps.state and isinstance(ctx.deps.state, EmailState):
+        ctx.deps.state.sent_emails.append(
+            SentEmail(
+                message_id=msg_id,
+                thread_id=thread_id,
+                to=to,
+                subject=subject,
+            )
+        )
+
+    return f"Reply sent successfully. Message ID: {msg_id}"
+
+
 def create_skill() -> Skill:
     skill_dir = Path(__file__).parent / "gmail"
     metadata, instructions = parse_skill_md(skill_dir / "SKILL.md")
@@ -260,7 +370,7 @@ def create_skill() -> Skill:
         source=SkillSource.ENTRYPOINT,
         path=skill_dir,
         instructions=instructions,
-        tools=[search_emails, read_email],
+        tools=[search_emails, read_email, send_email, reply_to_email],
         state_type=EmailState,
         state_namespace="gmail",
     )

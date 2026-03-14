@@ -365,7 +365,7 @@ class TestEmail:
         assert skill.instructions is not None
         assert skill.state_type is not None
         assert skill.state_namespace == "gmail"
-        assert len(skill.tools) == 2
+        assert len(skill.tools) == 4
 
     # -- Config --
 
@@ -807,5 +807,200 @@ class TestEmail:
 
         ctx = _make_ctx()
         result = read_email(ctx, "bad_id")
+        assert result.startswith("Error:")
+        assert "not found" in result
+
+    # -- Send --
+
+    def test_send_email(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+        from haiku_skills_gmail import EmailState, send_email
+
+        service = self._mock_service()
+        service.users().messages().send.return_value.execute.return_value = {
+            "id": "sent1",
+            "threadId": "thread1",
+        }
+        monkeypatch.setattr(mod, "_get_service", lambda: service)
+
+        state = EmailState()
+        ctx = _make_ctx(state)
+        result = send_email(ctx, "bob@example.com", "Hello", "Hi Bob")
+
+        assert "sent1" in result
+        service.users().messages().send.assert_called_once()
+        call_kwargs = service.users().messages().send.call_args.kwargs
+        assert call_kwargs["userId"] == "me"
+        assert "raw" in call_kwargs["body"]
+        assert len(state.sent_emails) == 1
+        assert state.sent_emails[0].message_id == "sent1"
+        assert state.sent_emails[0].to == "bob@example.com"
+        assert state.sent_emails[0].subject == "Hello"
+
+    def test_send_email_with_cc_bcc(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+        from haiku_skills_gmail import send_email
+
+        service = self._mock_service()
+        service.users().messages().send.return_value.execute.return_value = {
+            "id": "sent2",
+            "threadId": "thread2",
+        }
+        monkeypatch.setattr(mod, "_get_service", lambda: service)
+
+        ctx = _make_ctx()
+        result = send_email(
+            ctx,
+            "bob@example.com",
+            "Hello",
+            "Hi Bob",
+            cc="carol@example.com",
+            bcc="dave@example.com",
+        )
+        assert "sent2" in result
+
+        import base64
+
+        call_kwargs = service.users().messages().send.call_args.kwargs
+        decoded = base64.urlsafe_b64decode(call_kwargs["body"]["raw"]).decode()
+        assert "Cc: carol@example.com" in decoded
+        assert "Bcc: dave@example.com" in decoded
+
+    def test_send_email_error(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+        from haiku_skills_gmail import send_email
+
+        service = self._mock_service()
+        service.users().messages().send.return_value.execute.side_effect = RuntimeError(
+            "send failed"
+        )
+        monkeypatch.setattr(mod, "_get_service", lambda: service)
+
+        ctx = _make_ctx()
+        result = send_email(ctx, "bob@example.com", "Hello", "Hi")
+        assert result.startswith("Error:")
+        assert "send failed" in result
+
+    # -- Reply --
+
+    def test_reply_to_email(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+        from haiku_skills_gmail import EmailState, reply_to_email
+
+        service = self._mock_service()
+        original = self._sample_message(
+            msg_id="orig1",
+            thread_id="thread1",
+            subject="Original Subject",
+            sender="alice@example.com",
+        )
+        service.users().messages().get.return_value.execute.return_value = original
+        service.users().messages().send.return_value.execute.return_value = {
+            "id": "reply1",
+            "threadId": "thread1",
+        }
+        monkeypatch.setattr(mod, "_get_service", lambda: service)
+
+        state = EmailState()
+        ctx = _make_ctx(state)
+        result = reply_to_email(ctx, "orig1", "Thanks!")
+
+        assert "reply1" in result
+        call_kwargs = service.users().messages().send.call_args.kwargs
+        assert call_kwargs["body"]["threadId"] == "thread1"
+
+        import base64
+
+        decoded = base64.urlsafe_b64decode(call_kwargs["body"]["raw"]).decode()
+        assert "In-Reply-To: <orig1@example.com>" in decoded
+        assert "Subject: Re: Original Subject" in decoded
+        assert len(state.sent_emails) == 1
+        assert state.sent_emails[0].message_id == "reply1"
+
+    def test_reply_to_email_already_re(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+        from haiku_skills_gmail import reply_to_email
+
+        service = self._mock_service()
+        original = self._sample_message(
+            msg_id="orig1",
+            thread_id="thread1",
+            subject="Re: Original Subject",
+        )
+        service.users().messages().get.return_value.execute.return_value = original
+        service.users().messages().send.return_value.execute.return_value = {
+            "id": "reply1",
+            "threadId": "thread1",
+        }
+        monkeypatch.setattr(mod, "_get_service", lambda: service)
+
+        ctx = _make_ctx()
+        reply_to_email(ctx, "orig1", "Thanks!")
+
+        import base64
+
+        call_kwargs = service.users().messages().send.call_args.kwargs
+        decoded = base64.urlsafe_b64decode(call_kwargs["body"]["raw"]).decode()
+        assert "Subject: Re: Original Subject" in decoded
+        assert "Subject: Re: Re:" not in decoded
+
+    def test_reply_to_email_reply_all(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+        from haiku_skills_gmail import reply_to_email
+
+        service = self._mock_service()
+        original = {
+            **self._sample_message(msg_id="orig1", thread_id="thread1"),
+        }
+        original["payload"]["headers"].append(
+            {"name": "To", "value": "me@example.com, other@example.com"}
+        )
+        original["payload"]["headers"].append({"name": "Cc", "value": "cc@example.com"})
+        service.users().messages().get.return_value.execute.return_value = original
+        service.users().messages().send.return_value.execute.return_value = {
+            "id": "reply1",
+            "threadId": "thread1",
+        }
+        monkeypatch.setattr(mod, "_get_service", lambda: service)
+
+        ctx = _make_ctx()
+        reply_to_email(ctx, "orig1", "Thanks!", reply_all=True)
+
+        import base64
+
+        call_kwargs = service.users().messages().send.call_args.kwargs
+        decoded = base64.urlsafe_b64decode(call_kwargs["body"]["raw"]).decode()
+        assert "To: alice@example.com" in decoded
+        assert "Cc: me@example.com, other@example.com, cc@example.com" in decoded
+
+    def test_reply_to_email_error_send(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+        from haiku_skills_gmail import reply_to_email
+
+        service = self._mock_service()
+        original = self._sample_message(msg_id="orig1", thread_id="thread1")
+        service.users().messages().get.return_value.execute.return_value = original
+        service.users().messages().send.return_value.execute.side_effect = RuntimeError(
+            "send failed"
+        )
+        monkeypatch.setattr(mod, "_get_service", lambda: service)
+
+        ctx = _make_ctx()
+        result = reply_to_email(ctx, "orig1", "Hello")
+        assert result.startswith("Error:")
+        assert "send failed" in result
+
+    def test_reply_to_email_error_fetch(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+        from haiku_skills_gmail import reply_to_email
+
+        service = self._mock_service()
+        service.users().messages().get.return_value.execute.side_effect = RuntimeError(
+            "not found"
+        )
+        monkeypatch.setattr(mod, "_get_service", lambda: service)
+
+        ctx = _make_ctx()
+        result = reply_to_email(ctx, "bad_id", "Hello")
         assert result.startswith("Error:")
         assert "not found" in result
