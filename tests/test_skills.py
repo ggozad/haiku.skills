@@ -342,3 +342,330 @@ class TestCodeExecution:
         runpy.run_path(str(script), run_name="__main__")
 
         assert "result" in captured.getvalue()
+
+
+class TestEmail:
+    @pytest.fixture(autouse=True)
+    def _reset_globals(self, monkeypatch: pytest.MonkeyPatch):
+        """Reset module-level singleton state between tests."""
+        import haiku_skills_gmail as mod
+
+        monkeypatch.setattr(mod, "_service", None)
+
+    def test_create_skill(self):
+        from haiku_skills_gmail import create_skill
+
+        skill = create_skill()
+        assert skill.metadata.name == "gmail"
+        assert (
+            skill.metadata.description == "Search, read, send, and manage Gmail emails."
+        )
+        assert skill.source == SkillSource.ENTRYPOINT
+        assert skill.path is not None
+        assert skill.instructions is not None
+        assert skill.state_type is not None
+        assert skill.state_namespace == "gmail"
+
+    # -- Config --
+
+    def test_credentials_path_default(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.delenv("EMAIL_CREDENTIALS_PATH", raising=False)
+        from haiku_skills_gmail import _credentials_path
+
+        result = _credentials_path()
+        assert (
+            result
+            == Path.home() / ".config" / "haiku-skills-gmail" / "credentials.json"
+        )
+
+    def test_credentials_path_from_env(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("EMAIL_CREDENTIALS_PATH", "/tmp/my-creds.json")
+        from haiku_skills_gmail import _credentials_path
+
+        assert _credentials_path() == Path("/tmp/my-creds.json")
+
+    def test_token_path_default(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.delenv("EMAIL_TOKEN_PATH", raising=False)
+        from haiku_skills_gmail import _token_path
+
+        result = _token_path()
+        assert result == Path.home() / ".config" / "haiku-skills-gmail" / "token.json"
+
+    def test_token_path_from_env(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("EMAIL_TOKEN_PATH", "/tmp/my-token.json")
+        from haiku_skills_gmail import _token_path
+
+        assert _token_path() == Path("/tmp/my-token.json")
+
+    # -- Auth --
+
+    def test_get_service_cached(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+
+        sentinel = MagicMock()
+        monkeypatch.setattr(mod, "_service", sentinel)
+
+        result = mod._get_service()
+        assert result is sentinel
+
+    def test_get_service_no_credentials_file(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+
+        monkeypatch.setattr(
+            mod, "_credentials_path", lambda: Path("/nonexistent/creds.json")
+        )
+
+        with pytest.raises(FileNotFoundError, match="credentials.json"):
+            mod._get_service()
+
+    def test_get_service_from_token(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ):
+        import haiku_skills_gmail as mod
+
+        token_file = tmp_path / "token.json"
+        token_file.write_text("{}")
+        creds_file = tmp_path / "credentials.json"
+        creds_file.write_text("{}")
+
+        mock_creds = MagicMock()
+        mock_creds.valid = True
+
+        mock_creds_cls = MagicMock()
+        mock_creds_cls.from_authorized_user_file.return_value = mock_creds
+
+        mock_build = MagicMock(return_value="gmail_service")
+
+        monkeypatch.setattr(mod, "_token_path", lambda: token_file)
+        monkeypatch.setattr(mod, "_credentials_path", lambda: creds_file)
+        monkeypatch.setattr("haiku_skills_gmail.Credentials", mock_creds_cls)
+        monkeypatch.setattr("haiku_skills_gmail.build", mock_build)
+
+        result = mod._get_service()
+        assert result == "gmail_service"
+        assert mod._service == "gmail_service"
+        mock_creds_cls.from_authorized_user_file.assert_called_once_with(
+            str(token_file), mod.SCOPES
+        )
+        mock_build.assert_called_once_with("gmail", "v1", credentials=mock_creds)
+
+    def test_get_service_token_refresh(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ):
+        import haiku_skills_gmail as mod
+
+        token_file = tmp_path / "token.json"
+        token_file.write_text("{}")
+        creds_file = tmp_path / "credentials.json"
+        creds_file.write_text("{}")
+
+        mock_creds = MagicMock()
+        mock_creds.valid = False
+        mock_creds.expired = True
+        mock_creds.refresh_token = "refresh-token"
+        mock_creds.to_json.return_value = '{"token": "refreshed"}'
+
+        mock_creds_cls = MagicMock()
+        mock_creds_cls.from_authorized_user_file.return_value = mock_creds
+
+        mock_build = MagicMock(return_value="gmail_service")
+        mock_request = MagicMock()
+        mock_request_cls = MagicMock(return_value=mock_request)
+
+        monkeypatch.setattr(mod, "_token_path", lambda: token_file)
+        monkeypatch.setattr(mod, "_credentials_path", lambda: creds_file)
+        monkeypatch.setattr("haiku_skills_gmail.Credentials", mock_creds_cls)
+        monkeypatch.setattr("haiku_skills_gmail.build", mock_build)
+        monkeypatch.setattr("haiku_skills_gmail.Request", mock_request_cls)
+
+        result = mod._get_service()
+        assert result == "gmail_service"
+        mock_creds.refresh.assert_called_once_with(mock_request)
+        assert token_file.read_text() == '{"token": "refreshed"}'
+
+    def test_get_service_browser_flow(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ):
+        import haiku_skills_gmail as mod
+
+        token_file = tmp_path / "token.json"
+        creds_file = tmp_path / "credentials.json"
+        creds_file.write_text("{}")
+
+        mock_creds = MagicMock()
+        mock_creds.valid = True
+        mock_creds.to_json.return_value = '{"token": "new"}'
+
+        mock_flow = MagicMock()
+        mock_flow.run_local_server.return_value = mock_creds
+        mock_flow_cls = MagicMock()
+        mock_flow_cls.from_client_secrets_file.return_value = mock_flow
+
+        mock_build = MagicMock(return_value="gmail_service")
+
+        monkeypatch.setattr(mod, "_token_path", lambda: token_file)
+        monkeypatch.setattr(mod, "_credentials_path", lambda: creds_file)
+        monkeypatch.setattr("haiku_skills_gmail.InstalledAppFlow", mock_flow_cls)
+        monkeypatch.setattr("haiku_skills_gmail.build", mock_build)
+
+        result = mod._get_service()
+        assert result == "gmail_service"
+        mock_flow_cls.from_client_secrets_file.assert_called_once_with(
+            str(creds_file), mod.SCOPES
+        )
+        mock_flow.run_local_server.assert_called_once_with(port=0)
+        assert token_file.read_text() == '{"token": "new"}'
+
+    # -- Helpers --
+
+    def test_get_header(self):
+        from haiku_skills_gmail import _get_header
+
+        headers = [
+            {"name": "Subject", "value": "Hello"},
+            {"name": "From", "value": "alice@example.com"},
+        ]
+        assert _get_header(headers, "Subject") == "Hello"
+        assert _get_header(headers, "From") == "alice@example.com"
+
+    def test_get_header_missing(self):
+        from haiku_skills_gmail import _get_header
+
+        assert _get_header([], "Subject") == ""
+        assert _get_header([{"name": "From", "value": "x"}], "Subject") == ""
+
+    def test_parse_email_body_plain(self):
+        from haiku_skills_gmail import _parse_email_body
+
+        payload = {
+            "mimeType": "text/plain",
+            "body": {"data": "SGVsbG8gV29ybGQ="},  # "Hello World"
+        }
+        assert _parse_email_body(payload) == "Hello World"
+
+    def test_parse_email_body_multipart(self):
+        from haiku_skills_gmail import _parse_email_body
+
+        payload = {
+            "mimeType": "multipart/alternative",
+            "parts": [
+                {
+                    "mimeType": "text/plain",
+                    "body": {"data": "UGxhaW4gdGV4dA=="},  # "Plain text"
+                },
+                {
+                    "mimeType": "text/html",
+                    "body": {"data": "PFBIVE1MIGJvZHk="},
+                },
+            ],
+        }
+        assert _parse_email_body(payload) == "Plain text"
+
+    def test_parse_email_body_multipart_no_plain(self):
+        from haiku_skills_gmail import _parse_email_body
+
+        payload = {
+            "mimeType": "multipart/alternative",
+            "parts": [
+                {
+                    "mimeType": "text/html",
+                    "body": {"data": "PFBIVE1MIGJvZHk="},
+                },
+            ],
+        }
+        assert _parse_email_body(payload) == ""
+
+    def test_parse_email_body_plain_empty_data(self):
+        from haiku_skills_gmail import _parse_email_body
+
+        payload = {"mimeType": "text/plain", "body": {"data": ""}}
+        assert _parse_email_body(payload) == ""
+
+    def test_parse_email_body_nested_multipart(self):
+        from haiku_skills_gmail import _parse_email_body
+
+        payload = {
+            "mimeType": "multipart/mixed",
+            "parts": [
+                {
+                    "mimeType": "multipart/alternative",
+                    "parts": [
+                        {
+                            "mimeType": "text/plain",
+                            "body": {"data": "TmVzdGVk"},  # "Nested"
+                        },
+                    ],
+                },
+            ],
+        }
+        assert _parse_email_body(payload) == "Nested"
+
+    def test_build_message(self):
+        from haiku_skills_gmail import _build_message
+
+        result = _build_message(
+            to="bob@example.com",
+            subject="Test",
+            body="Hello Bob",
+        )
+        assert "raw" in result
+        import base64
+
+        decoded = base64.urlsafe_b64decode(result["raw"]).decode()
+        assert "To: bob@example.com" in decoded
+        assert "Subject: Test" in decoded
+        assert "Hello Bob" in decoded
+
+    def test_build_message_with_cc_bcc(self):
+        from haiku_skills_gmail import _build_message
+
+        result = _build_message(
+            to="bob@example.com",
+            subject="Test",
+            body="Hello",
+            cc="carol@example.com",
+            bcc="dave@example.com",
+        )
+        import base64
+
+        decoded = base64.urlsafe_b64decode(result["raw"]).decode()
+        assert "Cc: carol@example.com" in decoded
+        assert "Bcc: dave@example.com" in decoded
+
+    def test_build_message_with_headers(self):
+        from haiku_skills_gmail import _build_message
+
+        result = _build_message(
+            to="bob@example.com",
+            subject="Re: Test",
+            body="Reply body",
+            in_reply_to="<msg123@example.com>",
+            references="<msg123@example.com>",
+        )
+        import base64
+
+        decoded = base64.urlsafe_b64decode(result["raw"]).decode()
+        assert "In-Reply-To: <msg123@example.com>" in decoded
+        assert "References: <msg123@example.com>" in decoded
+
+    def test_format_email_summary(self):
+        from haiku_skills_gmail import _format_email_summary
+
+        msg = {
+            "id": "msg1",
+            "threadId": "thread1",
+            "snippet": "Hey there...",
+            "payload": {
+                "headers": [
+                    {"name": "Subject", "value": "Meeting"},
+                    {"name": "From", "value": "alice@example.com"},
+                    {"name": "Date", "value": "Mon, 10 Mar 2026"},
+                ],
+            },
+        }
+        result = _format_email_summary(msg)
+        assert "msg1" in result
+        assert "Meeting" in result
+        assert "alice@example.com" in result
+        assert "Mon, 10 Mar 2026" in result
+        assert "Hey there..." in result

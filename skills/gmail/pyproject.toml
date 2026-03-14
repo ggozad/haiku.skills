@@ -1,7 +1,7 @@
 [project]
-name = "haiku-skills-email"
+name = "haiku-skills-gmail"
 version = "0.8.0"
-description = "Gmail email skill for haiku.skills"
+description = "Gmail skill for haiku.skills"
 authors = [{ name = "Yiorgis Gozadinos", email = "ggozadinos@gmail.com" }]
 license = { text = "MIT" }
 readme = { file = "README.md", content-type = "text/markdown" }
@@ -28,7 +28,7 @@ Repository = "https://github.com/ggozad/haiku.skills"
 Issues = "https://github.com/ggozad/haiku.skills/issues"
 
 [project.entry-points."haiku.skills"]
-email = "haiku_skills_email:create_skill"
+gmail = "haiku_skills_gmail:create_skill"
 
 [tool.uv.sources]
 haiku-skills = { workspace = true }

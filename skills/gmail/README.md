@@ -1,6 +1,6 @@
-# email
+# gmail
 
-Gmail email skill for [haiku.skills](https://github.com/ggozad/haiku.skills) using the Google Gmail API.
+Gmail skill for [haiku.skills](https://github.com/ggozad/haiku.skills) using the Google Gmail API.
 
 Enables agents to search, read, send, reply to, draft, and organize Gmail emails with OAuth2 authentication.
 
@@ -20,8 +20,8 @@ Place your credentials file and configure via environment variables:
 
 | Variable | Default | Description |
 |---|---|---|
-| `EMAIL_CREDENTIALS_PATH` | `~/.config/haiku-skills-email/credentials.json` | Path to OAuth2 credentials file |
-| `EMAIL_TOKEN_PATH` | `~/.config/haiku-skills-email/token.json` | Path to cached OAuth2 token |
+| `EMAIL_CREDENTIALS_PATH` | `~/.config/haiku-skills-gmail/credentials.json` | Path to OAuth2 credentials file |
+| `EMAIL_TOKEN_PATH` | `~/.config/haiku-skills-gmail/token.json` | Path to cached OAuth2 token |
 
 On first run, a browser window will open for OAuth2 authorization. The token is cached for subsequent runs.
 
@@ -39,5 +39,5 @@ On first run, a browser window will open for OAuth2 authorization. The token is 
 ## Installation
 
 ```bash
-uv add haiku-skills-email
+uv add haiku-skills-gmail
 ```

@@ -1,9 +1,9 @@
 ---
-name: email
+name: gmail
 description: Search, read, send, and manage Gmail emails.
 ---
 
-# Email
+# Gmail
 
 Access Gmail to search, read, send, reply to, draft, and organize emails.
 

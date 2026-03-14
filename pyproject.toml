@@ -78,7 +78,7 @@ dev = [
     "haiku-skills-web",
     "haiku-skills-image-generation",
     "haiku-skills-code-execution",
-    "haiku-skills-email",
+    "haiku-skills-gmail",
     "mkdocs>=1.6.1,<2.0.0",
     "mkdocs-material>=9.7.3",
 ]
@@ -105,7 +105,7 @@ line-ending = "auto"
 haiku-skills-web = { workspace = true }
 haiku-skills-image-generation = { workspace = true }
 haiku-skills-code-execution = { workspace = true }
-haiku-skills-email = { workspace = true }
+haiku-skills-gmail = { workspace = true }
 
 
 [tool.uv.workspace]
@@ -128,7 +128,7 @@ source = [
     "skills/web/haiku_skills_web",
     "skills/image-generation/haiku_skills_image_generation",
     "skills/code-execution/haiku_skills_code_execution",
-    "skills/email/haiku_skills_email",
+    "skills/gmail/haiku_skills_gmail",
 ]
 omit = ["haiku/skills/chat/*", "haiku/skills/cli.py"]
 
