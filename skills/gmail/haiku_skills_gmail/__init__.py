@@ -361,6 +361,153 @@ def reply_to_email(
     return f"Reply sent successfully. Message ID: {msg_id}"
 
 
+def create_draft(
+    ctx: RunContext[SkillRunDeps],
+    to: str,
+    subject: str,
+    body: str,
+    cc: str = "",
+    bcc: str = "",
+) -> str:
+    """Create a draft email.
+
+    Args:
+        to: Recipient email address.
+        subject: Email subject line.
+        body: Email body text.
+        cc: CC recipients (comma-separated).
+        bcc: BCC recipients (comma-separated).
+    """
+    try:
+        service = _get_service()
+        message = _build_message(to=to, subject=subject, body=body, cc=cc, bcc=bcc)
+        result = (
+            service.users()
+            .drafts()
+            .create(userId="me", body={"message": message})
+            .execute()
+        )
+    except Exception as e:
+        return f"Error: {e}"
+
+    draft_id = result["id"]
+    msg_id = result.get("message", {}).get("id", "")
+
+    if ctx.deps and ctx.deps.state and isinstance(ctx.deps.state, EmailState):
+        ctx.deps.state.drafts.append(
+            DraftSummary(
+                draft_id=draft_id,
+                message_id=msg_id,
+                subject=subject,
+                to=to,
+            )
+        )
+
+    return f"Draft created successfully. Draft ID: {draft_id}"
+
+
+def list_drafts(
+    ctx: RunContext[SkillRunDeps],
+    max_results: int = 10,
+) -> str:
+    """List existing draft emails.
+
+    Args:
+        max_results: Maximum number of drafts to return.
+    """
+    try:
+        service = _get_service()
+        response = (
+            service.users().drafts().list(userId="me", maxResults=max_results).execute()
+        )
+    except Exception as e:
+        return f"Error: {e}"
+
+    drafts = response.get("drafts", [])
+    if not drafts:
+        return "No drafts found."
+
+    summaries = []
+    for draft_ref in drafts:
+        try:
+            draft = (
+                service.users()
+                .drafts()
+                .get(userId="me", id=draft_ref["id"], format="metadata")
+                .execute()
+            )
+            msg = draft.get("message", {})
+            headers = msg.get("payload", {}).get("headers", [])
+            subject = _get_header(headers, "Subject")
+            to = _get_header(headers, "To")
+            summaries.append(f"Draft ID: {draft['id']}\nTo: {to}\nSubject: {subject}")
+        except Exception:
+            continue
+
+    if not summaries:
+        return "No drafts found."
+
+    return "\n\n---\n\n".join(summaries)
+
+
+def modify_labels(
+    ctx: RunContext[SkillRunDeps],
+    message_id: str,
+    add_labels: str = "",
+    remove_labels: str = "",
+) -> str:
+    """Add or remove labels from an email.
+
+    Args:
+        message_id: The Gmail message ID.
+        add_labels: Comma-separated label IDs to add.
+        remove_labels: Comma-separated label IDs to remove.
+    """
+    add_list = [label.strip() for label in add_labels.split(",") if label.strip()]
+    remove_list = [label.strip() for label in remove_labels.split(",") if label.strip()]
+
+    try:
+        service = _get_service()
+        service.users().messages().modify(
+            userId="me",
+            id=message_id,
+            body={
+                "addLabelIds": add_list,
+                "removeLabelIds": remove_list,
+            },
+        ).execute()
+    except Exception as e:
+        return f"Error: {e}"
+
+    parts = []
+    if add_list:
+        parts.append(f"added [{', '.join(add_list)}]")
+    if remove_list:
+        parts.append(f"removed [{', '.join(remove_list)}]")
+
+    return f"Labels updated for message {message_id}: {', '.join(parts)}."
+
+
+def list_labels(
+    ctx: RunContext[SkillRunDeps],
+) -> str:
+    """List all available Gmail labels."""
+    try:
+        service = _get_service()
+        response = service.users().labels().list(userId="me").execute()
+    except Exception as e:
+        return f"Error: {e}"
+
+    labels = response.get("labels", [])
+    lines = []
+    for label in labels:
+        name = label.get("name", "")
+        label_type = label.get("type", "")
+        lines.append(f"- {name} ({label_type})")
+
+    return "\n".join(lines)
+
+
 def create_skill() -> Skill:
     skill_dir = Path(__file__).parent / "gmail"
     metadata, instructions = parse_skill_md(skill_dir / "SKILL.md")
@@ -370,7 +517,16 @@ def create_skill() -> Skill:
         source=SkillSource.ENTRYPOINT,
         path=skill_dir,
         instructions=instructions,
-        tools=[search_emails, read_email, send_email, reply_to_email],
+        tools=[
+            search_emails,
+            read_email,
+            send_email,
+            reply_to_email,
+            create_draft,
+            list_drafts,
+            modify_labels,
+            list_labels,
+        ],
         state_type=EmailState,
         state_namespace="gmail",
     )

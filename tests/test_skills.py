@@ -365,7 +365,7 @@ class TestEmail:
         assert skill.instructions is not None
         assert skill.state_type is not None
         assert skill.state_namespace == "gmail"
-        assert len(skill.tools) == 4
+        assert len(skill.tools) == 8
 
     # -- Config --
 
@@ -1004,3 +1004,228 @@ class TestEmail:
         result = reply_to_email(ctx, "bad_id", "Hello")
         assert result.startswith("Error:")
         assert "not found" in result
+
+    # -- Drafts --
+
+    def test_create_draft(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+        from haiku_skills_gmail import EmailState, create_draft
+
+        service = self._mock_service()
+        service.users().drafts().create.return_value.execute.return_value = {
+            "id": "draft1",
+            "message": {"id": "msg1", "threadId": "thread1"},
+        }
+        monkeypatch.setattr(mod, "_get_service", lambda: service)
+
+        state = EmailState()
+        ctx = _make_ctx(state)
+        result = create_draft(ctx, "bob@example.com", "Draft Subject", "Draft body")
+
+        assert "draft1" in result
+        service.users().drafts().create.assert_called_once()
+        call_kwargs = service.users().drafts().create.call_args.kwargs
+        assert call_kwargs["userId"] == "me"
+        assert "raw" in call_kwargs["body"]["message"]
+        assert len(state.drafts) == 1
+        assert state.drafts[0].draft_id == "draft1"
+        assert state.drafts[0].subject == "Draft Subject"
+        assert state.drafts[0].to == "bob@example.com"
+
+    def test_create_draft_error(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+        from haiku_skills_gmail import create_draft
+
+        service = self._mock_service()
+        service.users().drafts().create.return_value.execute.side_effect = RuntimeError(
+            "draft failed"
+        )
+        monkeypatch.setattr(mod, "_get_service", lambda: service)
+
+        ctx = _make_ctx()
+        result = create_draft(ctx, "bob@example.com", "Subject", "Body")
+        assert result.startswith("Error:")
+        assert "draft failed" in result
+
+    def test_list_drafts(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+        from haiku_skills_gmail import list_drafts
+
+        service = self._mock_service()
+        service.users().drafts().list.return_value.execute.return_value = {
+            "drafts": [
+                {"id": "draft1", "message": {"id": "msg1"}},
+                {"id": "draft2", "message": {"id": "msg2"}},
+            ],
+        }
+        service.users().drafts().get.return_value.execute.side_effect = [
+            {
+                "id": "draft1",
+                "message": {
+                    "id": "msg1",
+                    "payload": {
+                        "headers": [
+                            {"name": "Subject", "value": "Draft 1"},
+                            {"name": "To", "value": "alice@example.com"},
+                        ],
+                    },
+                },
+            },
+            {
+                "id": "draft2",
+                "message": {
+                    "id": "msg2",
+                    "payload": {
+                        "headers": [
+                            {"name": "Subject", "value": "Draft 2"},
+                            {"name": "To", "value": "bob@example.com"},
+                        ],
+                    },
+                },
+            },
+        ]
+        monkeypatch.setattr(mod, "_get_service", lambda: service)
+
+        ctx = _make_ctx()
+        result = list_drafts(ctx)
+        assert "draft1" in result
+        assert "Draft 1" in result
+        assert "draft2" in result
+        assert "Draft 2" in result
+
+    def test_list_drafts_empty(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+        from haiku_skills_gmail import list_drafts
+
+        service = self._mock_service()
+        service.users().drafts().list.return_value.execute.return_value = {}
+        monkeypatch.setattr(mod, "_get_service", lambda: service)
+
+        ctx = _make_ctx()
+        result = list_drafts(ctx)
+        assert "No drafts" in result
+
+    def test_list_drafts_error(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+        from haiku_skills_gmail import list_drafts
+
+        service = self._mock_service()
+        service.users().drafts().list.return_value.execute.side_effect = RuntimeError(
+            "API error"
+        )
+        monkeypatch.setattr(mod, "_get_service", lambda: service)
+
+        ctx = _make_ctx()
+        result = list_drafts(ctx)
+        assert result.startswith("Error:")
+        assert "API error" in result
+
+    def test_list_drafts_individual_fetch_error(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+        from haiku_skills_gmail import list_drafts
+
+        service = self._mock_service()
+        service.users().drafts().list.return_value.execute.return_value = {
+            "drafts": [{"id": "draft1", "message": {"id": "msg1"}}],
+        }
+        service.users().drafts().get.return_value.execute.side_effect = RuntimeError(
+            "fetch failed"
+        )
+        monkeypatch.setattr(mod, "_get_service", lambda: service)
+
+        ctx = _make_ctx()
+        result = list_drafts(ctx)
+        assert "No drafts" in result
+
+    # -- Labels --
+
+    def test_modify_labels(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+        from haiku_skills_gmail import modify_labels
+
+        service = self._mock_service()
+        service.users().messages().modify.return_value.execute.return_value = {
+            "id": "msg1",
+            "labelIds": ["STARRED"],
+        }
+        monkeypatch.setattr(mod, "_get_service", lambda: service)
+
+        ctx = _make_ctx()
+        result = modify_labels(
+            ctx, "msg1", add_labels="STARRED", remove_labels="UNREAD"
+        )
+
+        assert "msg1" in result
+        call_kwargs = service.users().messages().modify.call_args.kwargs
+        assert call_kwargs["userId"] == "me"
+        assert call_kwargs["id"] == "msg1"
+        assert call_kwargs["body"] == {
+            "addLabelIds": ["STARRED"],
+            "removeLabelIds": ["UNREAD"],
+        }
+
+    def test_modify_labels_multiple(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+        from haiku_skills_gmail import modify_labels
+
+        service = self._mock_service()
+        service.users().messages().modify.return_value.execute.return_value = {
+            "id": "msg1",
+            "labelIds": ["STARRED", "IMPORTANT"],
+        }
+        monkeypatch.setattr(mod, "_get_service", lambda: service)
+
+        ctx = _make_ctx()
+        result = modify_labels(ctx, "msg1", add_labels="STARRED, IMPORTANT")
+        assert "msg1" in result
+        call_kwargs = service.users().messages().modify.call_args.kwargs
+        assert call_kwargs["body"]["addLabelIds"] == ["STARRED", "IMPORTANT"]
+        assert call_kwargs["body"]["removeLabelIds"] == []
+
+    def test_modify_labels_error(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+        from haiku_skills_gmail import modify_labels
+
+        service = self._mock_service()
+        service.users().messages().modify.return_value.execute.side_effect = (
+            RuntimeError("modify failed")
+        )
+        monkeypatch.setattr(mod, "_get_service", lambda: service)
+
+        ctx = _make_ctx()
+        result = modify_labels(ctx, "msg1", add_labels="STARRED")
+        assert result.startswith("Error:")
+        assert "modify failed" in result
+
+    def test_list_labels(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+        from haiku_skills_gmail import list_labels
+
+        service = self._mock_service()
+        service.users().labels().list.return_value.execute.return_value = {
+            "labels": [
+                {"id": "INBOX", "name": "INBOX", "type": "system"},
+                {"id": "Label_1", "name": "Work", "type": "user"},
+            ],
+        }
+        monkeypatch.setattr(mod, "_get_service", lambda: service)
+
+        ctx = _make_ctx()
+        result = list_labels(ctx)
+        assert "INBOX" in result
+        assert "Work" in result
+
+    def test_list_labels_error(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+        from haiku_skills_gmail import list_labels
+
+        service = self._mock_service()
+        service.users().labels().list.return_value.execute.side_effect = RuntimeError(
+            "API error"
+        )
+        monkeypatch.setattr(mod, "_get_service", lambda: service)
+
+        ctx = _make_ctx()
+        result = list_labels(ctx)
+        assert result.startswith("Error:")
+        assert "API error" in result
