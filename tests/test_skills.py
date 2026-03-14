@@ -365,6 +365,7 @@ class TestEmail:
         assert skill.instructions is not None
         assert skill.state_type is not None
         assert skill.state_namespace == "gmail"
+        assert len(skill.tools) == 2
 
     # -- Config --
 
@@ -669,3 +670,142 @@ class TestEmail:
         assert "alice@example.com" in result
         assert "Mon, 10 Mar 2026" in result
         assert "Hey there..." in result
+
+    # -- Mock service helper --
+
+    def _mock_service(self) -> MagicMock:
+        service = MagicMock()
+        return service
+
+    def _sample_message(
+        self,
+        msg_id: str = "msg1",
+        thread_id: str = "thread1",
+        subject: str = "Test Subject",
+        sender: str = "alice@example.com",
+        snippet: str = "Preview text...",
+        body_data: str = "SGVsbG8gV29ybGQ=",  # "Hello World"
+    ) -> dict:
+        return {
+            "id": msg_id,
+            "threadId": thread_id,
+            "snippet": snippet,
+            "payload": {
+                "headers": [
+                    {"name": "Subject", "value": subject},
+                    {"name": "From", "value": sender},
+                    {"name": "Date", "value": "Mon, 10 Mar 2026"},
+                    {"name": "Message-ID", "value": f"<{msg_id}@example.com>"},
+                ],
+                "mimeType": "text/plain",
+                "body": {"data": body_data},
+            },
+        }
+
+    # -- Search --
+
+    def test_search_emails(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+        from haiku_skills_gmail import EmailState, search_emails
+
+        service = self._mock_service()
+        msg = self._sample_message()
+        service.users().messages().list.return_value.execute.return_value = {
+            "messages": [{"id": "msg1", "threadId": "thread1"}],
+            "resultSizeEstimate": 1,
+        }
+        service.users().messages().get.return_value.execute.return_value = msg
+        monkeypatch.setattr(mod, "_get_service", lambda: service)
+
+        state = EmailState()
+        ctx = _make_ctx(state)
+        result = search_emails(ctx, "from:alice")
+
+        assert "msg1" in result
+        assert "Test Subject" in result
+        assert "alice@example.com" in result
+        assert "from:alice" in state.searches
+        assert len(state.searches["from:alice"]) == 1
+        assert state.searches["from:alice"][0].message_id == "msg1"
+
+    def test_search_emails_no_results(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+        from haiku_skills_gmail import search_emails
+
+        service = self._mock_service()
+        service.users().messages().list.return_value.execute.return_value = {
+            "resultSizeEstimate": 0,
+        }
+        monkeypatch.setattr(mod, "_get_service", lambda: service)
+
+        ctx = _make_ctx()
+        result = search_emails(ctx, "nonexistent")
+        assert "No emails found" in result
+
+    def test_search_emails_message_fetch_error(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+        from haiku_skills_gmail import search_emails
+
+        service = self._mock_service()
+        service.users().messages().list.return_value.execute.return_value = {
+            "messages": [{"id": "msg1", "threadId": "thread1"}],
+            "resultSizeEstimate": 1,
+        }
+        service.users().messages().get.return_value.execute.side_effect = RuntimeError(
+            "fetch failed"
+        )
+        monkeypatch.setattr(mod, "_get_service", lambda: service)
+
+        ctx = _make_ctx()
+        result = search_emails(ctx, "test")
+        assert "No emails found" in result
+
+    def test_search_emails_error(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+        from haiku_skills_gmail import search_emails
+
+        service = self._mock_service()
+        service.users().messages().list.return_value.execute.side_effect = RuntimeError(
+            "API error"
+        )
+        monkeypatch.setattr(mod, "_get_service", lambda: service)
+
+        ctx = _make_ctx()
+        result = search_emails(ctx, "test")
+        assert result.startswith("Error:")
+        assert "API error" in result
+
+    # -- Read --
+
+    def test_read_email(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+        from haiku_skills_gmail import EmailState, read_email
+
+        service = self._mock_service()
+        msg = self._sample_message()
+        service.users().messages().get.return_value.execute.return_value = msg
+        monkeypatch.setattr(mod, "_get_service", lambda: service)
+
+        state = EmailState()
+        ctx = _make_ctx(state)
+        result = read_email(ctx, "msg1")
+
+        assert "Test Subject" in result
+        assert "alice@example.com" in result
+        assert "Hello World" in result
+        assert state.read_emails["msg1"] == "Test Subject"
+
+    def test_read_email_error(self, monkeypatch: pytest.MonkeyPatch):
+        import haiku_skills_gmail as mod
+        from haiku_skills_gmail import read_email
+
+        service = self._mock_service()
+        service.users().messages().get.return_value.execute.side_effect = RuntimeError(
+            "not found"
+        )
+        monkeypatch.setattr(mod, "_get_service", lambda: service)
+
+        ctx = _make_ctx()
+        result = read_email(ctx, "bad_id")
+        assert result.startswith("Error:")
+        assert "not found" in result

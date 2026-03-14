@@ -9,10 +9,11 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from pydantic import BaseModel
+from pydantic_ai import RunContext
 
 from haiku.skills.models import Skill, SkillSource
 from haiku.skills.parser import parse_skill_md
-from haiku.skills.state import SkillRunDeps  # noqa: F401
+from haiku.skills.state import SkillRunDeps
 
 SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
 
@@ -161,6 +162,95 @@ def _format_email_summary(msg: dict[str, Any]) -> str:
     )
 
 
+def search_emails(
+    ctx: RunContext[SkillRunDeps],
+    query: str,
+    max_results: int = 10,
+) -> str:
+    """Search Gmail for emails matching a query.
+
+    Args:
+        query: Gmail search query (e.g. "from:alice subject:meeting").
+        max_results: Maximum number of results to return.
+    """
+    try:
+        service = _get_service()
+        response = (
+            service.users()
+            .messages()
+            .list(userId="me", q=query, maxResults=max_results)
+            .execute()
+        )
+    except Exception as e:
+        return f"Error: {e}"
+
+    messages = response.get("messages", [])
+    if not messages:
+        return f"No emails found for: {query}"
+
+    summaries = []
+    for msg_ref in messages:
+        try:
+            msg = (
+                service.users()
+                .messages()
+                .get(userId="me", id=msg_ref["id"], format="metadata")
+                .execute()
+            )
+            summaries.append(_format_email_summary(msg))
+
+            if ctx.deps and ctx.deps.state and isinstance(ctx.deps.state, EmailState):
+                headers = msg.get("payload", {}).get("headers", [])
+                ctx.deps.state.searches.setdefault(query, []).append(
+                    EmailSummary(
+                        message_id=msg["id"],
+                        thread_id=msg["threadId"],
+                        subject=_get_header(headers, "Subject"),
+                        sender=_get_header(headers, "From"),
+                        snippet=msg.get("snippet", ""),
+                    )
+                )
+        except Exception:
+            continue
+
+    if not summaries:
+        return f"No emails found for: {query}"
+
+    return "\n\n---\n\n".join(summaries)
+
+
+def read_email(
+    ctx: RunContext[SkillRunDeps],
+    message_id: str,
+) -> str:
+    """Read the full content of an email.
+
+    Args:
+        message_id: The Gmail message ID.
+    """
+    try:
+        service = _get_service()
+        msg = (
+            service.users()
+            .messages()
+            .get(userId="me", id=message_id, format="full")
+            .execute()
+        )
+    except Exception as e:
+        return f"Error: {e}"
+
+    headers = msg.get("payload", {}).get("headers", [])
+    subject = _get_header(headers, "Subject")
+    sender = _get_header(headers, "From")
+    date = _get_header(headers, "Date")
+    body = _parse_email_body(msg.get("payload", {}))
+
+    if ctx.deps and ctx.deps.state and isinstance(ctx.deps.state, EmailState):
+        ctx.deps.state.read_emails[message_id] = subject
+
+    return f"From: {sender}\nSubject: {subject}\nDate: {date}\n\n{body}"
+
+
 def create_skill() -> Skill:
     skill_dir = Path(__file__).parent / "gmail"
     metadata, instructions = parse_skill_md(skill_dir / "SKILL.md")
@@ -170,7 +260,7 @@ def create_skill() -> Skill:
         source=SkillSource.ENTRYPOINT,
         path=skill_dir,
         instructions=instructions,
-        tools=[],
+        tools=[search_emails, read_email],
         state_type=EmailState,
         state_namespace="gmail",
     )
