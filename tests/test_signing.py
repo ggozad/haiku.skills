@@ -1,3 +1,4 @@
+from datetime import UTC
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -7,6 +8,7 @@ from haiku.skills.signing import (
     TrustedIdentity,
     _collect_gitignore_patterns,
     _import_sigstore,
+    get_bundle_signer,
     hash_skill_directory,
     sign_skill,
     verify_skill,
@@ -426,6 +428,68 @@ class TestSignSkill:
 
         with pytest.raises(Exception, match="OIDC flow failed"):
             sign_skill(skill_dir)
+
+
+class TestBundleSigner:
+    def test_returns_none_without_bundle(self, tmp_path: Path):
+        skill_dir = tmp_path / "skill"
+        skill_dir.mkdir()
+        assert get_bundle_signer(skill_dir) is None
+
+    def test_extracts_identity_from_bundle(self, tmp_path: Path):
+        import base64
+        import json
+        from datetime import datetime, timedelta
+
+        from cryptography import x509
+        from cryptography.hazmat.primitives import hashes, serialization
+        from cryptography.hazmat.primitives.asymmetric import ec
+        from cryptography.x509 import NameOID, ObjectIdentifier
+
+        # Build a minimal self-signed cert with SAN email and issuer OID
+        key = ec.generate_private_key(ec.SECP256R1())
+        issuer_oid = ObjectIdentifier("1.3.6.1.4.1.57264.1.1")
+        cert = (
+            x509.CertificateBuilder()
+            .subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "test")]))
+            .issuer_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "test")]))
+            .public_key(key.public_key())
+            .serial_number(x509.random_serial_number())
+            .not_valid_before(datetime.now(UTC))
+            .not_valid_after(datetime.now(UTC) + timedelta(days=1))
+            .add_extension(
+                x509.SubjectAlternativeName([x509.RFC822Name("test@example.com")]),
+                critical=False,
+            )
+            .add_extension(
+                x509.UnrecognizedExtension(issuer_oid, b"https://accounts.google.com"),
+                critical=False,
+            )
+            .sign(key, hashes.SHA256())
+        )
+
+        cert_b64 = base64.b64encode(
+            cert.public_bytes(serialization.Encoding.DER)
+        ).decode()
+
+        bundle = {
+            "verificationMaterial": {"certificate": {"rawBytes": cert_b64}},
+        }
+
+        skill_dir = tmp_path / "skill"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.sigstore").write_text(json.dumps(bundle))
+
+        result = get_bundle_signer(skill_dir)
+        assert result is not None
+        assert result.identity == "test@example.com"
+        assert result.issuer == "https://accounts.google.com"
+
+    def test_returns_none_on_malformed_bundle(self, tmp_path: Path):
+        skill_dir = tmp_path / "skill"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.sigstore").write_text("not json")
+        assert get_bundle_signer(skill_dir) is None
 
 
 class TestVerifySkill:

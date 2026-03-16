@@ -67,7 +67,14 @@ Files are hashed in sorted order by relative path for determinism.
 
 ## Verifying skills
 
-Configure trusted identities when creating a registry:
+From the CLI:
+
+```bash
+haiku-skills verify ./skills/my-skill \
+    -i author@example.com --issuer https://accounts.google.com
+```
+
+Or configure trusted identities when creating a registry:
 
 ```python
 from pathlib import Path

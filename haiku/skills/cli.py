@@ -89,6 +89,68 @@ def _build_cli():
             raise typer.Exit(1)
         typer.echo(f"Signed {path}")
 
+    @app.command("verify", help="Verify a signed skill directory")
+    def verify(
+        path: Path = typer.Argument(
+            ...,
+            help="Path to skill directory containing SKILL.md",
+        ),
+        identity: list[str] = typer.Option(
+            [],
+            "--identity",
+            "-i",
+            help="Trusted identity (repeatable)",
+        ),
+        issuer: list[str] = typer.Option(
+            [],
+            "--issuer",
+            help="OIDC issuer for the corresponding identity (repeatable)",
+        ),
+    ) -> None:
+        from haiku.skills.signing import (
+            TrustedIdentity,
+            get_bundle_signer,
+            verify_skill,
+        )
+
+        try:
+            signer = get_bundle_signer(path)
+        except ImportError as exc:
+            typer.echo(f"Error: {exc}", err=True)
+            raise typer.Exit(1)
+
+        if signer:
+            typer.echo(f"Signed by: {signer.identity} (issuer: {signer.issuer})")
+        else:
+            typer.echo("No signature found.")
+            raise typer.Exit(1)
+
+        if not identity:
+            return
+
+        if len(identity) != len(issuer):
+            typer.echo(
+                "Error: each --identity must have a corresponding --issuer",
+                err=True,
+            )
+            raise typer.Exit(1)
+
+        identities = [
+            TrustedIdentity(identity=i, issuer=s) for i, s in zip(identity, issuer)
+        ]
+
+        try:
+            result = verify_skill(path, identities)
+        except ImportError as exc:
+            typer.echo(f"Error: {exc}", err=True)
+            raise typer.Exit(1)
+
+        if result:
+            typer.echo(f"VERIFIED {path}")
+        else:
+            typer.echo(f"FAILED   {path}")
+            raise typer.Exit(1)
+
     @app.command("list", help="List discovered skills")
     def list_skills(
         skill_path: list[Path] = typer.Option(

@@ -14,5 +14,10 @@ from haiku.skills.models import (
 )
 from haiku.skills.prompts import build_system_prompt
 from haiku.skills.registry import SkillRegistry
-from haiku.skills.signing import TrustedIdentity, sign_skill, verify_skill
+from haiku.skills.signing import (
+    TrustedIdentity,
+    get_bundle_signer,
+    sign_skill,
+    verify_skill,
+)
 from haiku.skills.state import SkillDeps, SkillRunDeps, compute_state_delta

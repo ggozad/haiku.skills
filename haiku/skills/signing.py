@@ -168,6 +168,43 @@ def sign_skill(skill_dir: Path) -> None:
     logger.info("Signed skill at %s", skill_dir)
 
 
+def get_bundle_signer(skill_dir: Path) -> TrustedIdentity | None:
+    """Extract the signer identity from a skill's sigstore bundle.
+
+    Returns None if no bundle exists or the bundle can't be parsed.
+    """
+    import base64
+    import json
+
+    from cryptography import x509
+    from cryptography.x509 import ObjectIdentifier
+
+    bundle_path = skill_dir / "SKILL.sigstore"
+    if not bundle_path.exists():
+        return None
+
+    try:
+        bundle_data = json.loads(bundle_path.read_text())
+        cert_bytes = base64.b64decode(
+            bundle_data["verificationMaterial"]["certificate"]["rawBytes"]
+        )
+        cert = x509.load_der_x509_certificate(cert_bytes)
+
+        san = cert.extensions.get_extension_for_oid(
+            x509.oid.ExtensionOID.SUBJECT_ALTERNATIVE_NAME
+        )
+        identity = san.value[0].value
+
+        issuer_oid = ObjectIdentifier("1.3.6.1.4.1.57264.1.1")
+        issuer_ext = cert.extensions.get_extension_for_oid(issuer_oid)
+        issuer = issuer_ext.value.value.decode()
+
+        return TrustedIdentity(identity=identity, issuer=issuer)
+    except Exception:
+        logger.debug("Failed to extract signer from %s", bundle_path, exc_info=True)
+        return None
+
+
 def verify_skill(
     skill_dir: Path,
     trusted_identities: Sequence[TrustedIdentity],

@@ -22,6 +22,26 @@ haiku-skills sign ./skills/my-skill
 
 Writes a `SKILL.sigstore` bundle alongside the skill's `SKILL.md`. See [Signing and verification](signing.md) for details.
 
+## `verify`
+
+Verify a signed skill directory against trusted identities:
+
+```bash
+haiku-skills verify ./skills/my-skill \
+    -i author@example.com --issuer https://accounts.google.com
+```
+
+Multiple identities can be provided (each `--identity`/`-i` needs a corresponding `--issuer`):
+
+```bash
+haiku-skills verify ./skills/my-skill \
+    -i author@example.com --issuer https://accounts.google.com \
+    -i https://github.com/org/repo/.github/workflows/sign.yml@refs/heads/main \
+    --issuer https://token.actions.githubusercontent.com
+```
+
+Prints `VERIFIED` or `FAILED` and exits with code 1 on failure.
+
 ## `list`
 
 List discovered skills with name and description:
