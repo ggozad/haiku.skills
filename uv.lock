@@ -525,7 +525,6 @@ source = { editable = "." }
 dependencies = [
     { name = "ag-ui-protocol" },
     { name = "jsonpatch" },
-    { name = "pathspec" },
     { name = "pydantic" },
     { name = "pydantic-ai-slim", extra = ["mcp", "openai"] },
     { name = "pyyaml" },
@@ -534,6 +533,7 @@ dependencies = [
 
 [package.optional-dependencies]
 signing = [
+    { name = "pathspec" },
     { name = "sigstore" },
 ]
 tui = [
@@ -551,6 +551,7 @@ dev = [
     { name = "haiku-skills-web" },
     { name = "mkdocs" },
     { name = "mkdocs-material" },
+    { name = "pathspec" },
     { name = "pre-commit" },
     { name = "pydantic-ai-slim", extra = ["logfire", "openai"] },
     { name = "pydantic-monty" },
@@ -570,7 +571,7 @@ dev = [
 requires-dist = [
     { name = "ag-ui-protocol", specifier = ">=0.1.13" },
     { name = "jsonpatch", specifier = ">=1.33" },
-    { name = "pathspec", specifier = ">=0.12.0" },
+    { name = "pathspec", marker = "extra == 'signing'", specifier = ">=0.12.0" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pydantic-ai-slim", extras = ["logfire"], marker = "extra == 'tui'", specifier = ">=1.63.0" },
     { name = "pydantic-ai-slim", extras = ["mcp", "openai"], specifier = ">=1.63.0" },
@@ -591,6 +592,7 @@ dev = [
     { name = "haiku-skills-web", editable = "skills/web" },
     { name = "mkdocs", specifier = ">=1.6.1,<2.0.0" },
     { name = "mkdocs-material", specifier = ">=9.7.3" },
+    { name = "pathspec", specifier = ">=0.12.0" },
     { name = "pre-commit", specifier = ">=4.5.1" },
     { name = "pydantic-ai-slim", extras = ["openai", "logfire"], specifier = ">=1.63.0" },
     { name = "pydantic-monty", specifier = ">=0.0.7" },

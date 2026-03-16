@@ -5,13 +5,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
 
-import pathspec
-
 logger = logging.getLogger(__name__)
 
 _EXCLUDE_FILES = {"SKILL.sigstore"}
 _EXCLUDE_DIRS = {"__pycache__", "node_modules"}
 _EXCLUDE_EXTENSIONS = {".pyc", ".pyo"}
+_SIGSTORE_ISSUER_OID = "1.3.6.1.4.1.57264.1.1"
 
 
 @dataclass(frozen=True)
@@ -51,7 +50,7 @@ def _import_sigstore() -> SimpleNamespace:
     )
 
 
-def _collect_gitignore_patterns(skill_dir: Path) -> pathspec.PathSpec | None:
+def _collect_gitignore_patterns(skill_dir: Path):
     """Collect .gitignore patterns from skill_dir up to the repository root.
 
     Walks from ``skill_dir`` toward the filesystem root, collecting patterns
@@ -83,6 +82,8 @@ def _collect_gitignore_patterns(skill_dir: Path) -> pathspec.PathSpec | None:
 
     if not patterns:
         return None
+
+    import pathspec
 
     return pathspec.PathSpec.from_lines("gitwildmatch", patterns)
 
@@ -173,15 +174,15 @@ def get_bundle_signer(skill_dir: Path) -> TrustedIdentity | None:
 
     Returns None if no bundle exists or the bundle can't be parsed.
     """
+    bundle_path = skill_dir / "SKILL.sigstore"
+    if not bundle_path.exists():
+        return None
+
     import base64
     import json
 
     from cryptography import x509
     from cryptography.x509 import ObjectIdentifier
-
-    bundle_path = skill_dir / "SKILL.sigstore"
-    if not bundle_path.exists():
-        return None
 
     try:
         bundle_data = json.loads(bundle_path.read_text())
@@ -195,7 +196,7 @@ def get_bundle_signer(skill_dir: Path) -> TrustedIdentity | None:
         )
         identity = san.value[0].value
 
-        issuer_oid = ObjectIdentifier("1.3.6.1.4.1.57264.1.1")
+        issuer_oid = ObjectIdentifier(_SIGSTORE_ISSUER_OID)
         issuer_ext = cert.extensions.get_extension_for_oid(issuer_oid)
         issuer = issuer_ext.value.value.decode()
 
