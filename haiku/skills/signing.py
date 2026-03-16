@@ -194,11 +194,11 @@ def get_bundle_signer(skill_dir: Path) -> TrustedIdentity | None:
         san = cert.extensions.get_extension_for_oid(
             x509.oid.ExtensionOID.SUBJECT_ALTERNATIVE_NAME
         )
-        identity = san.value[0].value
+        identity = san.value[0].value  # type: ignore[index]
 
         issuer_oid = ObjectIdentifier(_SIGSTORE_ISSUER_OID)
         issuer_ext = cert.extensions.get_extension_for_oid(issuer_oid)
-        issuer = issuer_ext.value.value.decode()
+        issuer = issuer_ext.value.value.decode()  # type: ignore[union-attr]
 
         return TrustedIdentity(identity=identity, issuer=issuer)
     except Exception:
