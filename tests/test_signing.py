@@ -310,6 +310,12 @@ class TestHashSkillDirectory:
 
 
 class TestSignSkill:
+    def test_raises_without_skill_md(self, tmp_path: Path):
+        skill_dir = tmp_path / "not-a-skill"
+        skill_dir.mkdir()
+        with pytest.raises(ValueError, match="SKILL.md"):
+            sign_skill(skill_dir)
+
     def test_raises_without_sigstore(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ):
@@ -363,7 +369,45 @@ class TestSignSkill:
         assert bundle_path.exists()
         assert bundle_path.read_text() == '{"bundle": "data"}'
 
-    def test_raises_when_no_credential(
+    def test_falls_back_to_browser_oidc(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        skill_dir = tmp_path / "skill"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text("content")
+
+        mock_bundle = MagicMock()
+        mock_bundle.to_json.return_value = '{"bundle": "data"}'
+
+        mock_signer = MagicMock()
+        mock_signer.sign_artifact.return_value = mock_bundle
+        mock_signer.__enter__ = MagicMock(return_value=mock_signer)
+        mock_signer.__exit__ = MagicMock(return_value=False)
+
+        mock_signing_ctx = MagicMock()
+        mock_signing_ctx.signer.return_value = mock_signer
+
+        mock_issuer = MagicMock()
+        mock_identity_token = MagicMock()
+        mock_issuer.identity_token.return_value = mock_identity_token
+
+        mock_sigstore = MagicMock()
+        mock_sigstore.detect_credential.return_value = None
+        mock_sigstore.Issuer.return_value = mock_issuer
+        mock_sigstore.SigningContext.from_trust_config.return_value = mock_signing_ctx
+        mock_sigstore.Hashed = MagicMock()
+
+        monkeypatch.setattr(
+            "haiku.skills.signing._import_sigstore", lambda: mock_sigstore
+        )
+
+        sign_skill(skill_dir)
+
+        mock_sigstore.Issuer.assert_called_once_with("https://oauth2.sigstore.dev/auth")
+        mock_issuer.identity_token.assert_called_once()
+        assert (skill_dir / "SKILL.sigstore").read_text() == '{"bundle": "data"}'
+
+    def test_raises_when_oidc_fails(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ):
         skill_dir = tmp_path / "skill"
@@ -372,12 +416,15 @@ class TestSignSkill:
 
         mock_sigstore = MagicMock()
         mock_sigstore.detect_credential.return_value = None
+        mock_sigstore.Issuer.return_value.identity_token.side_effect = Exception(
+            "OIDC flow failed"
+        )
 
         monkeypatch.setattr(
             "haiku.skills.signing._import_sigstore", lambda: mock_sigstore
         )
 
-        with pytest.raises(RuntimeError, match="credential"):
+        with pytest.raises(Exception, match="OIDC flow failed"):
             sign_skill(skill_dir)
 
 

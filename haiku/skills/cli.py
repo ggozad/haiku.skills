@@ -84,7 +84,7 @@ def _build_cli():
 
         try:
             sign_skill(path)
-        except (ImportError, RuntimeError) as exc:
+        except (ImportError, ValueError) as exc:
             typer.echo(f"Error: {exc}", err=True)
             raise typer.Exit(1)
         typer.echo(f"Signed {path}")

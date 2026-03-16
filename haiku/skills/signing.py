@@ -25,7 +25,7 @@ def _import_sigstore() -> SimpleNamespace:
     try:
         from sigstore.errors import VerificationError
         from sigstore.models import Bundle, ClientTrustConfig
-        from sigstore.oidc import IdentityToken, detect_credential
+        from sigstore.oidc import IdentityToken, Issuer, detect_credential
         from sigstore.sign import SigningContext, sigstore_hashes
         from sigstore.verify import Verifier
         from sigstore.verify.policy import AnyOf, Identity
@@ -39,6 +39,7 @@ def _import_sigstore() -> SimpleNamespace:
         Bundle=Bundle,
         ClientTrustConfig=ClientTrustConfig,
         IdentityToken=IdentityToken,
+        Issuer=Issuer,
         detect_credential=detect_credential,
         SigningContext=SigningContext,
         Hashed=sigstore_hashes.Hashed,
@@ -142,16 +143,17 @@ def hash_skill_directory(skill_dir: Path) -> bytes:
 
 def sign_skill(skill_dir: Path) -> None:
     """Sign a skill directory and write SKILL.sigstore bundle."""
+    if not (skill_dir / "SKILL.md").exists():
+        raise ValueError(f"No SKILL.md found in {skill_dir}")
+
     sigstore = _import_sigstore()
 
     credential = sigstore.detect_credential()
-    if credential is None:
-        raise RuntimeError(
-            "No OIDC credential detected. Run in an environment with ambient "
-            "credentials (e.g. GitHub Actions) or authenticate via browser."
-        )
-
-    identity_token = sigstore.IdentityToken.from_jwt(credential)
+    if credential is not None:
+        identity_token = sigstore.IdentityToken.from_jwt(credential)
+    else:
+        issuer = sigstore.Issuer("https://oauth2.sigstore.dev/auth")
+        identity_token = issuer.identity_token()
     trust_config = sigstore.ClientTrustConfig.production()
     signing_ctx = sigstore.SigningContext.from_trust_config(trust_config)
 
