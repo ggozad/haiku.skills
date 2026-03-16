@@ -1,4 +1,4 @@
-from ag_ui.core import EventType, StateDeltaEvent
+from ag_ui.core import BaseEvent, CustomEvent, EventType, StateDeltaEvent
 from pydantic import BaseModel
 from pydantic_ai.ui import StateHandler
 
@@ -19,6 +19,18 @@ class TestSkillRunDeps:
         state = SampleState(items=["a"], count=1)
         deps = SkillRunDeps(state=state)
         assert deps.state is state
+
+    def test_default_emit_is_noop(self):
+        deps = SkillRunDeps()
+        event = CustomEvent(name="test", value=42)
+        deps.emit(event)  # should not raise
+
+    def test_emit_callback_receives_events(self):
+        collected: list[BaseEvent] = []
+        deps = SkillRunDeps(emit=collected.append)
+        event = CustomEvent(name="progress", value={"step": 1})
+        deps.emit(event)
+        assert collected == [event]
 
 
 class TestSkillDeps:
