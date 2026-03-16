@@ -4,6 +4,7 @@ import pytest
 
 from haiku.skills.models import Skill, SkillMetadata, SkillSource, SkillValidationError
 from haiku.skills.registry import SkillRegistry
+from haiku.skills.signing import TrustedIdentity
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -135,3 +136,25 @@ class TestSkillRegistry:
         assert len(errors) == 1
         assert isinstance(errors[0], SkillValidationError)
         assert errors[0].path == broken
+
+    def test_discover_passes_trusted_identities(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        skill_dir = tmp_path / "my-skill"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text(
+            "---\nname: my-skill\ndescription: Test.\n---\nBody.\n"
+        )
+        (skill_dir / "SKILL.sigstore").write_text('{"bundle": "data"}')
+
+        monkeypatch.setattr(
+            "haiku.skills.discovery.verify_skill", lambda *a, **kw: True
+        )
+
+        identities = [TrustedIdentity(identity="a@b.com", issuer="https://issuer")]
+        registry = SkillRegistry()
+        errors = registry.discover(paths=[skill_dir], trusted_identities=identities)
+        assert errors == []
+        skill = registry.get("my-skill")
+        assert skill is not None
+        assert skill.verified is True
