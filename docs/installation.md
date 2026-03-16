@@ -22,6 +22,16 @@ A debug/development chat interface built with [Textual](https://textual.textuali
 uv add "haiku.skills[tui]"
 ```
 
+### Signing
+
+Identity-based skill signing and verification via [sigstore](https://www.sigstore.dev/):
+
+```bash
+uv add "haiku.skills[signing]"
+```
+
+See [Signing and verification](signing.md) for details.
+
 ## Requirements
 
 - Python 3.12+

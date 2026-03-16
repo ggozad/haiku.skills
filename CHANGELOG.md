@@ -5,6 +5,7 @@
 ### Added
 
 - **Skill versioning**: Optional `version` field on `SkillMetadata` with semver validation (e.g. `version: 1.2.3` or `version: 1.0.0-alpha.1` in SKILL.md frontmatter)
+- **Skill signing and verification**: Identity-based signing via [sigstore](https://www.sigstore.dev/) — sign skills with `sign_skill()`, verify with `TrustedIdentity` on registry/discovery. Install with `pip install haiku.skills[signing]`
 
 ## [0.8.1] - 2026-03-17
 
