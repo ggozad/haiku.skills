@@ -100,6 +100,27 @@ async with run_agui_stream(toolset, adapter) as stream:
 
 The `async with` context manager ensures proper cleanup of the background adapter task, even if the consumer exits early.
 
+## Custom events
+
+Skill tools can emit arbitrary AG-UI events (e.g. `CustomEvent` for progress reporting or domain-specific data) via the `emit` callback on `SkillRunDeps`:
+
+```python
+from ag_ui.core import CustomEvent
+from pydantic_ai import RunContext
+from haiku.skills.state import SkillRunDeps
+
+def my_tool(ctx: RunContext[SkillRunDeps]) -> str:
+    """A tool that emits progress events."""
+    ctx.deps.emit(CustomEvent(name="progress", value={"step": 1, "total": 3}))
+    # ... do work ...
+    ctx.deps.emit(CustomEvent(name="progress", value={"step": 2, "total": 3}))
+    return "done"
+```
+
+Any `BaseEvent` subclass can be emitted — not just `CustomEvent`. For example, a tool could emit a `StateDeltaEvent` directly.
+
+When using `run_agui_stream()`, emitted events are flushed through the event sink at tool-call boundaries for near-real-time delivery. Without streaming (the batched path), they appear in `ToolReturn.metadata` alongside `ActivitySnapshotEvent` and `StateDeltaEvent`.
+
 For HTTP endpoints, wrap the context manager inside an async generator:
 
 ```python

@@ -8,6 +8,7 @@ import pytest
 from ag_ui.core import (
     ActivitySnapshotEvent,
     BaseEvent,
+    CustomEvent,
     EventType,
 )
 from pydantic import BaseModel
@@ -123,7 +124,7 @@ class TestRunSkill:
         toolset = SkillToolset(skill_paths=[FIXTURES])
         skill = toolset.registry.get("simple-skill")
         assert skill is not None
-        result, events = await _run_skill(
+        result, events, _ = await _run_skill(
             TestModel(call_tools=[]), skill, "Do something."
         )
         assert result
@@ -141,7 +142,7 @@ class TestRunSkill:
             instructions="Use the greet tool.",
             tools=[greet],
         )
-        result, events = await _run_skill(TestModel(), skill, "Greet Alice.")
+        result, events, _ = await _run_skill(TestModel(), skill, "Greet Alice.")
         assert result
         assert len(events) >= 2
         call_events = [e for e in events if isinstance(e, FunctionToolCallEvent)]
@@ -163,7 +164,7 @@ class TestRunSkill:
             instructions="Use the greet toolset.",
             toolsets=[toolset],
         )
-        result, events = await _run_skill(TestModel(), skill, "Greet Alice.")
+        result, events, _ = await _run_skill(TestModel(), skill, "Greet Alice.")
         assert result
         assert len(events) >= 2
 
@@ -185,7 +186,7 @@ class TestRunSkill:
             instructions="Use the greet tool.",
             tools=[greet],
         )
-        result, collected = await _run_skill(
+        result, collected, _ = await _run_skill(
             TestModel(), skill, "Greet Alice.", event_sink=sink
         )
         assert result
@@ -281,7 +282,7 @@ class TestRunSkillWithResources:
             instructions="Use references.",
             resources=["references/REFERENCE.md", "assets/template.txt"],
         )
-        result, _ = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
+        result, *_ = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
         assert result
 
     async def test_no_resources_no_section(self, allow_model_requests: None):
@@ -290,7 +291,7 @@ class TestRunSkillWithResources:
             source=SkillSource.ENTRYPOINT,
             instructions="Do things.",
         )
-        result, _ = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
+        result, *_ = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
         assert result
 
 
@@ -641,6 +642,166 @@ class TestRunSkillWithState:
         assert len(captured_deps) == 1
         assert captured_deps[0] is not None
         assert captured_deps[0].state is None
+
+
+class TestExecuteSkillEmittedEvents:
+    async def test_emitted_events_in_metadata(self, allow_model_requests: None):
+        """execute_skill puts emitted CustomEvents in ToolReturn metadata."""
+
+        def emit_tool(ctx: RunContext[SkillRunDeps]) -> str:
+            """Emit a custom event."""
+            ctx.deps.emit(CustomEvent(name="progress", value={"step": 1}))
+            return "done"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Emits."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use emit_tool.",
+            tools=[emit_tool],
+        )
+        toolset = SkillToolset(skills=[skill])
+        agent = Agent(
+            TestModel(),
+            instructions=build_system_prompt(toolset.skill_catalog),
+            toolsets=[toolset],
+        )
+        result = await agent.run("Emit something.")
+        tool_returns = [
+            part
+            for msg in result.all_messages()
+            if isinstance(msg, ModelRequest)
+            for part in msg.parts
+            if isinstance(part, ToolReturnPart) and part.metadata
+        ]
+        assert tool_returns
+        custom_events = [
+            ev
+            for tr in tool_returns
+            for ev in tr.metadata
+            if isinstance(ev, CustomEvent)
+        ]
+        assert len(custom_events) == 1
+        assert custom_events[0].name == "progress"
+
+    async def test_emitted_events_via_sink(self, allow_model_requests: None):
+        """With event_sink, emitted events go through sink, not metadata."""
+        sinked: list[Any] = []
+
+        async def sink(event: Any) -> None:
+            sinked.append(event)
+
+        def emit_tool(ctx: RunContext[SkillRunDeps]) -> str:
+            """Emit a custom event."""
+            ctx.deps.emit(CustomEvent(name="progress", value={"step": 1}))
+            return "done"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Emits."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use emit_tool.",
+            tools=[emit_tool],
+        )
+        toolset = SkillToolset(skills=[skill])
+        toolset._event_sink = sink
+        agent = Agent(
+            TestModel(),
+            instructions=build_system_prompt(toolset.skill_catalog),
+            toolsets=[toolset],
+        )
+        result = await agent.run("Emit something.")
+        # Custom events should be in sink, not metadata
+        custom_sinked = [e for e in sinked if isinstance(e, CustomEvent)]
+        assert len(custom_sinked) == 1
+        tool_returns = [
+            part
+            for msg in result.all_messages()
+            if isinstance(msg, ModelRequest)
+            for part in msg.parts
+            if isinstance(part, ToolReturnPart)
+        ]
+        has_custom_in_metadata = any(
+            isinstance(ev, CustomEvent)
+            for tr in tool_returns
+            if tr.metadata
+            for ev in tr.metadata
+        )
+        assert not has_custom_in_metadata
+
+    async def test_no_emitted_events_without_emit_calls(
+        self, allow_model_requests: None
+    ):
+        """Skills that don't call emit produce no custom events in metadata."""
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Plain."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do things.",
+        )
+        toolset = SkillToolset(skills=[skill])
+        agent = Agent(
+            TestModel(),
+            instructions=build_system_prompt(toolset.skill_catalog),
+            toolsets=[toolset],
+        )
+        result = await agent.run("Do something.")
+        tool_returns = [
+            part
+            for msg in result.all_messages()
+            if isinstance(msg, ModelRequest)
+            for part in msg.parts
+            if isinstance(part, ToolReturnPart)
+        ]
+        has_custom = any(
+            isinstance(ev, CustomEvent)
+            for tr in tool_returns
+            if tr.metadata
+            for ev in tr.metadata
+        )
+        assert not has_custom
+
+    async def test_emitted_events_coexist_with_activity_and_state(
+        self, allow_model_requests: None
+    ):
+        """Emitted events coexist with ActivitySnapshotEvent and StateDeltaEvent."""
+        from ag_ui.core import StateDeltaEvent
+
+        def emit_and_modify(ctx: RunContext[SkillRunDeps]) -> str:
+            """Emit and modify state."""
+            ctx.deps.emit(CustomEvent(name="info", value="hello"))
+            assert isinstance(ctx.deps.state, CounterState)
+            ctx.deps.state.count += 1
+            return "done"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Emits and counts."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use emit_and_modify.",
+            tools=[emit_and_modify],
+            state_type=CounterState,
+            state_namespace="ns.counter",
+        )
+        toolset = SkillToolset(skills=[skill])
+        agent = Agent(
+            TestModel(),
+            instructions=build_system_prompt(toolset.skill_catalog),
+            toolsets=[toolset],
+        )
+        result = await agent.run("Do it.")
+        tool_returns = [
+            part
+            for msg in result.all_messages()
+            if isinstance(msg, ModelRequest)
+            for part in msg.parts
+            if isinstance(part, ToolReturnPart) and part.metadata
+        ]
+        assert tool_returns
+        metadata = tool_returns[0].metadata
+        assert metadata is not None
+        has_activity = any(isinstance(ev, ActivitySnapshotEvent) for ev in metadata)
+        has_delta = any(isinstance(ev, StateDeltaEvent) for ev in metadata)
+        has_custom = any(isinstance(ev, CustomEvent) for ev in metadata)
+        assert has_activity
+        assert has_delta
+        assert has_custom
 
 
 class TestExecuteSkillEvents:
@@ -1266,7 +1427,7 @@ class TestCreateRunScript:
             path=tmp_path,
             instructions="Use scripts.",
         )
-        result, _ = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
+        result, *_ = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
         assert result
         # Verify all script types appear in the prompt by checking
         # via the skill prompt construction path
@@ -1295,7 +1456,7 @@ class TestRunSkillWithScripts:
             path=tmp_path,
             instructions="Use scripts.",
         )
-        result, _ = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
+        result, *_ = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
         assert result
 
     async def test_no_run_script_without_scripts_dir(self, allow_model_requests: None):
@@ -1304,7 +1465,7 @@ class TestRunSkillWithScripts:
             source=SkillSource.ENTRYPOINT,
             instructions="Do things.",
         )
-        result, _ = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
+        result, *_ = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
         assert result
 
 

@@ -173,7 +173,7 @@ async def _run_skill(
     request: str,
     state: BaseModel | None = None,
     event_sink: Callable[[BaseEvent], Awaitable[None]] | None = None,
-) -> tuple[str, list[Any]]:
+) -> tuple[str, list[Any], list[BaseEvent]]:
     instructions = skill.instructions or "No specific instructions."
     resource_section = ""
     scripts_section = ""
@@ -211,7 +211,11 @@ async def _run_skill(
     )
 
     collected_events: list[Any] = []
+    emitted_events: list[BaseEvent] = []
     skill_name = skill.metadata.name
+
+    def emit(event: BaseEvent) -> None:
+        emitted_events.append(event)
 
     async def event_handler(
         ctx: RunContext[SkillRunDeps],
@@ -224,8 +228,12 @@ async def _run_skill(
                         await event_sink(agui_event)
                 else:
                     collected_events.append(event)
+            # Flush emitted events at tool-call boundaries
+            if event_sink is not None:
+                while emitted_events:
+                    await event_sink(emitted_events.pop(0))
 
-    deps = SkillRunDeps(state=state)
+    deps = SkillRunDeps(state=state, emit=emit)
     agent = Agent[SkillRunDeps, str](
         model,
         system_prompt=system_prompt,
@@ -239,7 +247,7 @@ async def _run_skill(
         event_stream_handler=event_handler,
     )
     text = result.output
-    return text, collected_events
+    return text, collected_events, emitted_events
 
 
 class SkillToolset(FunctionToolset[Any]):
@@ -387,7 +395,7 @@ class SkillToolset(FunctionToolset[Any]):
             event_sink = self._event_sink
 
             try:
-                result, collected_events = await _run_skill(
+                result, collected_events, emitted_events = await _run_skill(
                     skill_model, skill, request, state=state, event_sink=event_sink
                 )
             except Exception as e:
@@ -398,6 +406,7 @@ class SkillToolset(FunctionToolset[Any]):
                 metadata.extend(
                     _events_to_activity(skill.metadata.name, collected_events)
                 )
+                metadata.extend(emitted_events)
 
             if old_snapshot is not None and namespace and state:
                 new_snapshot = {namespace: state.model_dump(mode="json")}
