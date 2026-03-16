@@ -73,6 +73,22 @@ def _build_cli():
         if not all_valid:
             raise typer.Exit(1)
 
+    @app.command("sign", help="Sign a skill directory with sigstore")
+    def sign(
+        path: Path = typer.Argument(
+            ...,
+            help="Path to skill directory containing SKILL.md",
+        ),
+    ) -> None:
+        from haiku.skills.signing import sign_skill
+
+        try:
+            sign_skill(path)
+        except (ImportError, RuntimeError) as exc:
+            typer.echo(f"Error: {exc}", err=True)
+            raise typer.Exit(1)
+        typer.echo(f"Signed {path}")
+
     @app.command("list", help="List discovered skills")
     def list_skills(
         skill_path: list[Path] = typer.Option(

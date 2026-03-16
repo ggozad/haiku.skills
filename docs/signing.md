@@ -36,6 +36,14 @@ Without this extra, skills load normally — signing and verification are entire
 
 ## Signing a skill
 
+From the CLI:
+
+```bash
+haiku-skills sign ./skills/my-skill
+```
+
+Or programmatically:
+
 ```python
 from pathlib import Path
 from haiku.skills import sign_skill

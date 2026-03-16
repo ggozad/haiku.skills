@@ -12,6 +12,16 @@ haiku-skills validate ./skills/web ./skills/calculator
 
 Prints `VALID` or `INVALID` with error details for each path. Exits with code 1 if any skill is invalid.
 
+## `sign`
+
+Sign a skill directory with [sigstore](https://www.sigstore.dev/):
+
+```bash
+haiku-skills sign ./skills/my-skill
+```
+
+Writes a `SKILL.sigstore` bundle alongside the skill's `SKILL.md`. See [Signing and verification](signing.md) for details.
+
 ## `list`
 
 List discovered skills with name and description:
