@@ -173,6 +173,7 @@ async def _run_skill(
     request: str,
     state: BaseModel | None = None,
     event_sink: Callable[[BaseEvent], Awaitable[None]] | None = None,
+    skill_deps_type: type = SkillRunDeps,
 ) -> tuple[str, list[Any]]:
     instructions = skill.instructions or "No specific instructions."
     resource_section = ""
@@ -214,7 +215,7 @@ async def _run_skill(
     skill_name = skill.metadata.name
 
     async def event_handler(
-        ctx: RunContext[SkillRunDeps],
+        ctx: RunContext[skill_deps_type],
         events: AsyncIterable[AgentStreamEvent],
     ) -> None:
         async for event in events:
@@ -225,8 +226,8 @@ async def _run_skill(
                 else:
                     collected_events.append(event)
 
-    deps = SkillRunDeps(state=state)
-    agent = Agent[SkillRunDeps, str](
+    deps = skill_deps_type(state=state)
+    agent = Agent[skill_deps_type, str](
         model,
         system_prompt=system_prompt,
         tools=tools,
@@ -252,6 +253,7 @@ class SkillToolset(FunctionToolset[Any]):
         skill_paths: list[Path] | None = None,
         use_entrypoints: bool = False,
         skill_model: str | Model | None = None,
+        skill_deps_type: type = SkillRunDeps,
     ) -> None:
         super().__init__()
         self._registry = SkillRegistry()
@@ -259,6 +261,7 @@ class SkillToolset(FunctionToolset[Any]):
         self._last_restored_state: dict[str, Any] | None = None
         self._skill_model = skill_model
         self._event_sink: Callable[[BaseEvent], Awaitable[None]] | None = None
+        self._skill_deps_type = skill_deps_type
         if skills:
             for skill in skills:
                 self._registry.register(skill)
@@ -270,7 +273,7 @@ class SkillToolset(FunctionToolset[Any]):
             skill = self._registry.get(name)
             if skill:
                 self._register_skill_state(skill)
-        self._register_tools()
+        self._register_tools(skill_deps_type=skill_deps_type)
 
     def _register_skill_state(self, skill: Skill) -> None:
         """Register the state namespace for a skill."""
@@ -348,6 +351,7 @@ class SkillToolset(FunctionToolset[Any]):
 
     def _register_tools(self) -> None:
         registry = self._registry
+        skill_deps_type = self._skill_deps_type
 
         @self.tool
         async def execute_skill(
@@ -388,7 +392,12 @@ class SkillToolset(FunctionToolset[Any]):
 
             try:
                 result, collected_events = await _run_skill(
-                    skill_model, skill, request, state=state, event_sink=event_sink
+                    skill_model,
+                    skill,
+                    request,
+                    state=state,
+                    event_sink=event_sink,
+                    skill_deps_type=skill_deps_type,
                 )
             except Exception as e:
                 return f"Error: {e}"
