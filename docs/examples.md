@@ -198,6 +198,19 @@ Requires Google Cloud OAuth2 credentials. Configure via environment variables:
 
 On first run, a browser window opens for OAuth2 authorization. The token is cached for subsequent runs. See the [skill README](https://github.com/ggozad/haiku.skills/tree/main/skills/gmail) for Google Cloud setup instructions.
 
+### notifications
+
+Push notifications via [ntfy.sh](https://ntfy.sh/). Send and receive messages on topic-based channels — no signup required.
+
+```bash
+uv add haiku-skills-notifications
+```
+
+Configure via environment variables:
+
+- `NTFY_SERVER` — ntfy server URL (default: `https://ntfy.sh`)
+- `NTFY_TOKEN` — Bearer token for authenticated topics (optional)
+
 For a more elaborate use case involving RAG (retrieval-augmented generation), see the [haiku.rag](https://github.com/ggozad/haiku.rag) project which provides a full RAG skill for haiku.skills.
 
 ## Mixing sources
