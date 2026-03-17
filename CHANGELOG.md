@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-03-17
+
 ### Added
 
 - **Custom event emission from skill tools**: `SkillRunDeps` now has an `emit` callback that skill tools can use to emit AG-UI `BaseEvent` subclasses (e.g. `CustomEvent`) during execution. Events are flushed through the event sink at tool-call boundaries (real-time path) or returned in `ToolReturn.metadata` (batched path).
@@ -216,7 +218,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.8.0...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.8.1...HEAD
+[0.8.1]: https://github.com/ggozad/haiku.skills/compare/0.8.0...0.8.1
 [0.8.0]: https://github.com/ggozad/haiku.skills/compare/0.7.5...0.8.0
 [0.7.5]: https://github.com/ggozad/haiku.skills/compare/0.7.4...0.7.5
 [0.7.4]: https://github.com/ggozad/haiku.skills/compare/0.7.3...0.7.4
