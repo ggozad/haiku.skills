@@ -6,6 +6,10 @@
 
 - **Custom event emission from skill tools**: `SkillRunDeps` now has an `emit` callback that skill tools can use to emit AG-UI `BaseEvent` subclasses (e.g. `CustomEvent`) during execution. Events are flushed through the event sink at tool-call boundaries (real-time path) or returned in `ToolReturn.metadata` (batched path).
 
+### Removed
+
+- **Graphiti memory skill** (`haiku-skills-graphiti-memory`): Removed the knowledge graph memory skill and all associated code, tests, and configuration
+
 ## [0.8.0] - 2026-03-13
 
 ### Changed

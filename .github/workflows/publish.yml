@@ -31,7 +31,6 @@ jobs:
           - haiku-skills-web
           - haiku-skills-image-generation
           - haiku-skills-code-execution
-          - haiku-skills-graphiti-memory
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
