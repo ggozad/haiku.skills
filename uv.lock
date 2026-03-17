@@ -8,6 +8,7 @@ members = [
     "haiku-skills-code-execution",
     "haiku-skills-gmail",
     "haiku-skills-image-generation",
+    "haiku-skills-notifications",
     "haiku-skills-web",
 ]
 
@@ -548,6 +549,7 @@ dev = [
     { name = "haiku-skills-code-execution" },
     { name = "haiku-skills-gmail" },
     { name = "haiku-skills-image-generation" },
+    { name = "haiku-skills-notifications" },
     { name = "haiku-skills-web" },
     { name = "mkdocs" },
     { name = "mkdocs-material" },
@@ -585,6 +587,7 @@ dev = [
     { name = "haiku-skills-code-execution", editable = "skills/code-execution" },
     { name = "haiku-skills-gmail", editable = "skills/gmail" },
     { name = "haiku-skills-image-generation", editable = "skills/image-generation" },
+    { name = "haiku-skills-notifications", editable = "skills/notifications" },
     { name = "haiku-skills-web", editable = "skills/web" },
     { name = "mkdocs", specifier = ">=1.6.1,<2.0.0" },
     { name = "mkdocs-material", specifier = ">=9.7.3" },
@@ -640,6 +643,21 @@ requires-dist = [
 name = "haiku-skills-image-generation"
 version = "0.8.0"
 source = { editable = "skills/image-generation" }
+dependencies = [
+    { name = "haiku-skills" },
+    { name = "httpx" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "haiku-skills", editable = "." },
+    { name = "httpx", specifier = ">=0.28.0" },
+]
+
+[[package]]
+name = "haiku-skills-notifications"
+version = "0.8.0"
+source = { editable = "skills/notifications" }
 dependencies = [
     { name = "haiku-skills" },
     { name = "httpx" },

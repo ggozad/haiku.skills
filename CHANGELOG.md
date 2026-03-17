@@ -6,6 +6,7 @@
 
 - **Custom event emission from skill tools**: `SkillRunDeps` now has an `emit` callback that skill tools can use to emit AG-UI `BaseEvent` subclasses (e.g. `CustomEvent`) during execution. Events are flushed through the event sink at tool-call boundaries (real-time path) or returned in `ToolReturn.metadata` (batched path).
 - **Gmail skill** (`haiku-skills-gmail`): Search, read, send, reply, draft, and label Gmail emails via the Google Gmail API with OAuth2 authentication
+- **Notifications skill** (`haiku-skills-notifications`): Send and receive push notifications via [ntfy.sh](https://ntfy.sh/) — with `send_notification` and `read_notifications` tools, per-skill state tracking, self-hosted server support, and optional bearer token authentication
 
 ### Removed
 

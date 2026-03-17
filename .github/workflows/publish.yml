@@ -32,6 +32,7 @@ jobs:
           - haiku-skills-image-generation
           - haiku-skills-code-execution
           - haiku-skills-gmail
+          - haiku-skills-notifications
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
