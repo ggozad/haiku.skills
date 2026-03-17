@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Custom event emission from skill tools**: `SkillRunDeps` now has an `emit` callback that skill tools can use to emit AG-UI `BaseEvent` subclasses (e.g. `CustomEvent`) during execution. Events are flushed through the event sink at tool-call boundaries (real-time path) or returned in `ToolReturn.metadata` (batched path).
+
 ## [0.8.0] - 2026-03-13
 
 ### Changed

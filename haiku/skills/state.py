@@ -1,8 +1,9 @@
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
 import jsonpatch
-from ag_ui.core import EventType, StateDeltaEvent
+from ag_ui.core import BaseEvent, EventType, StateDeltaEvent
 from pydantic import BaseModel
 
 
@@ -11,6 +12,7 @@ class SkillRunDeps:
     """Dependencies passed to skill sub-agent tools via RunContext."""
 
     state: BaseModel | None = None
+    emit: Callable[[BaseEvent], None] = lambda _: None
 
 
 @dataclass
