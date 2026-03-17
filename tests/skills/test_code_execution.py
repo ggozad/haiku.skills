@@ -68,33 +68,37 @@ class TestExecuteCode:
     async def test_basic_expression(self):
         from haiku_skills_code_execution import _execute_code
 
-        stdout, result = await _execute_code("1 + 1", {})
+        stdout, result, success = await _execute_code("1 + 1", {})
         assert stdout == ""
         assert result == "2"
+        assert success is True
 
     @pytest.mark.anyio
     async def test_print_output(self):
         from haiku_skills_code_execution import _execute_code
 
-        stdout, result = await _execute_code("print('hello')", {})
+        stdout, result, success = await _execute_code("print('hello')", {})
         assert "hello" in stdout
         assert result is None
+        assert success is True
 
     @pytest.mark.anyio
     async def test_no_output(self):
         from haiku_skills_code_execution import _execute_code
 
-        stdout, result = await _execute_code("x = 1", {})
+        stdout, result, success = await _execute_code("x = 1", {})
         assert stdout == ""
         assert result is None
+        assert success is True
 
     @pytest.mark.anyio
     async def test_monty_error(self):
         from haiku_skills_code_execution import _execute_code
 
-        stdout, result = await _execute_code("1 / 0", {})
+        stdout, result, success = await _execute_code("1 / 0", {})
         assert "Error" in (stdout or "")
         assert result is None
+        assert success is False
 
 
 class TestFormatOutput:
@@ -209,6 +213,18 @@ class TestRunCodeAsync:
         ctx = make_ctx(model=model)
         result = await run_code(ctx, "1 / 0")
         assert "Error" in result
+
+    @pytest.mark.anyio
+    async def test_with_state_error(self):
+        from haiku_skills_code_execution import CodeState, run_code
+
+        state = CodeState()
+        model = TestModel()
+        ctx = make_ctx(state=state, model=model)
+        result = await run_code(ctx, "1 / 0")
+        assert "Error" in result
+        assert len(state.executions) == 1
+        assert state.executions[0].success is False
 
 
 class TestScriptRunCode:

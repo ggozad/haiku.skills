@@ -40,10 +40,10 @@ def _build_external_functions(model: Model) -> dict[str, Callable[..., Any]]:
 
 async def _execute_code(
     code: str, external_functions: dict[str, Callable[..., Any]]
-) -> tuple[str, str | None]:
+) -> tuple[str, str | None, bool]:
     """Execute code in the Monty sandbox.
 
-    Returns (stdout, result_repr).
+    Returns (stdout, result_repr, success).
     """
     output_lines: list[str] = []
 
@@ -58,11 +58,11 @@ async def _execute_code(
         )
     except MontyError as e:
         output_lines.append(f"Error: {e}")
-        return "\n".join(output_lines), None
+        return "\n".join(output_lines), None, False
 
     stdout = "\n".join(output_lines)
     result_repr = repr(result) if result is not None else None
-    return stdout, result_repr
+    return stdout, result_repr, True
 
 
 def _format_output(code: str, stdout: str, result: str | None) -> str:
@@ -84,11 +84,10 @@ async def run_code(ctx: RunContext[SkillRunDeps], code: str) -> str:
         code: The Python code to execute.
     """
     external_fns = _build_external_functions(ctx.model)
-    stdout, result = await _execute_code(code, external_fns)
+    stdout, result, success = await _execute_code(code, external_fns)
     output = _format_output(code, stdout, result)
 
     if ctx.deps and ctx.deps.state and isinstance(ctx.deps.state, CodeState):
-        success = "Error:" not in (stdout or "")
         ctx.deps.state.executions.append(
             Execution(
                 code=code,
