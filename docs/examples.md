@@ -206,10 +206,12 @@ Push notifications via [ntfy.sh](https://ntfy.sh/). Send and receive messages on
 uv add haiku-skills-notifications
 ```
 
-Configure via environment variables:
+Requires an ntfy.sh server. The public instance at `https://ntfy.sh` works out of the box. Configure via environment variables:
 
-- `NTFY_SERVER` — ntfy server URL (default: `https://ntfy.sh`)
+- `NTFY_SERVER` — ntfy server base URL (default: `https://ntfy.sh`)
 - `NTFY_TOKEN` — Bearer token for authenticated topics (optional)
+
+Tools: `send_notification`, `read_notifications`. See the [skill README](https://github.com/ggozad/haiku.skills/tree/main/skills/notifications) for self-hosted setup instructions.
 
 For a more elaborate use case involving RAG (retrieval-augmented generation), see the [haiku.rag](https://github.com/ggozad/haiku.rag) project which provides a full RAG skill for haiku.skills.
 
