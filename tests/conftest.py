@@ -27,6 +27,6 @@ def pytest_recording_configure(config: Any, vcr: "VCR"):
 def vcr_config():
     return {
         "ignore_localhost": False,
-        "filter_headers": ["authorization", "x-api-key"],
+        "filter_headers": ["authorization", "x-api-key", "x-subscription-token"],
         "decode_compressed_response": True,
     }

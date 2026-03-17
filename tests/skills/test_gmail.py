@@ -1,347 +1,14 @@
-"""Tests for distributable skill packages."""
+"""Tests for the gmail skill package."""
 
-import io
-import runpy
+import base64
 from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-from pydantic_ai import RunContext
 
 from haiku.skills.models import SkillSource
-from haiku.skills.state import SkillRunDeps
 
-SKILLS_ROOT = Path(__file__).parent.parent / "skills"
-
-
-@pytest.fixture(scope="module")
-def vcr_config():
-    return {
-        "ignore_localhost": False,
-        "filter_headers": ["authorization", "x-api-key", "x-subscription-token"],
-        "decode_compressed_response": True,
-    }
-
-
-def _make_ctx(state=None):
-    """Create a mock RunContext with SkillRunDeps."""
-    ctx = MagicMock(spec=RunContext)
-    ctx.deps = SkillRunDeps(state=state)
-    return ctx
-
-
-def _make_fetch_response(data: bytes, content_type: str, url: str):
-    """Create a mock trafilatura Response with headers."""
-    from trafilatura.downloads import Response
-
-    response = Response(data=data, status=200, url=url)
-    response.store_headers({"Content-Type": content_type})
-    response.decode_data(True)
-    return response
-
-
-class TestWeb:
-    def test_create_skill(self):
-        from haiku_skills_web import create_skill
-
-        skill = create_skill()
-        assert skill.metadata.name == "web"
-        assert skill.metadata.description == "Search the web and fetch page content."
-        assert skill.source == SkillSource.ENTRYPOINT
-        assert skill.path is not None
-        assert skill.instructions is not None
-        assert skill.state_type is not None
-        assert skill.state_namespace == "web"
-        assert len(skill.tools) == 2
-
-    @pytest.mark.vcr()
-    def test_search(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setenv("BRAVE_API_KEY", "test-key-for-vcr-playback")
-        from haiku_skills_web.scripts.search import main
-
-        result = main("pydantic ai framework", count=2)
-        assert "URL:" in result
-        assert "---" in result
-
-    def test_search_no_api_key(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.delenv("BRAVE_API_KEY", raising=False)
-        from haiku_skills_web.scripts.search import main
-
-        result = main("test")
-        assert result == "Error: BRAVE_API_KEY not set."
-
-    def test_search_main_entry(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setenv("BRAVE_API_KEY", "")
-        monkeypatch.setattr("sys.argv", ["search.py", "test"])
-        captured = io.StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
-
-        script = SKILLS_ROOT / "web" / "haiku_skills_web" / "scripts" / "search.py"
-        runpy.run_path(str(script), run_name="__main__")
-
-        assert "BRAVE_API_KEY not set" in captured.getvalue()
-
-    @pytest.mark.vcr()
-    def test_search_tool_with_state(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setenv("BRAVE_API_KEY", "test-key-for-vcr-playback")
-        from haiku_skills_web import WebState, search
-
-        state = WebState()
-        ctx = _make_ctx(state)
-        result = search(ctx, "pydantic ai framework", count=2)
-        assert "URL:" in result
-        assert "pydantic ai framework" in state.searches
-        assert len(state.searches["pydantic ai framework"]) > 0
-
-    def test_search_tool_no_api_key(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.delenv("BRAVE_API_KEY", raising=False)
-        from haiku_skills_web import search
-
-        ctx = _make_ctx()
-        result = search(ctx, "test")
-        assert "Error:" in result
-
-    def test_fetch_page(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_web.scripts.fetch_page as fp
-
-        html = (
-            "<html><body>"
-            "<article><p>Pydantic AI is a Python agent framework.</p></article>"
-            "</body></html>"
-        )
-        response = _make_fetch_response(
-            html.encode(), "text/html", "https://ai.pydantic.dev/"
-        )
-        monkeypatch.setattr(fp, "fetch_response", lambda *a, **kw: response)
-        from haiku_skills_web.scripts.fetch_page import main
-
-        result = main("https://ai.pydantic.dev/")
-        assert "pydantic" in result.lower()
-
-    def test_fetch_page_invalid_url(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_web.scripts.fetch_page as fp
-
-        monkeypatch.setattr(fp, "fetch_response", lambda *a, **kw: None)
-        from haiku_skills_web.scripts.fetch_page import main
-
-        result = main("https://invalid.example.com")
-        assert result == "Error: could not fetch the page."
-
-    def test_fetch_page_no_content(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_web.scripts.fetch_page as fp
-
-        response = _make_fetch_response(
-            b"<html></html>", "text/html; charset=utf-8", "https://example.com"
-        )
-        monkeypatch.setattr(fp, "fetch_response", lambda *a, **kw: response)
-        monkeypatch.setattr(fp, "extract", lambda *a, **kw: None)
-        from haiku_skills_web.scripts.fetch_page import main
-
-        result = main("https://example.com")
-        assert result == "Error: could not extract content from the page."
-
-    def test_fetch_page_plain_text(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_web.scripts.fetch_page as fp
-
-        text = "# README\n\nThis is plain markdown content."
-        response = _make_fetch_response(
-            text.encode(), "text/plain; charset=utf-8", "https://example.com/README.md"
-        )
-        monkeypatch.setattr(fp, "fetch_response", lambda *a, **kw: response)
-        from haiku_skills_web.scripts.fetch_page import main
-
-        result = main("https://example.com/README.md")
-        assert result == text
-
-    def test_fetch_page_main_entry(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_web.scripts.fetch_page as fp
-
-        monkeypatch.setattr(fp, "fetch_response", lambda *a, **kw: None)
-        monkeypatch.setattr(
-            "sys.argv", ["fetch_page.py", "https://invalid.example.com"]
-        )
-        captured = io.StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
-
-        script = SKILLS_ROOT / "web" / "haiku_skills_web" / "scripts" / "fetch_page.py"
-        runpy.run_path(str(script), run_name="__main__")
-
-        assert "could not fetch" in captured.getvalue()
-
-    def test_fetch_page_tool_with_state(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_web.scripts.fetch_page as fp
-
-        html = "<html><body><article><p>Test content here.</p></article></body></html>"
-        response = _make_fetch_response(
-            html.encode(), "text/html", "https://example.com"
-        )
-        monkeypatch.setattr(fp, "fetch_response", lambda *a, **kw: response)
-        from haiku_skills_web import WebState, fetch_page
-
-        state = WebState()
-        ctx = _make_ctx(state)
-        result = fetch_page(ctx, "https://example.com")
-        assert "test content" in result.lower()
-        assert "https://example.com" in state.pages
-        assert state.pages["https://example.com"].content == result
-
-    def test_fetch_page_tool_error_no_state(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_web.scripts.fetch_page as fp
-
-        monkeypatch.setattr(fp, "fetch_response", lambda *a, **kw: None)
-        from haiku_skills_web import WebState, fetch_page
-
-        state = WebState()
-        ctx = _make_ctx(state)
-        result = fetch_page(ctx, "https://invalid.example.com")
-        assert result.startswith("Error:")
-        assert len(state.pages) == 0
-
-
-class TestImageGeneration:
-    def test_create_skill(self):
-        from haiku_skills_image_generation import create_skill
-
-        skill = create_skill()
-        assert skill.metadata.name == "image-generation"
-        assert (
-            skill.metadata.description
-            == "Generate images from text prompts using Ollama."
-        )
-        assert skill.source == SkillSource.ENTRYPOINT
-        assert skill.path is not None
-        assert skill.instructions is not None
-        assert skill.state_type is not None
-        assert skill.state_namespace == "image-generation"
-        assert len(skill.tools) == 1
-
-    @pytest.mark.vcr()
-    def test_generate_image(self, tmp_path: Path):
-        from haiku_skills_image_generation.scripts.generate_image import main
-
-        result = main("a red circle on white background", width=64, height=64)
-        assert result.endswith(".png")
-        assert Path(result).exists()
-
-    @pytest.mark.vcr()
-    def test_generate_image_tool_with_state(self):
-        from haiku_skills_image_generation import ImageState, generate_image
-
-        state = ImageState()
-        ctx = _make_ctx(state)
-        result = generate_image(
-            ctx, "a red circle on white background", width=64, height=64
-        )
-        assert result.endswith(".png")
-        assert len(state.images) == 1
-        assert state.images[0].prompt == "a red circle on white background"
-        assert state.images[0].path == result
-        assert state.images[0].width == 64
-        assert state.images[0].height == 64
-
-    @pytest.mark.vcr()
-    def test_main_entry(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(
-            "sys.argv",
-            ["generate_image.py", "a red circle on white background", "64", "64"],
-        )
-        captured = io.StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
-
-        script = (
-            SKILLS_ROOT
-            / "image-generation"
-            / "haiku_skills_image_generation"
-            / "scripts"
-            / "generate_image.py"
-        )
-        runpy.run_path(str(script), run_name="__main__")
-
-        assert captured.getvalue().strip().endswith(".png")
-
-
-class TestCodeExecution:
-    def test_create_skill(self):
-        from haiku_skills_code_execution import create_skill
-
-        skill = create_skill()
-        assert skill.metadata.name == "code-execution"
-        assert (
-            skill.metadata.description
-            == "Write and execute Python code to solve tasks."
-        )
-        assert skill.source == SkillSource.ENTRYPOINT
-        assert skill.path is not None
-        assert skill.instructions is not None
-        assert skill.state_type is not None
-        assert skill.state_namespace == "code-execution"
-        assert len(skill.tools) == 1
-
-    def test_run_code_with_output(self):
-        from haiku_skills_code_execution.scripts.run_code import main
-
-        result = main("print(1 + 1)")
-        assert "```python" in result
-        assert "print(1 + 1)" in result
-        assert "2" in result
-
-    def test_run_code_with_result(self):
-        from haiku_skills_code_execution.scripts.run_code import main
-
-        result = main("1 + 1")
-        assert "result: 2" in result
-
-    def test_run_code_no_output(self):
-        from haiku_skills_code_execution.scripts.run_code import main
-
-        result = main("x = 1")
-        assert "no output" in result.lower()
-
-    def test_run_code_tool_with_state(self):
-        from haiku_skills_code_execution import CodeState, run_code
-
-        state = CodeState()
-        ctx = _make_ctx(state)
-        result = run_code(ctx, "print(1 + 1)")
-        assert "2" in result
-        assert len(state.executions) == 1
-        assert state.executions[0].code == "print(1 + 1)"
-        assert state.executions[0].success is True
-
-    def test_run_code_tool_with_result_value(self):
-        from haiku_skills_code_execution import CodeState, run_code
-
-        state = CodeState()
-        ctx = _make_ctx(state)
-        result = run_code(ctx, "1 + 1")
-        assert "result: 2" in result
-        assert len(state.executions) == 1
-        assert state.executions[0].result == "2"
-
-    def test_run_code_tool_no_output(self):
-        from haiku_skills_code_execution import CodeState, run_code
-
-        state = CodeState()
-        ctx = _make_ctx(state)
-        result = run_code(ctx, "x = 1")
-        assert "no output" in result.lower()
-        assert len(state.executions) == 1
-
-    def test_main_entry(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("sys.argv", ["run_code.py", "1 + 1"])
-        captured = io.StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
-
-        script = (
-            SKILLS_ROOT
-            / "code-execution"
-            / "haiku_skills_code_execution"
-            / "scripts"
-            / "run_code.py"
-        )
-        runpy.run_path(str(script), run_name="__main__")
-
-        assert "result" in captured.getvalue()
+from .conftest import make_ctx
 
 
 class TestGmail:
@@ -610,7 +277,6 @@ class TestGmail:
             body="Hello Bob",
         )
         assert "raw" in result
-        import base64
 
         decoded = base64.urlsafe_b64decode(result["raw"]).decode()
         assert "To: bob@example.com" in decoded
@@ -627,7 +293,6 @@ class TestGmail:
             cc="carol@example.com",
             bcc="dave@example.com",
         )
-        import base64
 
         decoded = base64.urlsafe_b64decode(result["raw"]).decode()
         assert "Cc: carol@example.com" in decoded
@@ -643,7 +308,6 @@ class TestGmail:
             in_reply_to="<msg123@example.com>",
             references="<msg123@example.com>",
         )
-        import base64
 
         decoded = base64.urlsafe_b64decode(result["raw"]).decode()
         assert "In-Reply-To: <msg123@example.com>" in decoded
@@ -718,7 +382,7 @@ class TestGmail:
         monkeypatch.setattr(mod, "_get_service", lambda: service)
 
         state = EmailState()
-        ctx = _make_ctx(state)
+        ctx = make_ctx(state)
         result = search_emails(ctx, "from:alice")
 
         assert "msg1" in result
@@ -738,7 +402,7 @@ class TestGmail:
         }
         monkeypatch.setattr(mod, "_get_service", lambda: service)
 
-        ctx = _make_ctx()
+        ctx = make_ctx()
         result = search_emails(ctx, "nonexistent")
         assert "No emails found" in result
 
@@ -756,7 +420,7 @@ class TestGmail:
         )
         monkeypatch.setattr(mod, "_get_service", lambda: service)
 
-        ctx = _make_ctx()
+        ctx = make_ctx()
         result = search_emails(ctx, "test")
         assert "No emails found" in result
 
@@ -770,7 +434,7 @@ class TestGmail:
         )
         monkeypatch.setattr(mod, "_get_service", lambda: service)
 
-        ctx = _make_ctx()
+        ctx = make_ctx()
         result = search_emails(ctx, "test")
         assert result.startswith("Error:")
         assert "API error" in result
@@ -787,7 +451,7 @@ class TestGmail:
         monkeypatch.setattr(mod, "_get_service", lambda: service)
 
         state = EmailState()
-        ctx = _make_ctx(state)
+        ctx = make_ctx(state)
         result = read_email(ctx, "msg1")
 
         assert "Test Subject" in result
@@ -805,7 +469,7 @@ class TestGmail:
         )
         monkeypatch.setattr(mod, "_get_service", lambda: service)
 
-        ctx = _make_ctx()
+        ctx = make_ctx()
         result = read_email(ctx, "bad_id")
         assert result.startswith("Error:")
         assert "not found" in result
@@ -824,7 +488,7 @@ class TestGmail:
         monkeypatch.setattr(mod, "_get_service", lambda: service)
 
         state = EmailState()
-        ctx = _make_ctx(state)
+        ctx = make_ctx(state)
         result = send_email(ctx, "bob@example.com", "Hello", "Hi Bob")
 
         assert "sent1" in result
@@ -848,7 +512,7 @@ class TestGmail:
         }
         monkeypatch.setattr(mod, "_get_service", lambda: service)
 
-        ctx = _make_ctx()
+        ctx = make_ctx()
         result = send_email(
             ctx,
             "bob@example.com",
@@ -858,8 +522,6 @@ class TestGmail:
             bcc="dave@example.com",
         )
         assert "sent2" in result
-
-        import base64
 
         call_kwargs = service.users().messages().send.call_args.kwargs
         decoded = base64.urlsafe_b64decode(call_kwargs["body"]["raw"]).decode()
@@ -876,7 +538,7 @@ class TestGmail:
         )
         monkeypatch.setattr(mod, "_get_service", lambda: service)
 
-        ctx = _make_ctx()
+        ctx = make_ctx()
         result = send_email(ctx, "bob@example.com", "Hello", "Hi")
         assert result.startswith("Error:")
         assert "send failed" in result
@@ -902,14 +564,12 @@ class TestGmail:
         monkeypatch.setattr(mod, "_get_service", lambda: service)
 
         state = EmailState()
-        ctx = _make_ctx(state)
+        ctx = make_ctx(state)
         result = reply_to_email(ctx, "orig1", "Thanks!")
 
         assert "reply1" in result
         call_kwargs = service.users().messages().send.call_args.kwargs
         assert call_kwargs["body"]["threadId"] == "thread1"
-
-        import base64
 
         decoded = base64.urlsafe_b64decode(call_kwargs["body"]["raw"]).decode()
         assert "In-Reply-To: <orig1@example.com>" in decoded
@@ -934,10 +594,8 @@ class TestGmail:
         }
         monkeypatch.setattr(mod, "_get_service", lambda: service)
 
-        ctx = _make_ctx()
+        ctx = make_ctx()
         reply_to_email(ctx, "orig1", "Thanks!")
-
-        import base64
 
         call_kwargs = service.users().messages().send.call_args.kwargs
         decoded = base64.urlsafe_b64decode(call_kwargs["body"]["raw"]).decode()
@@ -966,10 +624,8 @@ class TestGmail:
         }
         monkeypatch.setattr(mod, "_get_service", lambda: service)
 
-        ctx = _make_ctx()
+        ctx = make_ctx()
         reply_to_email(ctx, "orig1", "Thanks!", reply_all=True)
-
-        import base64
 
         call_kwargs = service.users().messages().send.call_args.kwargs
         decoded = base64.urlsafe_b64decode(call_kwargs["body"]["raw"]).decode()
@@ -989,7 +645,7 @@ class TestGmail:
         )
         monkeypatch.setattr(mod, "_get_service", lambda: service)
 
-        ctx = _make_ctx()
+        ctx = make_ctx()
         result = reply_to_email(ctx, "orig1", "Hello")
         assert result.startswith("Error:")
         assert "send failed" in result
@@ -1004,7 +660,7 @@ class TestGmail:
         )
         monkeypatch.setattr(mod, "_get_service", lambda: service)
 
-        ctx = _make_ctx()
+        ctx = make_ctx()
         result = reply_to_email(ctx, "bad_id", "Hello")
         assert result.startswith("Error:")
         assert "not found" in result
@@ -1023,7 +679,7 @@ class TestGmail:
         monkeypatch.setattr(mod, "_get_service", lambda: service)
 
         state = EmailState()
-        ctx = _make_ctx(state)
+        ctx = make_ctx(state)
         result = create_draft(ctx, "bob@example.com", "Draft Subject", "Draft body")
 
         assert "draft1" in result
@@ -1046,7 +702,7 @@ class TestGmail:
         )
         monkeypatch.setattr(mod, "_get_service", lambda: service)
 
-        ctx = _make_ctx()
+        ctx = make_ctx()
         result = create_draft(ctx, "bob@example.com", "Subject", "Body")
         assert result.startswith("Error:")
         assert "draft failed" in result
@@ -1090,7 +746,7 @@ class TestGmail:
         ]
         monkeypatch.setattr(mod, "_get_service", lambda: service)
 
-        ctx = _make_ctx()
+        ctx = make_ctx()
         result = list_drafts(ctx)
         assert "draft1" in result
         assert "Draft 1" in result
@@ -1105,7 +761,7 @@ class TestGmail:
         service.users().drafts().list.return_value.execute.return_value = {}
         monkeypatch.setattr(mod, "_get_service", lambda: service)
 
-        ctx = _make_ctx()
+        ctx = make_ctx()
         result = list_drafts(ctx)
         assert "No drafts" in result
 
@@ -1119,7 +775,7 @@ class TestGmail:
         )
         monkeypatch.setattr(mod, "_get_service", lambda: service)
 
-        ctx = _make_ctx()
+        ctx = make_ctx()
         result = list_drafts(ctx)
         assert result.startswith("Error:")
         assert "API error" in result
@@ -1137,7 +793,7 @@ class TestGmail:
         )
         monkeypatch.setattr(mod, "_get_service", lambda: service)
 
-        ctx = _make_ctx()
+        ctx = make_ctx()
         result = list_drafts(ctx)
         assert "No drafts" in result
 
@@ -1154,7 +810,7 @@ class TestGmail:
         }
         monkeypatch.setattr(mod, "_get_service", lambda: service)
 
-        ctx = _make_ctx()
+        ctx = make_ctx()
         result = modify_labels(
             ctx, "msg1", add_labels="STARRED", remove_labels="UNREAD"
         )
@@ -1179,7 +835,7 @@ class TestGmail:
         }
         monkeypatch.setattr(mod, "_get_service", lambda: service)
 
-        ctx = _make_ctx()
+        ctx = make_ctx()
         result = modify_labels(ctx, "msg1", add_labels="STARRED, IMPORTANT")
         assert "msg1" in result
         call_kwargs = service.users().messages().modify.call_args.kwargs
@@ -1196,7 +852,7 @@ class TestGmail:
         )
         monkeypatch.setattr(mod, "_get_service", lambda: service)
 
-        ctx = _make_ctx()
+        ctx = make_ctx()
         result = modify_labels(ctx, "msg1", add_labels="STARRED")
         assert result.startswith("Error:")
         assert "modify failed" in result
@@ -1214,7 +870,7 @@ class TestGmail:
         }
         monkeypatch.setattr(mod, "_get_service", lambda: service)
 
-        ctx = _make_ctx()
+        ctx = make_ctx()
         result = list_labels(ctx)
         assert "INBOX" in result
         assert "Work" in result
@@ -1229,512 +885,7 @@ class TestGmail:
         )
         monkeypatch.setattr(mod, "_get_service", lambda: service)
 
-        ctx = _make_ctx()
+        ctx = make_ctx()
         result = list_labels(ctx)
         assert result.startswith("Error:")
         assert "API error" in result
-
-
-class TestNotifications:
-    def test_create_skill(self):
-        from haiku_skills_notifications import create_skill
-
-        skill = create_skill()
-        assert skill.metadata.name == "notifications"
-        assert (
-            skill.metadata.description
-            == "Send and receive push notifications via ntfy.sh."
-        )
-        assert skill.source == SkillSource.ENTRYPOINT
-        assert skill.path is not None
-        assert skill.instructions is not None
-        assert skill.state_type is not None
-        assert skill.state_namespace == "notifications"
-        assert len(skill.tools) == 2
-
-    def test_send_notification(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.scripts.send_notification as mod
-        import httpx
-
-        def mock_post(url, content, headers):
-            assert url == "https://ntfy.sh/test-topic"
-            assert content == "Hello world"
-            resp = MagicMock(spec=httpx.Response)
-            resp.raise_for_status = MagicMock()
-            return resp
-
-        monkeypatch.setattr(mod.httpx, "post", mock_post)
-        monkeypatch.delenv("NTFY_TOKEN", raising=False)
-
-        from haiku_skills_notifications.scripts.send_notification import main
-
-        result = main("test-topic", "Hello world")
-        assert result == "Notification sent to topic 'test-topic'."
-
-    def test_send_notification_with_title_and_priority(
-        self, monkeypatch: pytest.MonkeyPatch
-    ):
-        import haiku_skills_notifications.scripts.send_notification as mod
-        import httpx
-
-        captured_headers: dict[str, str] = {}
-
-        def mock_post(url, content, headers):
-            captured_headers.update(headers)
-            resp = MagicMock(spec=httpx.Response)
-            resp.raise_for_status = MagicMock()
-            return resp
-
-        monkeypatch.setattr(mod.httpx, "post", mock_post)
-        monkeypatch.delenv("NTFY_TOKEN", raising=False)
-
-        from haiku_skills_notifications.scripts.send_notification import main
-
-        result = main("test-topic", "Urgent!", title="Alert", priority="high")
-        assert result == "Notification sent to topic 'test-topic'."
-        assert captured_headers["X-Title"] == "Alert"
-        assert captured_headers["X-Priority"] == "high"
-
-    def test_send_notification_error(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.scripts.send_notification as mod
-        import httpx
-
-        def mock_post(url, content, headers):
-            raise httpx.HTTPError("connection failed")
-
-        monkeypatch.setattr(mod.httpx, "post", mock_post)
-        monkeypatch.delenv("NTFY_TOKEN", raising=False)
-
-        from haiku_skills_notifications.scripts.send_notification import main
-
-        result = main("test-topic", "Hello")
-        assert result.startswith("Error:")
-        assert "connection failed" in result
-
-    def test_send_notification_custom_server(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.scripts.send_notification as mod
-        import httpx
-
-        captured_url = ""
-
-        def mock_post(url, content, headers):
-            nonlocal captured_url
-            captured_url = url
-            resp = MagicMock(spec=httpx.Response)
-            resp.raise_for_status = MagicMock()
-            return resp
-
-        monkeypatch.setattr(mod.httpx, "post", mock_post)
-        monkeypatch.delenv("NTFY_TOKEN", raising=False)
-
-        from haiku_skills_notifications.scripts.send_notification import main
-
-        main("test-topic", "Hello", server="http://localhost:2586")
-        assert captured_url == "http://localhost:2586/test-topic"
-
-    def test_send_notification_server_from_env(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.scripts.send_notification as mod
-        import httpx
-
-        captured_url = ""
-
-        def mock_post(url, content, headers):
-            nonlocal captured_url
-            captured_url = url
-            resp = MagicMock(spec=httpx.Response)
-            resp.raise_for_status = MagicMock()
-            return resp
-
-        monkeypatch.setattr(mod.httpx, "post", mock_post)
-        monkeypatch.setenv("NTFY_SERVER", "http://myserver:8080")
-        monkeypatch.delenv("NTFY_TOKEN", raising=False)
-
-        from haiku_skills_notifications.scripts.send_notification import main
-
-        main("test-topic", "Hello")
-        assert captured_url == "http://myserver:8080/test-topic"
-
-    def test_send_notification_auth_token(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.scripts.send_notification as mod
-        import httpx
-
-        captured_headers: dict[str, str] = {}
-
-        def mock_post(url, content, headers):
-            captured_headers.update(headers)
-            resp = MagicMock(spec=httpx.Response)
-            resp.raise_for_status = MagicMock()
-            return resp
-
-        monkeypatch.setattr(mod.httpx, "post", mock_post)
-        monkeypatch.setenv("NTFY_TOKEN", "tk_secret123")
-
-        from haiku_skills_notifications.scripts.send_notification import main
-
-        main("test-topic", "Hello")
-        assert captured_headers["Authorization"] == "Bearer tk_secret123"
-
-    def test_send_notification_tool_with_state(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.scripts.send_notification as mod
-        import httpx
-
-        def mock_post(url, content, headers):
-            resp = MagicMock(spec=httpx.Response)
-            resp.raise_for_status = MagicMock()
-            return resp
-
-        monkeypatch.setattr(mod.httpx, "post", mock_post)
-        monkeypatch.delenv("NTFY_TOKEN", raising=False)
-
-        from haiku_skills_notifications import (
-            NotificationState,
-            send_notification,
-        )
-
-        state = NotificationState()
-        ctx = _make_ctx(state)
-        result = send_notification(ctx, "test-topic", "Hello", title="Hi")
-        assert result == "Notification sent to topic 'test-topic'."
-        assert len(state.sent) == 1
-        assert state.sent[0].topic == "test-topic"
-        assert state.sent[0].message == "Hello"
-        assert state.sent[0].title == "Hi"
-        assert state.sent[0].priority == 3
-
-    def test_send_notification_tool_error_no_state(
-        self, monkeypatch: pytest.MonkeyPatch
-    ):
-        import haiku_skills_notifications.scripts.send_notification as mod
-        import httpx
-
-        def mock_post(url, content, headers):
-            raise httpx.HTTPError("fail")
-
-        monkeypatch.setattr(mod.httpx, "post", mock_post)
-        monkeypatch.delenv("NTFY_TOKEN", raising=False)
-
-        from haiku_skills_notifications import (
-            NotificationState,
-            send_notification,
-        )
-
-        state = NotificationState()
-        ctx = _make_ctx(state)
-        result = send_notification(ctx, "test-topic", "Hello")
-        assert result.startswith("Error:")
-        assert len(state.sent) == 0
-
-    def test_send_notification_main_entry(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.scripts.send_notification as mod
-        import httpx
-
-        def mock_post(url, content, headers):
-            resp = MagicMock(spec=httpx.Response)
-            resp.raise_for_status = MagicMock()
-            return resp
-
-        monkeypatch.setattr(mod.httpx, "post", mock_post)
-        monkeypatch.delenv("NTFY_TOKEN", raising=False)
-        monkeypatch.setattr("sys.argv", ["send_notification.py", "test-topic", "Hello"])
-        captured = io.StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
-
-        script = (
-            SKILLS_ROOT
-            / "notifications"
-            / "haiku_skills_notifications"
-            / "scripts"
-            / "send_notification.py"
-        )
-        runpy.run_path(str(script), run_name="__main__")
-
-        assert "Notification sent" in captured.getvalue()
-
-    def test_read_notifications(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.scripts.read_notifications as mod
-        import httpx
-
-        lines = "\n".join(
-            [
-                '{"event":"open","topic":"test-topic"}',
-                '{"event":"message","id":"abc1","topic":"test-topic","message":"Hello","title":"","priority":3,"time":1000}',
-                "",
-                '{"event":"message","id":"abc2","topic":"test-topic","message":"World","title":"Alert","priority":5,"time":1001}',
-            ]
-        )
-
-        def mock_get(url, params, headers):
-            assert "test-topic/json" in url
-            resp = MagicMock(spec=httpx.Response)
-            resp.raise_for_status = MagicMock()
-            resp.text = lines
-            return resp
-
-        monkeypatch.setattr(mod.httpx, "get", mock_get)
-        monkeypatch.delenv("NTFY_TOKEN", raising=False)
-
-        from haiku_skills_notifications.scripts.read_notifications import main
-
-        result = main("test-topic", since="all")
-        assert "Hello" in result
-        assert "World" in result
-        assert "**Alert**" in result
-        assert "(priority: 5)" in result
-
-    def test_read_notifications_no_messages(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.scripts.read_notifications as mod
-        import httpx
-
-        def mock_get(url, params, headers):
-            resp = MagicMock(spec=httpx.Response)
-            resp.raise_for_status = MagicMock()
-            resp.text = '{"event":"open","topic":"test-topic"}'
-            return resp
-
-        monkeypatch.setattr(mod.httpx, "get", mock_get)
-        monkeypatch.delenv("NTFY_TOKEN", raising=False)
-
-        from haiku_skills_notifications.scripts.read_notifications import main
-
-        result = main("test-topic")
-        assert result == "No messages on topic 'test-topic'."
-
-    def test_read_notifications_error(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.scripts.read_notifications as mod
-        import httpx
-
-        def mock_get(url, params, headers):
-            raise httpx.HTTPError("connection failed")
-
-        monkeypatch.setattr(mod.httpx, "get", mock_get)
-        monkeypatch.delenv("NTFY_TOKEN", raising=False)
-
-        from haiku_skills_notifications.scripts.read_notifications import main
-
-        result = main("test-topic")
-        assert result.startswith("Error:")
-        assert "connection failed" in result
-
-    def test_read_notifications_custom_server(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.scripts.read_notifications as mod
-        import httpx
-
-        captured_url = ""
-
-        def mock_get(url, params, headers):
-            nonlocal captured_url
-            captured_url = url
-            resp = MagicMock(spec=httpx.Response)
-            resp.raise_for_status = MagicMock()
-            resp.text = ""
-            return resp
-
-        monkeypatch.setattr(mod.httpx, "get", mock_get)
-        monkeypatch.delenv("NTFY_TOKEN", raising=False)
-
-        from haiku_skills_notifications.scripts.read_notifications import main
-
-        main("test-topic", server="http://localhost:2586")
-        assert captured_url == "http://localhost:2586/test-topic/json"
-
-    def test_read_notifications_auth_token(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.scripts.read_notifications as mod
-        import httpx
-
-        captured_headers: dict[str, str] = {}
-
-        def mock_get(url, params, headers):
-            captured_headers.update(headers)
-            resp = MagicMock(spec=httpx.Response)
-            resp.raise_for_status = MagicMock()
-            resp.text = ""
-            return resp
-
-        monkeypatch.setattr(mod.httpx, "get", mock_get)
-        monkeypatch.setenv("NTFY_TOKEN", "tk_secret123")
-
-        from haiku_skills_notifications.scripts.read_notifications import main
-
-        main("test-topic")
-        assert captured_headers["Authorization"] == "Bearer tk_secret123"
-
-    def test_read_notifications_tool_with_state(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.scripts.read_notifications as mod
-        import httpx
-
-        lines = "\n".join(
-            [
-                '{"event":"message","id":"msg1","topic":"test-topic","message":"Hello","title":"Greet","priority":5,"time":1000}',
-            ]
-        )
-
-        def mock_get(url, params, headers):
-            resp = MagicMock(spec=httpx.Response)
-            resp.raise_for_status = MagicMock()
-            resp.text = lines
-            return resp
-
-        monkeypatch.setattr(mod.httpx, "get", mock_get)
-        monkeypatch.delenv("NTFY_TOKEN", raising=False)
-
-        from haiku_skills_notifications import (
-            NotificationState,
-            read_notifications,
-        )
-
-        state = NotificationState()
-        ctx = _make_ctx(state)
-        result = read_notifications(ctx, "test-topic", since="all")
-        assert "Hello" in result
-        assert "(priority: 5)" in result
-        assert len(state.received) == 1
-        assert state.received[0].id == "msg1"
-        assert state.received[0].topic == "test-topic"
-        assert state.received[0].message == "Hello"
-        assert state.received[0].title == "Greet"
-        assert state.received[0].priority == 5
-
-    def test_read_notifications_tool_no_messages_state(
-        self, monkeypatch: pytest.MonkeyPatch
-    ):
-        import haiku_skills_notifications.scripts.read_notifications as mod
-        import httpx
-
-        def mock_get(url, params, headers):
-            resp = MagicMock(spec=httpx.Response)
-            resp.raise_for_status = MagicMock()
-            resp.text = ""
-            return resp
-
-        monkeypatch.setattr(mod.httpx, "get", mock_get)
-        monkeypatch.delenv("NTFY_TOKEN", raising=False)
-
-        from haiku_skills_notifications import (
-            NotificationState,
-            read_notifications,
-        )
-
-        state = NotificationState()
-        ctx = _make_ctx(state)
-        result = read_notifications(ctx, "test-topic")
-        assert "No messages" in result
-        assert len(state.received) == 0
-
-    def test_read_notifications_tool_error_no_state(
-        self, monkeypatch: pytest.MonkeyPatch
-    ):
-        import haiku_skills_notifications.scripts.read_notifications as mod
-        import httpx
-
-        def mock_get(url, params, headers):
-            raise httpx.HTTPError("fail")
-
-        monkeypatch.setattr(mod.httpx, "get", mock_get)
-        monkeypatch.delenv("NTFY_TOKEN", raising=False)
-
-        from haiku_skills_notifications import (
-            NotificationState,
-            read_notifications,
-        )
-
-        state = NotificationState()
-        ctx = _make_ctx(state)
-        result = read_notifications(ctx, "test-topic")
-        assert result.startswith("Error:")
-        assert len(state.received) == 0
-
-    def test_read_notifications_main_entry(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.scripts.read_notifications as mod
-        import httpx
-
-        def mock_get(url, params, headers):
-            resp = MagicMock(spec=httpx.Response)
-            resp.raise_for_status = MagicMock()
-            resp.text = ""
-            return resp
-
-        monkeypatch.setattr(mod.httpx, "get", mock_get)
-        monkeypatch.delenv("NTFY_TOKEN", raising=False)
-        monkeypatch.setattr("sys.argv", ["read_notifications.py", "test-topic"])
-        captured = io.StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
-
-        script = (
-            SKILLS_ROOT
-            / "notifications"
-            / "haiku_skills_notifications"
-            / "scripts"
-            / "read_notifications.py"
-        )
-        runpy.run_path(str(script), run_name="__main__")
-
-        assert "No messages" in captured.getvalue()
-
-    def test_parse_priority(self):
-        from haiku_skills_notifications import _parse_priority
-
-        assert _parse_priority("min") == 1
-        assert _parse_priority("low") == 2
-        assert _parse_priority("default") == 3
-        assert _parse_priority("high") == 4
-        assert _parse_priority("max") == 5
-        assert _parse_priority("3") == 3
-        assert _parse_priority("5") == 5
-        assert _parse_priority("unknown") == 3
-
-    def test_send_notification_tool_priority_stored_as_int(
-        self, monkeypatch: pytest.MonkeyPatch
-    ):
-        import haiku_skills_notifications.scripts.send_notification as mod
-        import httpx
-
-        def mock_post(url, content, headers):
-            resp = MagicMock(spec=httpx.Response)
-            resp.raise_for_status = MagicMock()
-            return resp
-
-        monkeypatch.setattr(mod.httpx, "post", mock_post)
-        monkeypatch.delenv("NTFY_TOKEN", raising=False)
-
-        from haiku_skills_notifications import (
-            NotificationState,
-            send_notification,
-        )
-
-        state = NotificationState()
-        ctx = _make_ctx(state)
-        send_notification(ctx, "test-topic", "Hello", priority="high")
-        assert state.sent[0].priority == 4
-
-    def test_format_messages(self):
-        from haiku_skills_notifications.scripts.read_notifications import (
-            format_messages,
-        )
-
-        messages = [
-            {"message": "Hello", "priority": 3},
-            {"message": "Urgent", "title": "Alert", "priority": 5},
-        ]
-        result = format_messages(messages)
-        assert "Hello" in result
-        assert "**Alert**" in result
-        assert "(priority: 5)" in result
-        assert "(priority: 3)" not in result
-
-    def test_resolve_server(self, monkeypatch: pytest.MonkeyPatch):
-        from haiku_skills_notifications.scripts.ntfy import resolve_server
-
-        monkeypatch.delenv("NTFY_SERVER", raising=False)
-        assert resolve_server() == "https://ntfy.sh"
-        assert resolve_server("http://custom:8080") == "http://custom:8080"
-        monkeypatch.setenv("NTFY_SERVER", "http://env-server:9090")
-        assert resolve_server() == "http://env-server:9090"
-        assert resolve_server("http://explicit:8080") == "http://explicit:8080"
-
-    def test_auth_headers(self, monkeypatch: pytest.MonkeyPatch):
-        from haiku_skills_notifications.scripts.ntfy import auth_headers
-
-        monkeypatch.delenv("NTFY_TOKEN", raising=False)
-        assert auth_headers() == {}
-        monkeypatch.setenv("NTFY_TOKEN", "tk_test")
-        assert auth_headers() == {"Authorization": "Bearer tk_test"}
