@@ -177,7 +177,7 @@ uv add haiku-skills-image-generation
 
 ### code-execution
 
-Sandboxed Python execution via [pydantic-monty](https://github.com/pydantic/pydantic-monty).
+Sandboxed Python execution via [pydantic-monty](https://github.com/pydantic/pydantic-monty) with a built-in `await llm(prompt)` function for LLM reasoning (classify, summarize, extract).
 
 ```bash
 uv add haiku-skills-code-execution
