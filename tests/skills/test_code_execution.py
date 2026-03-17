@@ -1,10 +1,13 @@
 """Tests for the code execution skill package."""
 
+import io
+import runpy
+
 import pytest
 
 from haiku.skills.models import SkillSource
 
-from .conftest import SKILLS_ROOT, make_ctx, run_script
+from .conftest import SKILLS_ROOT, make_ctx
 
 
 class TestCodeExecution:
@@ -75,6 +78,10 @@ class TestCodeExecution:
         assert len(state.executions) == 1
 
     def test_main_entry(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("sys.argv", ["run_code.py", "1 + 1"])
+        captured = io.StringIO()
+        monkeypatch.setattr("sys.stdout", captured)
+
         script = (
             SKILLS_ROOT
             / "code-execution"
@@ -82,5 +89,6 @@ class TestCodeExecution:
             / "scripts"
             / "run_code.py"
         )
-        output = run_script(script, ["run_code.py", "1 + 1"])
-        assert "result" in output
+        runpy.run_path(str(script), run_name="__main__")
+
+        assert "result" in captured.getvalue()

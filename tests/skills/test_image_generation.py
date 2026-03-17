@@ -1,12 +1,14 @@
 """Tests for the image generation skill package."""
 
+import io
+import runpy
 from pathlib import Path
 
 import pytest
 
 from haiku.skills.models import SkillSource
 
-from .conftest import SKILLS_ROOT, make_ctx, run_script
+from .conftest import SKILLS_ROOT, make_ctx
 
 
 class TestImageGeneration:
@@ -52,6 +54,13 @@ class TestImageGeneration:
 
     @pytest.mark.vcr()
     def test_main_entry(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "sys.argv",
+            ["generate_image.py", "a red circle on white background", "64", "64"],
+        )
+        captured = io.StringIO()
+        monkeypatch.setattr("sys.stdout", captured)
+
         script = (
             SKILLS_ROOT
             / "image-generation"
@@ -59,8 +68,6 @@ class TestImageGeneration:
             / "scripts"
             / "generate_image.py"
         )
-        output = run_script(
-            script,
-            ["generate_image.py", "a red circle on white background", "64", "64"],
-        )
-        assert output.strip().endswith(".png")
+        runpy.run_path(str(script), run_name="__main__")
+
+        assert captured.getvalue().strip().endswith(".png")

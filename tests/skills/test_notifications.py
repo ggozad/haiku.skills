@@ -1,12 +1,14 @@
 """Tests for the notifications skill package."""
 
+import io
+import runpy
 from unittest.mock import MagicMock
 
 import pytest
 
 from haiku.skills.models import SkillSource
 
-from .conftest import SKILLS_ROOT, make_ctx, run_script
+from .conftest import SKILLS_ROOT, make_ctx
 
 
 class TestNotifications:
@@ -210,6 +212,10 @@ class TestNotifications:
         monkeypatch.setattr(mod.httpx, "post", mock_post)
         monkeypatch.delenv("NTFY_TOKEN", raising=False)
 
+        monkeypatch.setattr("sys.argv", ["send_notification.py", "test-topic", "Hello"])
+        captured = io.StringIO()
+        monkeypatch.setattr("sys.stdout", captured)
+
         script = (
             SKILLS_ROOT
             / "notifications"
@@ -217,8 +223,9 @@ class TestNotifications:
             / "scripts"
             / "send_notification.py"
         )
-        output = run_script(script, ["send_notification.py", "test-topic", "Hello"])
-        assert "Notification sent" in output
+        runpy.run_path(str(script), run_name="__main__")
+
+        assert "Notification sent" in captured.getvalue()
 
     def test_read_notifications(self, monkeypatch: pytest.MonkeyPatch):
         import haiku_skills_notifications.scripts.read_notifications as mod
@@ -426,6 +433,10 @@ class TestNotifications:
         monkeypatch.setattr(mod.httpx, "get", mock_get)
         monkeypatch.delenv("NTFY_TOKEN", raising=False)
 
+        monkeypatch.setattr("sys.argv", ["read_notifications.py", "test-topic"])
+        captured = io.StringIO()
+        monkeypatch.setattr("sys.stdout", captured)
+
         script = (
             SKILLS_ROOT
             / "notifications"
@@ -433,8 +444,9 @@ class TestNotifications:
             / "scripts"
             / "read_notifications.py"
         )
-        output = run_script(script, ["read_notifications.py", "test-topic"])
-        assert "No messages" in output
+        runpy.run_path(str(script), run_name="__main__")
+
+        assert "No messages" in captured.getvalue()
 
     def test_parse_priority(self):
         from haiku_skills_notifications import _parse_priority

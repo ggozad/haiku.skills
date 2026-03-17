@@ -1,5 +1,8 @@
 """Tests for the web skill package."""
 
+import io
+import runpy
+
 import pytest
 
 from haiku.skills.models import SkillSource
@@ -48,12 +51,15 @@ class TestWeb:
         assert result == "Error: BRAVE_API_KEY not set."
 
     def test_search_main_entry(self, monkeypatch: pytest.MonkeyPatch):
-        from .conftest import run_script
-
         monkeypatch.setenv("BRAVE_API_KEY", "")
+        monkeypatch.setattr("sys.argv", ["search.py", "test"])
+        captured = io.StringIO()
+        monkeypatch.setattr("sys.stdout", captured)
+
         script = SKILLS_ROOT / "web" / "haiku_skills_web" / "scripts" / "search.py"
-        output = run_script(script, ["search.py", "test"])
-        assert "BRAVE_API_KEY not set" in output
+        runpy.run_path(str(script), run_name="__main__")
+
+        assert "BRAVE_API_KEY not set" in captured.getvalue()
 
     @pytest.mark.vcr()
     def test_search_tool_with_state(self, monkeypatch: pytest.MonkeyPatch):
@@ -131,12 +137,16 @@ class TestWeb:
         import haiku_skills_web.scripts.fetch_page as fp
 
         monkeypatch.setattr(fp, "fetch_response", lambda *a, **kw: None)
+        monkeypatch.setattr(
+            "sys.argv", ["fetch_page.py", "https://invalid.example.com"]
+        )
+        captured = io.StringIO()
+        monkeypatch.setattr("sys.stdout", captured)
+
         script = SKILLS_ROOT / "web" / "haiku_skills_web" / "scripts" / "fetch_page.py"
+        runpy.run_path(str(script), run_name="__main__")
 
-        from .conftest import run_script
-
-        output = run_script(script, ["fetch_page.py", "https://invalid.example.com"])
-        assert "could not fetch" in output
+        assert "could not fetch" in captured.getvalue()
 
     def test_fetch_page_tool_with_state(self, monkeypatch: pytest.MonkeyPatch):
         import haiku_skills_web.scripts.fetch_page as fp
