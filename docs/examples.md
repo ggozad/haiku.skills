@@ -183,6 +183,21 @@ Sandboxed Python execution via [pydantic-monty](https://github.com/pydantic/pyda
 uv add haiku-skills-code-execution
 ```
 
+### gmail
+
+Gmail access via the [Google Gmail API](https://developers.google.com/gmail/api) with OAuth2 authentication. Search, read, send, reply, draft, and label emails.
+
+```bash
+uv add haiku-skills-gmail
+```
+
+Requires Google Cloud OAuth2 credentials. Configure via environment variables:
+
+- `EMAIL_CREDENTIALS_PATH` — Path to OAuth2 credentials file (default: `~/.config/haiku-skills-gmail/credentials.json`)
+- `EMAIL_TOKEN_PATH` — Path to cached OAuth2 token (default: `~/.config/haiku-skills-gmail/token.json`)
+
+On first run, a browser window opens for OAuth2 authorization. The token is cached for subsequent runs. See the [skill README](https://github.com/ggozad/haiku.skills/tree/main/skills/gmail) for Google Cloud setup instructions.
+
 For a more elaborate use case involving RAG (retrieval-augmented generation), see the [haiku.rag](https://github.com/ggozad/haiku.rag) project which provides a full RAG skill for haiku.skills.
 
 ## Mixing sources
