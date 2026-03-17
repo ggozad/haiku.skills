@@ -49,7 +49,8 @@ jobs:
           uv run haiku-skills validate \
             skills/web/haiku_skills_web/web \
             skills/image-generation/haiku_skills_image_generation/image-generation \
-            skills/code-execution/haiku_skills_code_execution/code-execution
+            skills/code-execution/haiku_skills_code_execution/code-execution \
+            skills/gmail/haiku_skills_gmail/gmail
 
   test:
     needs: [lint]
