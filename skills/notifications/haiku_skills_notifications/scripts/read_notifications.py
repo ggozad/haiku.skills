@@ -5,26 +5,15 @@
 """Read cached messages from an ntfy.sh topic."""
 
 import json
-import os
 import sys
+from typing import Any
 
 import httpx
 
-DEFAULT_SERVER = "https://ntfy.sh"
+from haiku_skills_notifications.scripts.ntfy import auth_headers, resolve_server
 
 
-def _resolve_server(server: str = "") -> str:
-    return server or os.environ.get("NTFY_SERVER", "") or DEFAULT_SERVER
-
-
-def _auth_headers() -> dict[str, str]:
-    token = os.environ.get("NTFY_TOKEN", "")
-    if token:
-        return {"Authorization": f"Bearer {token}"}
-    return {}
-
-
-def _read(topic: str, since: str = "10m", server: str = "") -> list[dict[str, object]]:
+def _read(topic: str, since: str = "10m", server: str = "") -> list[dict[str, Any]]:
     """Fetch and parse messages from an ntfy.sh topic.
 
     Returns:
@@ -33,10 +22,10 @@ def _read(topic: str, since: str = "10m", server: str = "") -> list[dict[str, ob
     Raises:
         RuntimeError: On HTTP errors.
     """
-    base = _resolve_server(server)
+    base = resolve_server(server)
     url = f"{base}/{topic}/json"
     params = {"poll": "1", "since": since}
-    headers = _auth_headers()
+    headers = auth_headers()
 
     response = httpx.get(url, params=params, headers=headers)
     response.raise_for_status()
@@ -51,6 +40,23 @@ def _read(topic: str, since: str = "10m", server: str = "") -> list[dict[str, ob
         messages.append(event)
 
     return messages
+
+
+def format_messages(messages: list[dict[str, Any]]) -> str:
+    """Format parsed ntfy messages for display."""
+    formatted = []
+    for msg in messages:
+        parts = []
+        title = msg.get("title", "")
+        if title:
+            parts.append(f"**{title}**")
+        parts.append(str(msg.get("message", "")))
+        priority = msg.get("priority", 3)
+        if priority != 3:
+            parts.append(f"(priority: {priority})")
+        formatted.append("\n".join(parts))
+
+    return "\n\n---\n\n".join(formatted)
 
 
 def main(topic: str, since: str = "10m", server: str = "") -> str:
@@ -69,19 +75,7 @@ def main(topic: str, since: str = "10m", server: str = "") -> str:
     if not messages:
         return f"No messages on topic '{topic}'."
 
-    formatted = []
-    for msg in messages:
-        parts = []
-        title = msg.get("title", "")
-        if title:
-            parts.append(f"**{title}**")
-        parts.append(str(msg.get("message", "")))
-        priority = msg.get("priority", 3)
-        if priority != 3:
-            parts.append(f"(priority: {priority})")
-        formatted.append("\n".join(parts))
-
-    return "\n\n---\n\n".join(formatted)
+    return format_messages(messages)
 
 
 if __name__ == "__main__":

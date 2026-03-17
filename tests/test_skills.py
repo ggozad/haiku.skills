@@ -1399,6 +1399,7 @@ class TestNotifications:
         assert state.sent[0].topic == "test-topic"
         assert state.sent[0].message == "Hello"
         assert state.sent[0].title == "Hi"
+        assert state.sent[0].priority == 3
 
     def test_send_notification_tool_error_no_state(
         self, monkeypatch: pytest.MonkeyPatch
@@ -1668,3 +1669,72 @@ class TestNotifications:
         runpy.run_path(str(script), run_name="__main__")
 
         assert "No messages" in captured.getvalue()
+
+    def test_parse_priority(self):
+        from haiku_skills_notifications import _parse_priority
+
+        assert _parse_priority("min") == 1
+        assert _parse_priority("low") == 2
+        assert _parse_priority("default") == 3
+        assert _parse_priority("high") == 4
+        assert _parse_priority("max") == 5
+        assert _parse_priority("3") == 3
+        assert _parse_priority("5") == 5
+        assert _parse_priority("unknown") == 3
+
+    def test_send_notification_tool_priority_stored_as_int(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        import haiku_skills_notifications.scripts.send_notification as mod
+        import httpx
+
+        def mock_post(url, content, headers):
+            resp = MagicMock(spec=httpx.Response)
+            resp.raise_for_status = MagicMock()
+            return resp
+
+        monkeypatch.setattr(mod.httpx, "post", mock_post)
+        monkeypatch.delenv("NTFY_TOKEN", raising=False)
+
+        from haiku_skills_notifications import (
+            NotificationState,
+            send_notification,
+        )
+
+        state = NotificationState()
+        ctx = _make_ctx(state)
+        send_notification(ctx, "test-topic", "Hello", priority="high")
+        assert state.sent[0].priority == 4
+
+    def test_format_messages(self):
+        from haiku_skills_notifications.scripts.read_notifications import (
+            format_messages,
+        )
+
+        messages = [
+            {"message": "Hello", "priority": 3},
+            {"message": "Urgent", "title": "Alert", "priority": 5},
+        ]
+        result = format_messages(messages)
+        assert "Hello" in result
+        assert "**Alert**" in result
+        assert "(priority: 5)" in result
+        assert "(priority: 3)" not in result
+
+    def test_resolve_server(self, monkeypatch: pytest.MonkeyPatch):
+        from haiku_skills_notifications.scripts.ntfy import resolve_server
+
+        monkeypatch.delenv("NTFY_SERVER", raising=False)
+        assert resolve_server() == "https://ntfy.sh"
+        assert resolve_server("http://custom:8080") == "http://custom:8080"
+        monkeypatch.setenv("NTFY_SERVER", "http://env-server:9090")
+        assert resolve_server() == "http://env-server:9090"
+        assert resolve_server("http://explicit:8080") == "http://explicit:8080"
+
+    def test_auth_headers(self, monkeypatch: pytest.MonkeyPatch):
+        from haiku_skills_notifications.scripts.ntfy import auth_headers
+
+        monkeypatch.delenv("NTFY_TOKEN", raising=False)
+        assert auth_headers() == {}
+        monkeypatch.setenv("NTFY_TOKEN", "tk_test")
+        assert auth_headers() == {"Authorization": "Bearer tk_test"}

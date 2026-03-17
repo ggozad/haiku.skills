@@ -7,12 +7,20 @@ from haiku.skills.models import Skill, SkillSource
 from haiku.skills.parser import parse_skill_md
 from haiku.skills.state import SkillRunDeps
 
+PRIORITY_NAMES: dict[str, int] = {
+    "min": 1,
+    "low": 2,
+    "default": 3,
+    "high": 4,
+    "max": 5,
+}
+
 
 class SentMessage(BaseModel):
     topic: str
     message: str
     title: str = ""
-    priority: str = "default"
+    priority: int = 3
 
 
 class ReceivedMessage(BaseModel):
@@ -27,6 +35,13 @@ class ReceivedMessage(BaseModel):
 class NotificationState(BaseModel):
     sent: list[SentMessage] = []
     received: list[ReceivedMessage] = []
+
+
+def _parse_priority(priority: str) -> int:
+    """Convert a priority string (name or digit) to an int."""
+    if priority.isdigit():
+        return int(priority)
+    return PRIORITY_NAMES.get(priority, 3)
 
 
 def send_notification(
@@ -57,7 +72,12 @@ def send_notification(
         and not result.startswith("Error:")
     ):
         ctx.deps.state.sent.append(
-            SentMessage(topic=topic, message=message, title=title, priority=priority)
+            SentMessage(
+                topic=topic,
+                message=message,
+                title=title,
+                priority=_parse_priority(priority),
+            )
         )
 
     return result
@@ -76,7 +96,10 @@ def read_notifications(
         since: How far back to look (e.g. "10m", "1h", "all").
         server: ntfy server URL (defaults to NTFY_SERVER env var or https://ntfy.sh).
     """
-    from haiku_skills_notifications.scripts.read_notifications import _read
+    from haiku_skills_notifications.scripts.read_notifications import (
+        _read,
+        format_messages,
+    )
 
     try:
         raw = _read(topic, since, server)
@@ -91,27 +114,15 @@ def read_notifications(
                     topic=str(msg.get("topic", topic)),
                     message=str(msg.get("message", "")),
                     title=str(msg.get("title", "")),
-                    priority=int(msg.get("priority", 3)),  # type: ignore[arg-type]
-                    time=int(msg.get("time", 0)),  # type: ignore[arg-type]
+                    priority=int(msg.get("priority", 3)),
+                    time=int(msg.get("time", 0)),
                 )
             )
 
     if not raw:
         return f"No messages on topic '{topic}'."
 
-    formatted = []
-    for msg in raw:
-        parts = []
-        title = msg.get("title", "")
-        if title:
-            parts.append(f"**{title}**")
-        parts.append(str(msg.get("message", "")))
-        priority = msg.get("priority", 3)
-        if priority != 3:
-            parts.append(f"(priority: {priority})")
-        formatted.append("\n".join(parts))
-
-    return "\n\n---\n\n".join(formatted)
+    return format_messages(raw)
 
 
 def create_skill() -> Skill:

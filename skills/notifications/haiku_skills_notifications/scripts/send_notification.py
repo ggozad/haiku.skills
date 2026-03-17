@@ -4,23 +4,11 @@
 # ///
 """Send a push notification via ntfy.sh."""
 
-import os
 import sys
 
 import httpx
 
-DEFAULT_SERVER = "https://ntfy.sh"
-
-
-def _resolve_server(server: str = "") -> str:
-    return server or os.environ.get("NTFY_SERVER", "") or DEFAULT_SERVER
-
-
-def _auth_headers() -> dict[str, str]:
-    token = os.environ.get("NTFY_TOKEN", "")
-    if token:
-        return {"Authorization": f"Bearer {token}"}
-    return {}
+from haiku_skills_notifications.scripts.ntfy import auth_headers, resolve_server
 
 
 def main(
@@ -39,7 +27,7 @@ def main(
         priority: Notification priority (1-5 or min/low/default/high/max).
         server: ntfy server URL (defaults to NTFY_SERVER env var or https://ntfy.sh).
     """
-    base = _resolve_server(server)
+    base = resolve_server(server)
     url = f"{base}/{topic}"
 
     headers: dict[str, str] = {}
@@ -47,7 +35,7 @@ def main(
         headers["X-Title"] = title
     if priority and priority != "default":
         headers["X-Priority"] = priority
-    headers.update(_auth_headers())
+    headers.update(auth_headers())
 
     try:
         response = httpx.post(url, content=message, headers=headers)
