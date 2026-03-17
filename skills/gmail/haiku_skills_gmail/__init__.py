@@ -85,10 +85,12 @@ def _get_service() -> Any:
         pass
     elif creds and creds.expired and creds.refresh_token:
         creds.refresh(Request())
+        token_path.parent.mkdir(parents=True, exist_ok=True)
         token_path.write_text(creds.to_json())
     else:
         flow = InstalledAppFlow.from_client_secrets_file(str(creds_path), SCOPES)
         creds = flow.run_local_server(port=0)
+        token_path.parent.mkdir(parents=True, exist_ok=True)
         token_path.write_text(creds.to_json())
 
     _service = build("gmail", "v1", credentials=creds)
@@ -326,9 +328,15 @@ def reply_to_email(
     to = orig_from
     cc = ""
     if reply_all:
+        profile = service.users().getProfile(userId="me").execute()
+        my_email = profile.get("emailAddress", "")
         orig_to = _get_header(headers, "To")
         orig_cc = _get_header(headers, "Cc")
-        cc_parts = [p.strip() for p in f"{orig_to}, {orig_cc}".split(",") if p.strip()]
+        cc_parts = [
+            p.strip()
+            for p in f"{orig_to}, {orig_cc}".split(",")
+            if p.strip() and my_email not in p
+        ]
         cc = ", ".join(cc_parts)
 
     message = _build_message(

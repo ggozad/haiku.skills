@@ -344,7 +344,7 @@ class TestCodeExecution:
         assert "result" in captured.getvalue()
 
 
-class TestEmail:
+class TestGmail:
     @pytest.fixture(autouse=True)
     def _reset_globals(self, monkeypatch: pytest.MonkeyPatch):
         """Reset module-level singleton state between tests."""
@@ -957,6 +957,9 @@ class TestEmail:
         )
         original["payload"]["headers"].append({"name": "Cc", "value": "cc@example.com"})
         service.users().messages().get.return_value.execute.return_value = original
+        service.users().getProfile.return_value.execute.return_value = {
+            "emailAddress": "me@example.com",
+        }
         service.users().messages().send.return_value.execute.return_value = {
             "id": "reply1",
             "threadId": "thread1",
@@ -971,7 +974,8 @@ class TestEmail:
         call_kwargs = service.users().messages().send.call_args.kwargs
         decoded = base64.urlsafe_b64decode(call_kwargs["body"]["raw"]).decode()
         assert "To: alice@example.com" in decoded
-        assert "Cc: me@example.com, other@example.com, cc@example.com" in decoded
+        assert "Cc: other@example.com, cc@example.com" in decoded
+        assert "me@example.com" not in decoded
 
     def test_reply_to_email_error_send(self, monkeypatch: pytest.MonkeyPatch):
         import haiku_skills_gmail as mod
