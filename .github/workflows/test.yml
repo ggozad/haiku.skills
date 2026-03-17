@@ -60,8 +60,10 @@ jobs:
       matrix:
         python-version: ["3.12", "3.13", "3.14"]
         include:
-            # Only run coverage on Python >= 3.13.
+            # Only run coverage on Python 3.13.
             - python-version: "3.12"
+              pytest-args: "--no-cov"
+            - python-version: "3.14"
               pytest-args: "--no-cov"
     steps:
       - uses: actions/checkout@v4
@@ -80,8 +82,9 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras
       - name: Run tests with coverage
-        run: uv run pytest --cov --cov-report=xml
+        run: uv run pytest ${{ matrix.pytest-args || '--cov --cov-report=xml' }}
       - name: Upload coverage to Codecov
+        if: matrix.python-version == '3.13'
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
