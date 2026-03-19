@@ -137,7 +137,7 @@ def hash_skill_directory(skill_dir: Path) -> bytes:
     """
     hasher = hashlib.sha256()
     for rel in _walk_skill_files(skill_dir):
-        hasher.update(str(rel).encode("utf-8"))
+        hasher.update(rel.as_posix().encode("utf-8"))
         hasher.update((skill_dir / rel).read_bytes())
 
     return hasher.digest()
@@ -234,6 +234,8 @@ def verify_skill(
     Returns True if verification succeeds, False if no bundle exists
     or verification fails.
     """
+    if trusted_identities is not None and unsafe:
+        raise ValueError("trusted_identities and unsafe are mutually exclusive")
     if trusted_identities is None and not unsafe:
         raise ValueError("Either trusted_identities or unsafe=True must be provided")
 

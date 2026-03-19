@@ -74,7 +74,8 @@ identities = [
 registry = SkillRegistry(trusted_identities=identities)
 errors = registry.discover(paths=[Path("./skills")])
 
-for skill in registry.list():
+for name in registry.names:
+    skill = registry.get(name)
     print(f"{skill.metadata.name}: verified={skill.verified}")
 ```
 
@@ -130,11 +131,7 @@ jobs:
         run: |
           for skill_dir in skills/*/; do
             if [ -f "$skill_dir/SKILL.md" ]; then
-              uv run python -c "
-          from haiku.skills.signing import sign_skill
-          from pathlib import Path
-          sign_skill(Path('$skill_dir'))
-          "
+              uv run haiku-skills sign "$skill_dir"
             fi
           done
 

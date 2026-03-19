@@ -127,7 +127,7 @@ class TestCollectGitignorePatterns:
     def test_stops_at_filesystem_root(self, tmp_path: Path):
         skill_dir = tmp_path / "skill"
         skill_dir.mkdir()
-        # No .gitignore anywhere — should return None without error
+        # No .gitignore anywhere, should return None without error
         assert _collect_gitignore_patterns(skill_dir) is None
 
 
@@ -536,6 +536,15 @@ class TestVerifySkill:
 
         with pytest.raises(ValueError, match="trusted_identities.*unsafe"):
             verify_skill(skill_dir)
+
+    def test_raises_with_both_identities_and_unsafe(self, tmp_path: Path):
+        skill_dir = tmp_path / "skill"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text("content")
+
+        identities = [TrustedIdentity(identity="a@b.com", issuer="https://issuer")]
+        with pytest.raises(ValueError, match="mutually exclusive"):
+            verify_skill(skill_dir, identities, unsafe=True)
 
     def test_verifies_integrity_only_with_unsafe(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
