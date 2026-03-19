@@ -30,6 +30,16 @@ features are available:
 **Not available**: classes, match statements, context managers, generators,
 most standard library modules, third-party packages, file/network access.
 
+## Available Scripts
+
+### `scripts/run_code.py`
+
+Execute Python code in a sandboxed environment.
+
+```
+--code      (required) The Python code to execute.
+```
+
 ## Example
 
 ```python

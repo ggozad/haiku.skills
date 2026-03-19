@@ -5,9 +5,10 @@
 ### Changed
 
 - **Spec-compliant skill directory layout**: Scripts now live alongside `SKILL.md` (e.g. `web/scripts/search.py`) instead of in a separate package-level `scripts/` dir
-- **Spec-compliant skill names**: Renamed `code-execution` → `codeexecution`, `image-generation` → `imagegeneration` (lowercase alphanumeric per spec)
+- **Skill directory renames**: Renamed `code-execution` → `codeexecution`, `image-generation` → `imagegeneration` (skill dirs are now Python packages, which require valid identifiers)
 - **Named CLI flags for scripts**: All scripts use `argparse` with `--flag value` syntax and support `--help`. `script_tools.py` passes named args instead of positional
 - **Gmail extracted into standalone scripts**: Auth, helpers, and all 8 operations (search, read, send, reply, draft, list drafts, modify labels, list labels) are now standalone scripts with argparse CLI interfaces. `__init__.py` is a thin wrapper with state tracking
+- **SKILL.md script documentation**: All SKILL.md files now document available scripts with CLI flags and descriptions
 
 ### Added
 

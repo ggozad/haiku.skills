@@ -37,6 +37,81 @@ Access Gmail to search, read, send, reply to, draft, and organize emails.
 - **Unstar**: remove label `STARRED`
 - **Move to trash**: add label `TRASH`
 
+## Available Scripts
+
+### `scripts/search_emails.py`
+
+Search Gmail for emails matching a query.
+
+```
+--query        (required) Gmail search query.
+--max-results  (default: 10) Maximum number of results.
+```
+
+### `scripts/read_email.py`
+
+Read the full content of a Gmail email.
+
+```
+--message-id   (required) The Gmail message ID.
+```
+
+### `scripts/send_email.py`
+
+Send a new Gmail email.
+
+```
+--to           (required) Recipient email address.
+--subject      (required) Email subject line.
+--body         (required) Email body text.
+--cc           (default: "") CC recipients (comma-separated).
+--bcc          (default: "") BCC recipients (comma-separated).
+```
+
+### `scripts/reply_to_email.py`
+
+Reply to a Gmail email.
+
+```
+--message-id   (required) The Gmail message ID to reply to.
+--body         (required) Reply body text.
+--reply-all    (flag) Reply to all recipients.
+```
+
+### `scripts/create_draft.py`
+
+Create a Gmail draft email.
+
+```
+--to           (required) Recipient email address.
+--subject      (required) Email subject line.
+--body         (required) Email body text.
+--cc           (default: "") CC recipients (comma-separated).
+--bcc          (default: "") BCC recipients (comma-separated).
+```
+
+### `scripts/list_drafts.py`
+
+List Gmail draft emails.
+
+```
+--max-results  (default: 10) Maximum number of drafts.
+```
+
+### `scripts/modify_labels.py`
+
+Add or remove labels from a Gmail email.
+
+```
+--message-id      (required) The Gmail message ID.
+--add-labels      (default: "") Comma-separated label IDs to add.
+--remove-labels   (default: "") Comma-separated label IDs to remove.
+```
+
+### `scripts/list_labels.py`
+
+List all available Gmail labels. No arguments required.
+
 ## Guidelines
 
 - Always confirm with the user before sending emails.
