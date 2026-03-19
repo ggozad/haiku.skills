@@ -16,12 +16,12 @@ class TestCreateSkill:
         from haiku_skills_code_execution import create_skill
 
         skill = create_skill()
-        assert skill.metadata.name == "code-execution"
+        assert skill.metadata.name == "codeexecution"
         assert skill.source == SkillSource.ENTRYPOINT
         assert skill.path is not None
         assert skill.instructions is not None
         assert skill.state_type is not None
-        assert skill.state_namespace == "code-execution"
+        assert skill.state_namespace == "codeexecution"
         assert len(skill.tools) == 1
 
 
@@ -231,7 +231,7 @@ class TestScriptRunCode:
     """Tests for the standalone scripts/run_code.py (unchanged)."""
 
     def test_run_code_with_output(self):
-        from haiku_skills_code_execution.scripts.run_code import main
+        from haiku_skills_code_execution.codeexecution.scripts.run_code import main
 
         result = main("print(1 + 1)")
         assert "```python" in result
@@ -239,13 +239,13 @@ class TestScriptRunCode:
         assert "2" in result
 
     def test_run_code_with_result(self):
-        from haiku_skills_code_execution.scripts.run_code import main
+        from haiku_skills_code_execution.codeexecution.scripts.run_code import main
 
         result = main("1 + 1")
         assert "result: 2" in result
 
     def test_run_code_no_output(self):
-        from haiku_skills_code_execution.scripts.run_code import main
+        from haiku_skills_code_execution.codeexecution.scripts.run_code import main
 
         result = main("x = 1")
         assert "no output" in result.lower()
@@ -259,6 +259,7 @@ class TestScriptRunCode:
             SKILLS_ROOT
             / "code-execution"
             / "haiku_skills_code_execution"
+            / "codeexecution"
             / "scripts"
             / "run_code.py"
         )

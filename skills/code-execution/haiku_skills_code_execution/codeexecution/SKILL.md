@@ -1,5 +1,5 @@
 ---
-name: code-execution
+name: codeexecution
 description: Writes and runs Python code in a sandbox. Describe the task in plain English — the skill will write and execute the program.
 ---
 

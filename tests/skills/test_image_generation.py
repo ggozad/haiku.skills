@@ -16,7 +16,7 @@ class TestImageGeneration:
         from haiku_skills_image_generation import create_skill
 
         skill = create_skill()
-        assert skill.metadata.name == "image-generation"
+        assert skill.metadata.name == "imagegeneration"
         assert (
             skill.metadata.description
             == "Generate images from text prompts using Ollama."
@@ -25,12 +25,14 @@ class TestImageGeneration:
         assert skill.path is not None
         assert skill.instructions is not None
         assert skill.state_type is not None
-        assert skill.state_namespace == "image-generation"
+        assert skill.state_namespace == "imagegeneration"
         assert len(skill.tools) == 1
 
     @pytest.mark.vcr()
     def test_generate_image(self, tmp_path: Path):
-        from haiku_skills_image_generation.scripts.generate_image import main
+        from haiku_skills_image_generation.imagegeneration.scripts.generate_image import (
+            main,
+        )
 
         result = main("a red circle on white background", width=64, height=64)
         assert result.endswith(".png")
@@ -65,6 +67,7 @@ class TestImageGeneration:
             SKILLS_ROOT
             / "image-generation"
             / "haiku_skills_image_generation"
+            / "imagegeneration"
             / "scripts"
             / "generate_image.py"
         )

@@ -1,5 +1,5 @@
 ---
-name: image-generation
+name: imagegeneration
 description: Generate images from text prompts using Ollama.
 ---
 

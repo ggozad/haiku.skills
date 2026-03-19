@@ -32,7 +32,9 @@ def generate_image(
         width: Image width in pixels.
         height: Image height in pixels.
     """
-    from haiku_skills_image_generation.scripts.generate_image import main
+    from haiku_skills_image_generation.imagegeneration.scripts.generate_image import (
+        main,
+    )
 
     path = main(prompt, width=width, height=height)
 
@@ -50,7 +52,7 @@ def generate_image(
 
 
 def create_skill() -> Skill:
-    skill_dir = Path(__file__).parent / "image-generation"
+    skill_dir = Path(__file__).parent / "imagegeneration"
     metadata, instructions = parse_skill_md(skill_dir / "SKILL.md")
 
     return Skill(
@@ -60,5 +62,5 @@ def create_skill() -> Skill:
         instructions=instructions,
         tools=[generate_image],
         state_type=ImageState,
-        state_namespace="image-generation",
+        state_namespace="imagegeneration",
     )

@@ -8,7 +8,14 @@ import sys
 
 import httpx
 
-from haiku_skills_notifications.scripts.ntfy import auth_headers, resolve_server
+try:
+    from haiku_skills_notifications.notifications.scripts.ntfy import (
+        auth_headers,
+        resolve_server,
+    )
+# Fallback for standalone execution (sys.path[0] = script dir)
+except ImportError:  # pragma: no cover
+    from ntfy import auth_headers, resolve_server  # type: ignore[no-redef]
 
 
 def main(

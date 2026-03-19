@@ -101,7 +101,7 @@ async def run_code(ctx: RunContext[SkillRunDeps], code: str) -> str:
 
 
 def create_skill() -> Skill:
-    skill_dir = Path(__file__).parent / "code-execution"
+    skill_dir = Path(__file__).parent / "codeexecution"
     metadata, instructions = parse_skill_md(skill_dir / "SKILL.md")
 
     return Skill(
@@ -111,5 +111,5 @@ def create_skill() -> Skill:
         instructions=instructions,
         tools=[run_code],
         state_type=CodeState,
-        state_namespace="code-execution",
+        state_namespace="codeexecution",
     )
