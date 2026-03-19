@@ -78,13 +78,6 @@ class TestParseSkillMd:
         with pytest.raises(ValueError, match="unknown-field"):
             parse_skill_md(skill_md)
 
-    def test_versioned_skill(self):
-        path = FIXTURES / "versioned-skill" / "SKILL.md"
-        metadata, body = parse_skill_md(path)
-        assert metadata.name == "versioned-skill"
-        assert metadata.metadata["version"] == "2.1.0"
-        assert "# Versioned Skill" in body
-
     def test_allowed_tools_parsed_from_yaml_list(self, tmp_path: Path):
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text(

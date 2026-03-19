@@ -18,21 +18,6 @@ the system prompt when the skill is executed.
 
 The frontmatter supports fields from the Agent Skills spec: `name`, `description`, `license`, `compatibility`, `metadata`, and `allowed-tools`. Unknown fields are rejected.
 
-### Versioning
-
-Skills can declare a version in the `metadata` map:
-
-```markdown
----
-name: my-skill
-description: A brief description.
-metadata:
-  version: 1.2.3
----
-```
-
-The version is available as `skill.metadata.metadata["version"]`.
-
 ### Signing
 
 Skills can be signed with [sigstore](https://www.sigstore.dev/) for identity-based verification. See [Signing and verification](signing.md) for the full guide.

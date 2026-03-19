@@ -125,12 +125,6 @@ class TestSkillMetadata:
         )
         assert meta.allowed_tools == ["Read", "Write"]
 
-    def test_version_in_metadata(self):
-        meta = SkillMetadata(
-            name="test", description="Test.", metadata={"version": "1.2.3"}
-        )
-        assert meta.metadata["version"] == "1.2.3"
-
     def test_unknown_field_rejected(self):
         with pytest.raises(ValidationError, match="extra_field"):
             SkillMetadata(
