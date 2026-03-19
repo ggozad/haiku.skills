@@ -182,8 +182,14 @@ def get_bundle_signer(skill_dir: Path) -> TrustedIdentity | None:
     import base64
     import json
 
-    from cryptography import x509
-    from cryptography.x509 import ObjectIdentifier
+    try:
+        from cryptography import x509
+        from cryptography.x509 import ObjectIdentifier
+    except ImportError:
+        raise ImportError(
+            "cryptography is required for signer extraction. "
+            "Install with: pip install haiku.skills[signing]"
+        ) from None
 
     try:
         bundle_data = json.loads(bundle_path.read_text())

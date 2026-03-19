@@ -492,6 +492,26 @@ class TestBundleSigner:
         (skill_dir / "SKILL.sigstore").write_text("not json")
         assert get_bundle_signer(skill_dir) is None
 
+    def test_raises_without_cryptography(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        import builtins
+
+        skill_dir = tmp_path / "skill"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.sigstore").write_text('{"bundle": "data"}')
+
+        real_import = builtins.__import__
+
+        def fake_import(name, *args, **kwargs):
+            if name.startswith("cryptography"):
+                raise ImportError("No module named 'cryptography'")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", fake_import)
+        with pytest.raises(ImportError, match="haiku.skills\\[signing\\]"):
+            get_bundle_signer(skill_dir)
+
 
 class TestVerifySkill:
     def test_returns_false_without_bundle(self, tmp_path: Path):

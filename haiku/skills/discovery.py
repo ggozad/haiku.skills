@@ -82,9 +82,8 @@ def discover_resources(skill_path: Path) -> list[str]:
         if not file.is_file():
             continue
         relative = file.relative_to(skill_path)
-        if relative.name in ("SKILL.md", "SKILL.sigstore") and relative.parent == Path(
-            "."
-        ):
+        is_root_file = relative.parent == Path(".")
+        if relative.name in ("SKILL.md", "SKILL.sigstore") and is_root_file:
             continue
         if relative.parts[0] in ("scripts", "__pycache__"):
             continue
