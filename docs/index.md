@@ -27,10 +27,10 @@ uv add haiku.skills
 ## Documentation
 
 - [Installation](installation.md) — Install with optional extras
-- [Quick start](quickstart.md) — Create a skill and use SkillToolset
-- [Skills](skills.md) — SKILL.md format, tools, state, and script tools
-- [Skill sources](skill-sources.md) — Filesystem, entrypoints, and MCP integration
-- [Examples](examples.md) — Practical examples for each source type
+- [Tutorial](tutorial.md) — Build a skill from scratch, step by step
+- [Skills reference](skills.md) — SKILL.md format, tools, state, and script tools
+- [Signing](signing.md) — Identity-based signing and verification
 - [CLI](cli.md) — Command-line interface reference
 - [AG-UI protocol](ag-ui.md) — State deltas and the AG-UI protocol
+- [Example skills](example-skills.md) — Built-in skill packages as reference implementations
 - [Development](development.md) — Contributing, testing, and tooling

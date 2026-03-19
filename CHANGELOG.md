@@ -10,6 +10,7 @@
 - **Gmail extracted into standalone scripts**: Auth, helpers, and all 8 operations (search, read, send, reply, draft, list drafts, modify labels, list labels) are now standalone scripts with argparse CLI interfaces. `__init__.py` is a thin wrapper with state tracking
 - **SKILL.md script documentation**: All SKILL.md files now document available scripts with CLI flags and descriptions
 - **CI signature verification**: `validate-skills` workflow now verifies skill signatures (integrity-only)
+- **Documentation reorganized**: Replaced `quickstart.md`, `skill-sources.md`, and `examples.md` with a single progressive `tutorial.md`. Cleaned `skills.md` into a pure reference page. Removed duplicated state section from `ag-ui.md`
 
 ### Added
 

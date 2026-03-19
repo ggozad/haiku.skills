@@ -88,7 +88,7 @@ haiku-skills chat --use-entrypoints -m openai:gpt-4o
 Filter to specific skills by name:
 
 ```bash
-haiku-skills chat --use-entrypoints -k web -k code-execution -m openai:gpt-4o
+haiku-skills chat --use-entrypoints -k web -k codeexecution -m openai:gpt-4o
 ```
 
 Set the model to use for skill sub-agents (overrides `HAIKU_SKILL_MODEL` env var):
