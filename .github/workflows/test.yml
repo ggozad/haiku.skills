@@ -48,8 +48,8 @@ jobs:
         run: |
           uv run haiku-skills validate \
             skills/web/haiku_skills_web/web \
-            skills/image-generation/haiku_skills_image_generation/image-generation \
-            skills/code-execution/haiku_skills_code_execution/code-execution \
+            skills/image-generation/haiku_skills_image_generation/imagegeneration \
+            skills/code-execution/haiku_skills_code_execution/codeexecution \
             skills/gmail/haiku_skills_gmail/gmail \
             skills/notifications/haiku_skills_notifications/notifications
 
