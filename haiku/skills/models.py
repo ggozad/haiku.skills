@@ -11,7 +11,20 @@ from pydantic_ai import Tool
 from pydantic_ai.models import Model
 from pydantic_ai.toolsets import AbstractToolset
 
-_SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+(-[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*)?$")
+_SEMVER_RE = re.compile(
+    r"""
+    ^
+    \d+       # major
+    \.
+    \d+       # minor
+    \.
+    \d+       # patch
+    (-[a-zA-Z0-9]+          # pre-release label
+     (\.[a-zA-Z0-9]+)*)?    # additional dot-separated identifiers
+    $
+    """,
+    re.VERBOSE,
+)
 
 
 @dataclass(frozen=True)

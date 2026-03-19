@@ -20,18 +20,24 @@ Sign a skill directory with [sigstore](https://www.sigstore.dev/):
 haiku-skills sign ./skills/my-skill
 ```
 
-Writes a `SKILL.sigstore` bundle alongside the skill's `SKILL.md`. See [Signing and verification](signing.md) for details.
+Writes a `SKILL.sigstore` bundle alongside the skill's `SKILL.md`. Each bundle carries exactly one signer — signing again overwrites the previous bundle. See [Signing and verification](signing.md) for details.
 
 ## `verify`
 
-Verify a signed skill directory against trusted identities:
+Inspect the signer of a signed skill, or verify it against trusted identities:
 
 ```bash
+# Inspect only — prints the signer identity and issuer
+haiku-skills verify ./skills/my-skill
+```
+
+```bash
+# Verify against a trusted identity
 haiku-skills verify ./skills/my-skill \
     -i author@example.com --issuer https://accounts.google.com
 ```
 
-Multiple identities can be provided (each `--identity`/`-i` needs a corresponding `--issuer`):
+Multiple identities can be provided (each `--identity`/`-i` needs a corresponding `--issuer`). Verification succeeds if the bundle's signer matches **any** of them:
 
 ```bash
 haiku-skills verify ./skills/my-skill \
