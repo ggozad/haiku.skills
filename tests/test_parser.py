@@ -82,7 +82,7 @@ class TestParseSkillMd:
         path = FIXTURES / "versioned-skill" / "SKILL.md"
         metadata, body = parse_skill_md(path)
         assert metadata.name == "versioned-skill"
-        assert metadata.version == "2.1.0"
+        assert metadata.metadata["version"] == "2.1.0"
         assert "# Versioned Skill" in body
 
     def test_allowed_tools_parsed_from_yaml_list(self, tmp_path: Path):

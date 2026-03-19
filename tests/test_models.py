@@ -125,29 +125,11 @@ class TestSkillMetadata:
         )
         assert meta.allowed_tools == ["Read", "Write"]
 
-    def test_version_valid_semver(self):
-        meta = SkillMetadata(name="test", description="Test.", version="1.2.3")
-        assert meta.version == "1.2.3"
-
-    def test_version_with_prerelease(self):
-        meta = SkillMetadata(name="test", description="Test.", version="1.0.0-alpha.1")
-        assert meta.version == "1.0.0-alpha.1"
-
-    def test_version_none_by_default(self):
-        meta = SkillMetadata(name="test", description="Test.")
-        assert meta.version is None
-
-    def test_version_invalid_rejected(self):
-        with pytest.raises(ValidationError, match="version"):
-            SkillMetadata(name="test", description="Test.", version="not-semver")
-
-    def test_version_incomplete_rejected(self):
-        with pytest.raises(ValidationError, match="version"):
-            SkillMetadata(name="test", description="Test.", version="1.0")
-
-    def test_version_leading_v_rejected(self):
-        with pytest.raises(ValidationError, match="version"):
-            SkillMetadata(name="test", description="Test.", version="v1.0.0")
+    def test_version_in_metadata(self):
+        meta = SkillMetadata(
+            name="test", description="Test.", metadata={"version": "1.2.3"}
+        )
+        assert meta.metadata["version"] == "1.2.3"
 
     def test_unknown_field_rejected(self):
         with pytest.raises(ValidationError, match="extra_field"):

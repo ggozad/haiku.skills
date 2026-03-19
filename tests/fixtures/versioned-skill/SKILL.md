@@ -1,7 +1,8 @@
 ---
 name: versioned-skill
 description: A skill with a version number.
-version: 2.1.0
+metadata:
+  version: 2.1.0
 ---
 
 # Versioned Skill

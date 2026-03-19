@@ -16,21 +16,22 @@ Detailed instructions for the sub-agent go here. This content becomes
 the system prompt when the skill is executed.
 ```
 
-The frontmatter supports fields from the Agent Skills spec: `name`, `description`, `license`, `compatibility`, `metadata`, and `allowed-tools`, plus an optional `version` field. Unknown fields are rejected.
+The frontmatter supports fields from the Agent Skills spec: `name`, `description`, `license`, `compatibility`, `metadata`, and `allowed-tools`. Unknown fields are rejected.
 
 ### Versioning
 
-Skills can declare a version using [semver](https://semver.org/):
+Skills can declare a version in the `metadata` map:
 
 ```markdown
 ---
 name: my-skill
 description: A brief description.
-version: 1.2.3
+metadata:
+  version: 1.2.3
 ---
 ```
 
-The `version` field is optional. When present, it must be a valid semver string (e.g. `1.0.0`, `2.1.0-alpha.1`).
+The version is available as `skill.metadata.metadata["version"]`.
 
 ### Signing
 

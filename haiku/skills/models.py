@@ -1,4 +1,3 @@
-import re
 import unicodedata
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
@@ -10,21 +9,6 @@ from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator
 from pydantic_ai import Tool
 from pydantic_ai.models import Model
 from pydantic_ai.toolsets import AbstractToolset
-
-_SEMVER_RE = re.compile(
-    r"""
-    ^
-    \d+       # major
-    \.
-    \d+       # minor
-    \.
-    \d+       # patch
-    (-[a-zA-Z0-9]+          # pre-release label
-     (\.[a-zA-Z0-9]+)*)?    # additional dot-separated identifiers
-    $
-    """,
-    re.VERBOSE,
-)
 
 
 @dataclass(frozen=True)
@@ -65,22 +49,12 @@ class SkillMetadata(BaseModel):
     license: str | None = None
     compatibility: str | None = Field(None, max_length=500)
     metadata: dict[str, str] = Field(default_factory=dict)
-    version: str | None = None
     allowed_tools: list[str] = Field(default_factory=list)
 
     @field_validator("name")
     @classmethod
     def validate_name(cls, v: str) -> str:
         return _validate_skill_name(v)
-
-    @field_validator("version")
-    @classmethod
-    def validate_version(cls, v: str | None) -> str | None:
-        if v is not None and not _SEMVER_RE.match(v):
-            raise ValueError(
-                "version must be a valid semver string (e.g. '1.2.3' or '1.0.0-alpha.1')"
-            )
-        return v
 
     @field_validator("allowed_tools", mode="before")
     @classmethod
