@@ -42,6 +42,7 @@ class TestImportSigstore:
         assert hasattr(ns, "VerificationError")
         assert hasattr(ns, "Identity")
         assert hasattr(ns, "AnyOf")
+        assert hasattr(ns, "UnsafeNoOp")
         assert hasattr(ns, "Hashed")
         assert hasattr(ns, "detect_credential")
         assert hasattr(ns, "IdentityToken")
@@ -500,6 +501,47 @@ class TestVerifySkill:
 
         identities = [TrustedIdentity(identity="a@b.com", issuer="https://issuer")]
         assert verify_skill(skill_dir, identities) is False
+
+    def test_returns_false_without_bundle_unsafe(self, tmp_path: Path):
+        skill_dir = tmp_path / "skill"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text("content")
+
+        assert verify_skill(skill_dir, unsafe=True) is False
+
+    def test_raises_without_identities_or_unsafe(self, tmp_path: Path):
+        skill_dir = tmp_path / "skill"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text("content")
+
+        with pytest.raises(ValueError, match="trusted_identities.*unsafe"):
+            verify_skill(skill_dir)
+
+    def test_verifies_integrity_only_with_unsafe(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        skill_dir = tmp_path / "skill"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text("content")
+        (skill_dir / "SKILL.sigstore").write_text('{"bundle": "data"}')
+
+        mock_bundle = MagicMock()
+        mock_verifier = MagicMock()
+        mock_verifier.verify_artifact.return_value = None
+
+        mock_sigstore = MagicMock()
+        mock_sigstore.Bundle.from_json.return_value = mock_bundle
+        mock_sigstore.Verifier.production.return_value = mock_verifier
+        mock_sigstore.UnsafeNoOp = MagicMock()
+        mock_sigstore.Hashed = MagicMock()
+
+        monkeypatch.setattr(
+            "haiku.skills.signing._import_sigstore", lambda: mock_sigstore
+        )
+
+        assert verify_skill(skill_dir, unsafe=True) is True
+        mock_sigstore.UnsafeNoOp.assert_called_once()
+        mock_verifier.verify_artifact.assert_called_once()
 
     def test_raises_without_sigstore(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

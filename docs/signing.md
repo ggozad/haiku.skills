@@ -1,6 +1,6 @@
 # Signing and verification
 
-haiku.skills supports identity-based signing via [sigstore](https://www.sigstore.dev/), the Linux Foundation's open-source signing framework. Signing lets consumers verify that a skill was published by a trusted identity — no key management required.
+haiku.skills supports identity-based signing via [sigstore](https://www.sigstore.dev/), the Linux Foundation's open-source signing framework. Signing lets consumers verify that a skill was published by a trusted identity.
 
 ## How it works
 
@@ -114,6 +114,12 @@ result = verify_skill(
     Path("./skills/my-skill"),
     [TrustedIdentity(identity="author@example.com", issuer="https://accounts.google.com")],
 )
+```
+
+To verify cryptographic integrity only (signature, certificate chain, transparency log) without constraining the signer identity, pass `unsafe=True`:
+
+```python
+result = verify_skill(Path("./skills/my-skill"), unsafe=True)
 ```
 
 ### Verification policy

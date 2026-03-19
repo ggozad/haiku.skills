@@ -24,15 +24,9 @@ Writes a `SKILL.sigstore` bundle alongside the skill's `SKILL.md`. Each bundle c
 
 ## `verify`
 
-Inspect the signer of a signed skill, or verify it against trusted identities:
+Verify a signed skill directory against trusted identities:
 
 ```bash
-# Inspect only — prints the signer identity and issuer
-haiku-skills verify ./skills/my-skill
-```
-
-```bash
-# Verify against a trusted identity
 haiku-skills verify ./skills/my-skill \
     -i author@example.com --issuer https://accounts.google.com
 ```
@@ -46,7 +40,13 @@ haiku-skills verify ./skills/my-skill \
     --issuer https://token.actions.githubusercontent.com
 ```
 
-Prints `VERIFIED` or `FAILED` and exits with code 1 on failure.
+To verify cryptographic integrity without checking signer identity, pass `--unsafe`:
+
+```bash
+haiku-skills verify ./skills/my-skill --unsafe
+```
+
+Prints `VERIFIED` (or `INTEGRITY OK` with `--unsafe`) on success, `FAILED` on failure, and exits with code 1 on failure.
 
 ## `list`
 

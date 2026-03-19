@@ -20,7 +20,7 @@ This sub-agent architecture means each skill runs in isolation with its own syst
 - **AG-UI protocol** — State changes emit `StateDeltaEvent` (JSON Patch), compatible with the [AG-UI protocol](https://docs.ag-ui.com)
 - **Script tools** — Python, JavaScript, TypeScript, and shell scripts in `scripts/`; Python scripts with a `main()` function are AST-parsed for typed tool schemas and executed via `uv run` with [PEP 723](https://peps.python.org/pep-0723/) dependency support
 - **MCP integration** — Wrap any MCP server (stdio, SSE, streamable HTTP) as a skill
-- **Signing and verification** — Identity-based skill signing via [sigstore](https://www.sigstore.dev/); no key management needed
+- **Signing and verification** — Identity-based skill signing via [sigstore](https://www.sigstore.dev/)
 
 ## Quick start
 

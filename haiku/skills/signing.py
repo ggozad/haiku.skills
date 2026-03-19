@@ -27,7 +27,7 @@ def _import_sigstore() -> SimpleNamespace:
         from sigstore.oidc import IdentityToken, Issuer, detect_credential
         from sigstore.sign import SigningContext, sigstore_hashes
         from sigstore.verify import Verifier
-        from sigstore.verify.policy import AnyOf, Identity
+        from sigstore.verify.policy import AnyOf, Identity, UnsafeNoOp
     except ImportError:
         raise ImportError(
             "sigstore is required for signing and verification. "
@@ -47,6 +47,7 @@ def _import_sigstore() -> SimpleNamespace:
         VerificationError=VerificationError,
         Identity=Identity,
         AnyOf=AnyOf,
+        UnsafeNoOp=UnsafeNoOp,
     )
 
 
@@ -208,13 +209,28 @@ def get_bundle_signer(skill_dir: Path) -> TrustedIdentity | None:
 
 def verify_skill(
     skill_dir: Path,
-    trusted_identities: Sequence[TrustedIdentity],
+    trusted_identities: Sequence[TrustedIdentity] | None = None,
+    *,
+    unsafe: bool = False,
 ) -> bool:
-    """Verify a skill's sigstore bundle against trusted identities.
+    """Verify a skill's sigstore bundle.
+
+    When ``trusted_identities`` is provided, verification checks both
+    cryptographic integrity and that the signer matches one of the
+    given identities (``any()`` semantics).
+
+    When ``unsafe=True``, only cryptographic integrity is checked
+    (signature, transparency log, certificate chain) without
+    constraining the signer identity.
+
+    Exactly one of ``trusted_identities`` or ``unsafe`` must be provided.
 
     Returns True if verification succeeds, False if no bundle exists
     or verification fails.
     """
+    if trusted_identities is None and not unsafe:
+        raise ValueError("Either trusted_identities or unsafe=True must be provided")
+
     bundle_path = skill_dir / "SKILL.sigstore"
     if not bundle_path.exists():
         return False
@@ -227,12 +243,15 @@ def verify_skill(
     digest = hash_skill_directory(skill_dir)
     hashed = sigstore.Hashed(digest=digest, algorithm=sigstore.HashAlgorithm.SHA2_256)
 
-    policy = sigstore.AnyOf(
-        children=[
-            sigstore.Identity(identity=ti.identity, issuer=ti.issuer)
-            for ti in trusted_identities
-        ]
-    )
+    if trusted_identities is not None:
+        policy = sigstore.AnyOf(
+            children=[
+                sigstore.Identity(identity=ti.identity, issuer=ti.issuer)
+                for ti in trusted_identities
+            ]
+        )
+    else:
+        policy = sigstore.UnsafeNoOp()
 
     try:
         verifier.verify_artifact(hashed, bundle, policy)
