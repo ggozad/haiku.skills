@@ -18,6 +18,10 @@ the system prompt when the skill is executed.
 
 The frontmatter supports fields from the Agent Skills spec: `name`, `description`, `license`, `compatibility`, `metadata`, and `allowed-tools`. Unknown fields are rejected.
 
+### Signing
+
+Skills can be signed with [sigstore](https://www.sigstore.dev/) for identity-based verification. See [Signing and verification](signing.md) for the full guide.
+
 You can validate a skill directory against the spec with:
 
 ```bash

@@ -12,6 +12,42 @@ haiku-skills validate ./skills/web ./skills/calculator
 
 Prints `VALID` or `INVALID` with error details for each path. Exits with code 1 if any skill is invalid.
 
+## `sign`
+
+Sign a skill directory with [sigstore](https://www.sigstore.dev/):
+
+```bash
+haiku-skills sign ./skills/my-skill
+```
+
+Writes a `SKILL.sigstore` bundle alongside the skill's `SKILL.md`. Each bundle carries exactly one signer; signing again overwrites the previous bundle. See [Signing and verification](signing.md) for details.
+
+## `verify`
+
+Verify a signed skill directory against trusted identities:
+
+```bash
+haiku-skills verify ./skills/my-skill \
+    -i author@example.com --issuer https://accounts.google.com
+```
+
+Multiple identities can be provided (each `--identity`/`-i` needs a corresponding `--issuer`). Verification succeeds if the bundle's signer matches **any** of them:
+
+```bash
+haiku-skills verify ./skills/my-skill \
+    -i author@example.com --issuer https://accounts.google.com \
+    -i https://github.com/org/repo/.github/workflows/sign.yml@refs/heads/main \
+    --issuer https://token.actions.githubusercontent.com
+```
+
+To verify cryptographic integrity without checking signer identity, pass `--unsafe`:
+
+```bash
+haiku-skills verify ./skills/my-skill --unsafe
+```
+
+Prints `VERIFIED` (or `INTEGRITY OK` with `--unsafe`) on success, `FAILED` on failure, and exits with code 1 on failure.
+
 ## `list`
 
 List discovered skills with name and description:

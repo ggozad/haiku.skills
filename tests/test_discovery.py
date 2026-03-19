@@ -218,6 +218,94 @@ class TestDiscoverResources:
         resources = discover_resources(skill_dir)
         assert resources == ["refs/deep/doc.txt"]
 
+    def test_excludes_sigstore_bundle(self, tmp_path: Path):
+        skill_dir = tmp_path / "my-skill"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text(
+            "---\nname: my-skill\ndescription: Test.\n---\nBody.\n"
+        )
+        (skill_dir / "SKILL.sigstore").write_text('{"bundle": "data"}')
+        (skill_dir / "config.yaml").write_text("key: value")
+        resources = discover_resources(skill_dir)
+        assert "SKILL.sigstore" not in resources
+        assert "config.yaml" in resources
+
+
+class TestDiscoverWithVerification:
+    def test_verified_true_with_valid_bundle(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        from haiku.skills.signing import TrustedIdentity
+
+        skill_dir = tmp_path / "my-skill"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text(
+            "---\nname: my-skill\ndescription: Test.\n---\nBody.\n"
+        )
+        (skill_dir / "SKILL.sigstore").write_text('{"bundle": "data"}')
+
+        monkeypatch.setattr(
+            "haiku.skills.discovery.verify_skill", lambda *a, **kw: True
+        )
+
+        identities = [TrustedIdentity(identity="a@b.com", issuer="https://issuer")]
+        skills, errors = discover_from_paths([skill_dir], trusted_identities=identities)
+        assert len(skills) == 1
+        assert skills[0].verified is True
+        assert errors == []
+
+    def test_verified_false_without_bundle(self, tmp_path: Path):
+        from haiku.skills.signing import TrustedIdentity
+
+        skill_dir = tmp_path / "my-skill"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text(
+            "---\nname: my-skill\ndescription: Test.\n---\nBody.\n"
+        )
+
+        identities = [TrustedIdentity(identity="a@b.com", issuer="https://issuer")]
+        skills, errors = discover_from_paths([skill_dir], trusted_identities=identities)
+        assert len(skills) == 1
+        assert skills[0].verified is False
+        assert errors == []
+
+    def test_verification_failure_returns_error(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        from haiku.skills.signing import TrustedIdentity
+
+        skill_dir = tmp_path / "my-skill"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text(
+            "---\nname: my-skill\ndescription: Test.\n---\nBody.\n"
+        )
+        (skill_dir / "SKILL.sigstore").write_text('{"bundle": "data"}')
+
+        monkeypatch.setattr(
+            "haiku.skills.discovery.verify_skill", lambda *a, **kw: False
+        )
+
+        identities = [TrustedIdentity(identity="a@b.com", issuer="https://issuer")]
+        skills, errors = discover_from_paths([skill_dir], trusted_identities=identities)
+        assert skills == []
+        assert len(errors) == 1
+        assert "verification failed" in str(errors[0]).lower()
+
+    def test_no_identities_skips_verification(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        skill_dir = tmp_path / "my-skill"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text(
+            "---\nname: my-skill\ndescription: Test.\n---\nBody.\n"
+        )
+        (skill_dir / "SKILL.sigstore").write_text('{"bundle": "data"}')
+
+        skills, errors = discover_from_paths([skill_dir])
+        assert len(skills) == 1
+        assert skills[0].verified is False
+        assert errors == []
+
 
 class TestDiscoverFromEntrypoints:
     def test_loads_from_entrypoints(self, monkeypatch: pytest.MonkeyPatch):

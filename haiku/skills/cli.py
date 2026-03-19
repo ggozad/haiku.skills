@@ -73,6 +73,93 @@ def _build_cli():
         if not all_valid:
             raise typer.Exit(1)
 
+    @app.command("sign", help="Sign a skill directory with sigstore")
+    def sign(
+        path: Path = typer.Argument(
+            ...,
+            help="Path to skill directory containing SKILL.md",
+        ),
+    ) -> None:
+        from haiku.skills.signing import sign_skill
+
+        try:
+            sign_skill(path)
+        except (ImportError, ValueError) as exc:
+            typer.echo(f"Error: {exc}", err=True)
+            raise typer.Exit(1)
+        typer.echo(f"Signed {path}")
+
+    @app.command("verify", help="Verify a signed skill directory")
+    def verify(
+        path: Path = typer.Argument(
+            ...,
+            help="Path to skill directory containing SKILL.md",
+        ),
+        identity: list[str] = typer.Option(
+            [],
+            "--identity",
+            "-i",
+            help="Trusted identity (repeatable)",
+        ),
+        issuer: list[str] = typer.Option(
+            [],
+            "--issuer",
+            help="OIDC issuer for the corresponding identity (repeatable)",
+        ),
+        unsafe: bool = typer.Option(
+            False,
+            "--unsafe",
+            help="Verify cryptographic integrity only, without checking signer identity",
+        ),
+    ) -> None:
+        from haiku.skills.signing import (
+            TrustedIdentity,
+            get_bundle_signer,
+            verify_skill,
+        )
+
+        if not identity and not unsafe:
+            typer.echo(
+                "Error: provide --identity/--issuer to verify against a trusted "
+                "identity, or --unsafe for integrity-only verification",
+                err=True,
+            )
+            raise typer.Exit(1)
+
+        if identity and len(identity) != len(issuer):
+            typer.echo(
+                "Error: each --identity must have a corresponding --issuer",
+                err=True,
+            )
+            raise typer.Exit(1)
+
+        identities = (
+            [TrustedIdentity(identity=i, issuer=s) for i, s in zip(identity, issuer)]
+            if identity
+            else None
+        )
+
+        try:
+            result = verify_skill(path, identities, unsafe=unsafe)
+        except ImportError as exc:
+            typer.echo(f"Error: {exc}", err=True)
+            raise typer.Exit(1)
+
+        if not result:
+            typer.echo(f"FAILED   {path}")
+            raise typer.Exit(1)
+
+        try:
+            signer = get_bundle_signer(path)
+        except ImportError as exc:
+            typer.echo(f"Error: {exc}", err=True)
+            raise typer.Exit(1)
+
+        if signer:
+            typer.echo(f"Signed by: {signer.identity} (issuer: {signer.issuer})")
+
+        typer.echo(f"{'INTEGRITY OK' if unsafe else 'VERIFIED'} {path}")
+
     @app.command("list", help="List discovered skills")
     def list_skills(
         skill_path: list[Path] = typer.Option(

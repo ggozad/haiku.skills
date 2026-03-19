@@ -58,6 +58,7 @@ nav:
       - Quick start: quickstart.md
       - Skills: skills.md
       - Skill sources: skill-sources.md
+      - Signing: signing.md
       - Examples: examples.md
       - CLI: cli.md
       - AG-UI protocol: ag-ui.md

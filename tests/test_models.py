@@ -150,6 +150,16 @@ class TestSkill:
         assert skill.tools == []
         assert skill.toolsets == []
 
+    def test_verified_default_false(self):
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(metadata=meta, source=SkillSource.FILESYSTEM)
+        assert skill.verified is False
+
+    def test_verified_settable(self):
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(metadata=meta, source=SkillSource.FILESYSTEM, verified=True)
+        assert skill.verified is True
+
     def test_with_path_and_instructions(self):
         meta = SkillMetadata(name="test", description="Test skill.")
         skill = Skill(

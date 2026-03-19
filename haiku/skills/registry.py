@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from pathlib import Path
 
 from haiku.skills.discovery import (
@@ -5,13 +6,18 @@ from haiku.skills.discovery import (
     discover_from_paths,
 )
 from haiku.skills.models import Skill, SkillMetadata, SkillValidationError
+from haiku.skills.signing import TrustedIdentity
 
 
 class SkillRegistry:
     """Central registry for skill discovery, loading, and lookup."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        trusted_identities: Sequence[TrustedIdentity] | None = None,
+    ) -> None:
         self._skills: dict[str, Skill] = {}
+        self._trusted_identities = trusted_identities
 
     def register(self, skill: Skill) -> None:
         name = skill.metadata.name
@@ -33,10 +39,14 @@ class SkillRegistry:
         self,
         paths: list[Path] | None = None,
         use_entrypoints: bool = False,
+        trusted_identities: Sequence[TrustedIdentity] | None = None,
     ) -> list[SkillValidationError]:
         errors: list[SkillValidationError] = []
+        identities = trusted_identities or self._trusted_identities
         if paths:
-            skills, path_errors = discover_from_paths(paths)
+            skills, path_errors = discover_from_paths(
+                paths, trusted_identities=identities
+            )
             errors.extend(path_errors)
             for skill in skills:
                 self.register(skill)

@@ -75,6 +75,7 @@ class Skill(BaseModel):
 
     metadata: SkillMetadata
     source: SkillSource
+    verified: bool = False
     path: Path | None = None
     instructions: str | None = None
     resources: list[str] = Field(default_factory=list)
