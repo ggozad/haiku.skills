@@ -224,7 +224,10 @@ class TestNotifications:
         monkeypatch.setattr(mod.httpx, "post", mock_post)
         monkeypatch.delenv("NTFY_TOKEN", raising=False)
 
-        monkeypatch.setattr("sys.argv", ["send_notification.py", "test-topic", "Hello"])
+        monkeypatch.setattr(
+            "sys.argv",
+            ["send_notification.py", "--topic", "test-topic", "--message", "Hello"],
+        )
         captured = io.StringIO()
         monkeypatch.setattr("sys.stdout", captured)
 
@@ -456,7 +459,9 @@ class TestNotifications:
         monkeypatch.setattr(mod.httpx, "get", mock_get)
         monkeypatch.delenv("NTFY_TOKEN", raising=False)
 
-        monkeypatch.setattr("sys.argv", ["read_notifications.py", "test-topic"])
+        monkeypatch.setattr(
+            "sys.argv", ["read_notifications.py", "--topic", "test-topic"]
+        )
         captured = io.StringIO()
         monkeypatch.setattr("sys.stdout", captured)
 

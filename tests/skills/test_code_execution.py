@@ -251,7 +251,7 @@ class TestScriptRunCode:
         assert "no output" in result.lower()
 
     def test_main_entry(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("sys.argv", ["run_code.py", "1 + 1"])
+        monkeypatch.setattr("sys.argv", ["run_code.py", "--code", "1 + 1"])
         captured = io.StringIO()
         monkeypatch.setattr("sys.stdout", captured)
 

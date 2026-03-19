@@ -5,7 +5,6 @@
 """Execute Python code safely in a sandboxed environment."""
 
 import os
-import sys
 import tempfile
 
 from pydantic_monty import Monty
@@ -42,4 +41,11 @@ def main(code: str) -> str:
 
 
 if __name__ == "__main__":
-    print(main(sys.argv[1]))
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Execute Python code in a sandboxed environment."
+    )
+    parser.add_argument("--code", required=True, help="The Python code to execute.")
+    args = parser.parse_args()
+    print(main(args.code))

@@ -58,7 +58,15 @@ class TestImageGeneration:
     def test_main_entry(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             "sys.argv",
-            ["generate_image.py", "a red circle on white background", "64", "64"],
+            [
+                "generate_image.py",
+                "--prompt",
+                "a red circle on white background",
+                "--width",
+                "64",
+                "--height",
+                "64",
+            ],
         )
         captured = io.StringIO()
         monkeypatch.setattr("sys.stdout", captured)

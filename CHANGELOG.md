@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Spec-compliant skill directory layout**: Scripts now live alongside `SKILL.md` (e.g. `web/scripts/search.py`) instead of in a separate package-level `scripts/` dir
+- **Spec-compliant skill names**: Renamed `code-execution` → `codeexecution`, `image-generation` → `imagegeneration` (lowercase alphanumeric per spec)
+- **Named CLI flags for scripts**: All scripts use `argparse` with `--flag value` syntax and support `--help`. `script_tools.py` passes named args instead of positional
+
 ### Added
 
 - **Skill signing and verification**: Identity-based signing via [sigstore](https://www.sigstore.dev/). Sign skills with `sign_skill()`, verify with `TrustedIdentity` on registry/discovery. Install with `uv pip install "haiku.skills[signing]"`

@@ -4,8 +4,6 @@
 # ///
 """Send a push notification via ntfy.sh."""
 
-import sys
-
 import httpx
 
 try:
@@ -54,8 +52,23 @@ def main(
 
 
 if __name__ == "__main__":
-    topic = sys.argv[1]
-    message = sys.argv[2]
-    title = sys.argv[3] if len(sys.argv) > 3 else ""
-    priority = sys.argv[4] if len(sys.argv) > 4 else "default"
-    print(main(topic, message, title, priority))
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Send a push notification via ntfy.sh."
+    )
+    parser.add_argument("--topic", required=True, help="The ntfy topic to publish to.")
+    parser.add_argument(
+        "--message", required=True, help="The notification message body."
+    )
+    parser.add_argument("--title", default="", help="Optional notification title.")
+    parser.add_argument(
+        "--priority",
+        default="default",
+        help="Notification priority (1-5 or min/low/default/high/max).",
+    )
+    parser.add_argument(
+        "--server", default="", help="ntfy server URL (defaults to https://ntfy.sh)."
+    )
+    args = parser.parse_args()
+    print(main(args.topic, args.message, args.title, args.priority, args.server))

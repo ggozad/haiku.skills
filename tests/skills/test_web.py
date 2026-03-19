@@ -52,7 +52,7 @@ class TestWeb:
 
     def test_search_main_entry(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("BRAVE_API_KEY", "")
-        monkeypatch.setattr("sys.argv", ["search.py", "test"])
+        monkeypatch.setattr("sys.argv", ["search.py", "--query", "test"])
         captured = io.StringIO()
         monkeypatch.setattr("sys.stdout", captured)
 
@@ -140,7 +140,7 @@ class TestWeb:
 
         monkeypatch.setattr(fp, "fetch_response", lambda *a, **kw: None)
         monkeypatch.setattr(
-            "sys.argv", ["fetch_page.py", "https://invalid.example.com"]
+            "sys.argv", ["fetch_page.py", "--url", "https://invalid.example.com"]
         )
         captured = io.StringIO()
         monkeypatch.setattr("sys.stdout", captured)

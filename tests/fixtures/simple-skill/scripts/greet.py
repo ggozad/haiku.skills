@@ -1,7 +1,5 @@
 """Generate a greeting message."""
 
-import sys
-
 
 def main(name: str, greeting: str = "Hello") -> str:
     """Greet someone by name.
@@ -14,6 +12,10 @@ def main(name: str, greeting: str = "Hello") -> str:
 
 
 if __name__ == "__main__":
-    name = sys.argv[1]
-    greeting = sys.argv[2] if len(sys.argv) > 2 else "Hello"
-    print(main(name, greeting))
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Generate a greeting message.")
+    parser.add_argument("--name", required=True, help="The person to greet.")
+    parser.add_argument("--greeting", default="Hello", help="The greeting to use.")
+    args = parser.parse_args()
+    print(main(args.name, args.greeting))

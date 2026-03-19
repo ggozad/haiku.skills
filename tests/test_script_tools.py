@@ -39,11 +39,14 @@ class TestParseScriptMetadata:
         script = tmp_path / "tool.py"
         script.write_text(
             '"""Module doc."""\n'
-            "import sys\n"
+            "import argparse\n"
             "def main(x: int) -> str:\n"
             "    return str(x)\n"
             'if __name__ == "__main__":\n'
-            "    print(main(int(sys.argv[1])))\n"
+            "    parser = argparse.ArgumentParser()\n"
+            "    parser.add_argument('--x', type=int, required=True)\n"
+            "    args = parser.parse_args()\n"
+            "    print(main(args.x))\n"
         )
         meta = parse_script_metadata(script)
         assert meta.description == "Module doc."
@@ -51,11 +54,14 @@ class TestParseScriptMetadata:
     def test_no_docstring(self, tmp_path: Path):
         script = tmp_path / "tool.py"
         script.write_text(
-            "import sys\n"
+            "import argparse\n"
             "def main(x: int) -> str:\n"
             "    return str(x)\n"
             'if __name__ == "__main__":\n'
-            "    print(main(int(sys.argv[1])))\n"
+            "    parser = argparse.ArgumentParser()\n"
+            "    parser.add_argument('--x', type=int, required=True)\n"
+            "    args = parser.parse_args()\n"
+            "    print(main(args.x))\n"
         )
         meta = parse_script_metadata(script)
         assert meta.description == ""
@@ -63,7 +69,7 @@ class TestParseScriptMetadata:
     def test_multiline_param_description(self, tmp_path: Path):
         script = tmp_path / "tool.py"
         script.write_text(
-            "import sys\n"
+            "import argparse\n"
             "def main(data: str) -> str:\n"
             '    """Process data.\n'
             "\n"
@@ -76,7 +82,10 @@ class TestParseScriptMetadata:
             '    """\n'
             "    return data\n"
             'if __name__ == "__main__":\n'
-            "    print(main(sys.argv[1]))\n"
+            "    parser = argparse.ArgumentParser()\n"
+            "    parser.add_argument('--data', required=True)\n"
+            "    args = parser.parse_args()\n"
+            "    print(main(args.data))\n"
         )
         meta = parse_script_metadata(script)
         assert meta.parameters["data"].description == (
@@ -86,12 +95,15 @@ class TestParseScriptMetadata:
     def test_non_literal_default_skipped(self, tmp_path: Path):
         script = tmp_path / "tool.py"
         script.write_text(
-            "import sys, os\n"
+            "import argparse, os\n"
             "def main(x: str, y: str = os.getcwd()) -> str:\n"
             '    """Do stuff."""\n'
             "    return x\n"
             'if __name__ == "__main__":\n'
-            "    print(main(sys.argv[1]))\n"
+            "    parser = argparse.ArgumentParser()\n"
+            "    parser.add_argument('--x', required=True)\n"
+            "    args = parser.parse_args()\n"
+            "    print(main(args.x))\n"
         )
         meta = parse_script_metadata(script)
         assert meta.parameters["y"].default is None
@@ -107,13 +119,16 @@ class TestParseScriptMetadata:
     ):
         script = tmp_path / "tool.py"
         script.write_text(
-            "import sys\n"
+            "import argparse\n"
             "from pathlib import Path\n"
             "def main(x: Path) -> str:\n"
             '    """Do stuff."""\n'
             "    return str(x)\n"
             'if __name__ == "__main__":\n'
-            "    print(main(sys.argv[1]))\n"
+            "    parser = argparse.ArgumentParser()\n"
+            "    parser.add_argument('--x', required=True)\n"
+            "    args = parser.parse_args()\n"
+            "    print(main(args.x))\n"
         )
         with caplog.at_level(logging.WARNING, logger="haiku.skills.script_tools"):
             tool = create_script_tool(script)
@@ -144,12 +159,15 @@ class TestCreateScriptTool:
     async def test_script_failure_raises(self, tmp_path: Path):
         script = tmp_path / "bad.py"
         script.write_text(
-            "import sys\n"
+            "import argparse\n"
             "def main(x: int) -> str:\n"
             '    """Fail."""\n'
             "    raise ValueError('boom')\n"
             'if __name__ == "__main__":\n'
-            "    main(int(sys.argv[1]))\n"
+            "    parser = argparse.ArgumentParser()\n"
+            "    parser.add_argument('--x', type=int, required=True)\n"
+            "    args = parser.parse_args()\n"
+            "    main(args.x)\n"
         )
         tool = create_script_tool(script)
         with pytest.raises(RuntimeError, match="bad.py failed"):
@@ -166,6 +184,7 @@ class TestCreateScriptTool:
             "    print('Usage: usage.py <arg>')\n"
             "    sys.exit(1)\n"
         )
+        # This script intentionally ignores args and exits with error
         tool = create_script_tool(script)
         with pytest.raises(RuntimeError, match="Usage: usage.py <arg>"):
             await tool.function(x="test")
@@ -178,13 +197,16 @@ class TestCreateScriptTool:
             "def greet(name: str) -> str:\n    return f'Hello, {name}!'\n"
         )
         (scripts_dir / "caller.py").write_text(
-            "import sys\n"
+            "import argparse\n"
             "from scripts.utils import greet\n"
             "def main(name: str) -> str:\n"
             '    """Call sibling."""\n'
             "    return greet(name)\n"
             'if __name__ == "__main__":\n'
-            "    print(main(sys.argv[1]))\n"
+            "    parser = argparse.ArgumentParser()\n"
+            "    parser.add_argument('--name', required=True)\n"
+            "    args = parser.parse_args()\n"
+            "    print(main(args.name))\n"
         )
         tool = create_script_tool(scripts_dir / "caller.py")
         result = await tool.function(name="World")
@@ -208,12 +230,15 @@ class TestDiscoverScriptTools:
         scripts_dir.mkdir()
         (scripts_dir / "__init__.py").write_text("")
         (scripts_dir / "tool.py").write_text(
-            "import sys\n"
+            "import argparse\n"
             "def main(x: str) -> str:\n"
             '    """Do stuff."""\n'
             "    return x\n"
             'if __name__ == "__main__":\n'
-            "    print(main(sys.argv[1]))\n"
+            "    parser = argparse.ArgumentParser()\n"
+            "    parser.add_argument('--x', required=True)\n"
+            "    args = parser.parse_args()\n"
+            "    print(main(args.x))\n"
         )
         tools = discover_script_tools(tmp_path)
         assert len(tools) == 1
@@ -236,12 +261,15 @@ class TestDiscoverScriptTools:
         scripts_dir = tmp_path / "scripts"
         scripts_dir.mkdir()
         (scripts_dir / "good.py").write_text(
-            "import sys\n"
+            "import argparse\n"
             "def main(x: str) -> str:\n"
             '    """Do stuff."""\n'
             "    return x\n"
             'if __name__ == "__main__":\n'
-            "    print(main(sys.argv[1]))\n"
+            "    parser = argparse.ArgumentParser()\n"
+            "    parser.add_argument('--x', required=True)\n"
+            "    args = parser.parse_args()\n"
+            "    print(main(args.x))\n"
         )
         (scripts_dir / "no_main.py").write_text("x = 1\n")
         with caplog.at_level(logging.WARNING, logger="haiku.skills.script_tools"):
