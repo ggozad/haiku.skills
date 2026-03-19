@@ -114,14 +114,16 @@ class TestExecuteCode:
         assert success is False
 
     @pytest.mark.anyio
-    async def test_with_model(self):
+    async def test_with_external_functions(self):
         from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+            _build_external_functions,
             _execute_code,
         )
 
         model = TestModel(custom_output_text="Paris")
+        external_fns = _build_external_functions(model)
         stdout, result, success = await _execute_code(
-            "x = await llm('capital of France')\nprint(x)", model
+            "x = await llm('capital of France')\nprint(x)", external_fns
         )
         assert "Paris" in stdout
         assert success is True

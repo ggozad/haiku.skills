@@ -26,11 +26,13 @@ async def run_code(ctx: RunContext[SkillRunDeps], code: str) -> str:
         code: The Python code to execute.
     """
     from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+        _build_external_functions,
         _execute_code,
         _format_output,
     )
 
-    stdout, result, success = await _execute_code(code, ctx.model)
+    external_fns = _build_external_functions(ctx.model)
+    stdout, result, success = await _execute_code(code, external_fns)
     output = _format_output(code, stdout, result)
 
     if ctx.deps and ctx.deps.state and isinstance(ctx.deps.state, CodeState):

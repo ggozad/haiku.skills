@@ -156,6 +156,42 @@ class TestCreateScriptTool:
         result = await tool.function(name="World", greeting="Hi")
         assert result == "Hi, World!"
 
+    async def test_boolean_flag_true(self, tmp_path: Path):
+        script = tmp_path / "flaggy.py"
+        script.write_text(
+            "import argparse\n"
+            "def main(name: str, verbose: bool = False) -> str:\n"
+            '    """Bool flag test."""\n'
+            "    return f'{name}:{verbose}'\n"
+            'if __name__ == "__main__":\n'
+            "    parser = argparse.ArgumentParser()\n"
+            "    parser.add_argument('--name', required=True)\n"
+            "    parser.add_argument('--verbose', action='store_true')\n"
+            "    args = parser.parse_args()\n"
+            "    print(main(args.name, args.verbose))\n"
+        )
+        tool = create_script_tool(script)
+        result = await tool.function(name="World", verbose=True)
+        assert result == "World:True"
+
+    async def test_boolean_flag_false(self, tmp_path: Path):
+        script = tmp_path / "flaggy.py"
+        script.write_text(
+            "import argparse\n"
+            "def main(name: str, verbose: bool = False) -> str:\n"
+            '    """Bool flag test."""\n'
+            "    return f'{name}:{verbose}'\n"
+            'if __name__ == "__main__":\n'
+            "    parser = argparse.ArgumentParser()\n"
+            "    parser.add_argument('--name', required=True)\n"
+            "    parser.add_argument('--verbose', action='store_true')\n"
+            "    args = parser.parse_args()\n"
+            "    print(main(args.name, args.verbose))\n"
+        )
+        tool = create_script_tool(script)
+        result = await tool.function(name="World", verbose=False)
+        assert result == "World:False"
+
     async def test_script_failure_raises(self, tmp_path: Path):
         script = tmp_path / "bad.py"
         script.write_text(

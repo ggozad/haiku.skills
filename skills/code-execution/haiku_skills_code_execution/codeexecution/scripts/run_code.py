@@ -27,12 +27,14 @@ def _build_external_functions(model: Any) -> dict[str, Callable[..., Any]]:
     return {"llm": llm}
 
 
-async def _execute_code(code: str, model: Any = None) -> tuple[str, str | None, bool]:
+async def _execute_code(
+    code: str, external_functions: dict[str, Callable[..., Any]] | None = None
+) -> tuple[str, str | None, bool]:
     """Execute code in the Monty sandbox.
 
     Args:
         code: The Python code to execute.
-        model: Model identifier (str or Model object). Enables await llm() in sandbox.
+        external_functions: Functions available inside the sandbox.
 
     Returns:
         Tuple of (stdout, result_repr, success).
@@ -42,12 +44,10 @@ async def _execute_code(code: str, model: Any = None) -> tuple[str, str | None, 
     def print_callback(_stream: str, text: str) -> None:
         output_lines.append(text)
 
-    external_functions = _build_external_functions(model) if model else {}
-
     try:
         result = await run_monty_async(
             Monty(code),
-            external_functions=external_functions,
+            external_functions=external_functions or {},
             print_callback=print_callback,
         )
     except MontyError as e:
@@ -78,7 +78,8 @@ def main(code: str, model: str = "") -> str:
         code: The Python code to execute.
         model: Model identifier (e.g. "openai:gpt-4o"). Enables await llm() in sandbox.
     """
-    stdout, result, success = asyncio.run(_execute_code(code, model if model else None))
+    external_fns = _build_external_functions(model) if model else None
+    stdout, result, success = asyncio.run(_execute_code(code, external_fns))
     return _format_output(code, stdout, result)
 
 
