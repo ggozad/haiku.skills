@@ -235,23 +235,9 @@ def list_drafts(
     Args:
         max_results: Maximum number of drafts to return.
     """
-    from haiku_skills_gmail.gmail.scripts.list_drafts import _list_drafts
+    from haiku_skills_gmail.gmail.scripts.list_drafts import main
 
-    try:
-        drafts = _list_drafts(max_results)
-    except Exception as e:
-        return f"Error: {e}"
-
-    if not drafts:
-        return "No drafts found."
-
-    summaries = []
-    for d in drafts:
-        summaries.append(
-            f"Draft ID: {d['draft_id']}\nTo: {d['to']}\nSubject: {d['subject']}"
-        )
-
-    return "\n\n---\n\n".join(summaries)
+    return main(max_results)
 
 
 def modify_labels(
@@ -279,18 +265,9 @@ def list_labels(
     ctx: RunContext[SkillRunDeps],
 ) -> str:
     """List all available Gmail labels."""
-    from haiku_skills_gmail.gmail.scripts.list_labels import _list_labels
+    from haiku_skills_gmail.gmail.scripts.list_labels import main
 
-    try:
-        labels = _list_labels()
-    except Exception as e:
-        return f"Error: {e}"
-
-    lines = []
-    for label in labels:
-        lines.append(f"- {label['name']} ({label['type']})")
-
-    return "\n".join(lines)
+    return main()
 
 
 def create_skill() -> Skill:
