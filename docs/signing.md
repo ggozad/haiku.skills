@@ -1,22 +1,6 @@
 # Signing and verification
 
-haiku.skills supports identity-based signing via [sigstore](https://www.sigstore.dev/), the Linux Foundation's open-source signing framework. Signing lets consumers verify that a skill was published by a trusted identity.
-
-## How it works
-
-**Signing** (author-side):
-
-1. Compute a deterministic SHA-256 hash of the skill directory contents
-2. Sign the hash via sigstore using OIDC identity (browser login or CI ambient credentials)
-3. Store the sigstore bundle as `SKILL.sigstore` alongside `SKILL.md`
-
-**Verification** (consumer-side):
-
-1. Recompute the directory hash
-2. Verify the `SKILL.sigstore` bundle against a list of trusted identities
-3. If valid, the skill loads with `verified=True`
-
-The trust model is identity-based: you decide which OIDC identities (email addresses, GitHub Actions workflows) you trust, and sigstore's transparency log proves the signature is authentic.
+haiku.skills supports identity-based signing via [sigstore](https://www.sigstore.dev/). You decide which OIDC identities (email addresses, GitHub Actions workflows) you trust, and sigstore's transparency log proves the signature is authentic. No key management required.
 
 ## Installation
 
@@ -32,7 +16,7 @@ Or with pip:
 pip install "haiku.skills[signing]"
 ```
 
-Without this extra, skills load normally — signing and verification are entirely optional.
+Without this extra, skills load normally. Signing is entirely optional.
 
 ## Signing a skill
 
@@ -74,7 +58,7 @@ haiku-skills verify ./skills/my-skill \
     -i author@example.com --issuer https://accounts.google.com
 ```
 
-Or configure trusted identities when creating a registry:
+Programmatically, pass trusted identities to `SkillRegistry` or `discover()`:
 
 ```python
 from pathlib import Path
@@ -94,32 +78,16 @@ for skill in registry.list():
     print(f"{skill.metadata.name}: verified={skill.verified}")
 ```
 
-You can also pass `trusted_identities` directly to `discover()`:
+The lower-level `verify_skill` function can also be used directly:
 
 ```python
-registry = SkillRegistry()
-errors = registry.discover(
-    paths=[Path("./skills")],
-    trusted_identities=identities,
-)
-```
-
-Or use the lower-level `verify_skill` function:
-
-```python
-from pathlib import Path
 from haiku.skills import TrustedIdentity, verify_skill
 
-result = verify_skill(
-    Path("./skills/my-skill"),
-    [TrustedIdentity(identity="author@example.com", issuer="https://accounts.google.com")],
-)
-```
+# Full verification (identity + integrity)
+verify_skill(path, [TrustedIdentity(identity="...", issuer="...")])
 
-To verify cryptographic integrity only (signature, certificate chain, transparency log) without constraining the signer identity, pass `unsafe=True`:
-
-```python
-result = verify_skill(Path("./skills/my-skill"), unsafe=True)
+# Integrity only
+verify_skill(path, unsafe=True)
 ```
 
 ### Verification policy
@@ -129,11 +97,11 @@ result = verify_skill(Path("./skills/my-skill"), unsafe=True)
 | No trusted identities provided | Skill loads, `verified=False` |
 | Identities provided, no `SKILL.sigstore` | Skill loads, `verified=False` |
 | Identities provided, valid bundle | Skill loads, `verified=True` |
-| Identities provided, invalid bundle | `SkillValidationError` — skill rejected |
+| Identities provided, invalid bundle | `SkillValidationError` (skill rejected) |
 
 ## GitHub Actions integration
 
-Sigstore supports ambient OIDC credentials in GitHub Actions — no secrets needed. This workflow signs skills automatically on push:
+Sigstore supports ambient OIDC credentials in GitHub Actions, no secrets needed. This workflow signs skills on push to main:
 
 ```yaml
 name: Sign Skills
@@ -196,7 +164,7 @@ TrustedIdentity(
 ## FAQ
 
 **What if I don't use signing?**
-Everything works exactly as before. Signing is opt-in — unsigned skills load normally with `verified=False`.
+Unsigned skills load normally with `verified=False`.
 
 **What about entrypoint and MCP skills?**
 Signing currently applies to filesystem-discovered skills only. Entrypoint skills are verified by your package manager. MCP skills connect to running servers where signing doesn't apply.

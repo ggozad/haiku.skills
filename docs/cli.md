@@ -20,7 +20,7 @@ Sign a skill directory with [sigstore](https://www.sigstore.dev/):
 haiku-skills sign ./skills/my-skill
 ```
 
-Writes a `SKILL.sigstore` bundle alongside the skill's `SKILL.md`. Each bundle carries exactly one signer — signing again overwrites the previous bundle. See [Signing and verification](signing.md) for details.
+Writes a `SKILL.sigstore` bundle alongside the skill's `SKILL.md`. Each bundle carries exactly one signer; signing again overwrites the previous bundle. See [Signing and verification](signing.md) for details.
 
 ## `verify`
 
