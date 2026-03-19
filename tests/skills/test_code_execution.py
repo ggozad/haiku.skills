@@ -27,7 +27,9 @@ class TestCreateSkill:
 
 class TestBuildExternalFunctions:
     def test_returns_dict_with_llm_key(self):
-        from haiku_skills_code_execution import _build_external_functions
+        from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+            _build_external_functions,
+        )
 
         model = TestModel(custom_output_text="hello")
         fns = _build_external_functions(model)
@@ -36,7 +38,9 @@ class TestBuildExternalFunctions:
 
     @pytest.mark.anyio
     async def test_llm_calls_agent_and_returns_output(self):
-        from haiku_skills_code_execution import _build_external_functions
+        from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+            _build_external_functions,
+        )
 
         model = TestModel(custom_output_text="Paris")
         fns = _build_external_functions(model)
@@ -45,11 +49,12 @@ class TestBuildExternalFunctions:
 
     @pytest.mark.anyio
     async def test_llm_returns_error_string_on_failure(self, monkeypatch):
-        from haiku_skills_code_execution import _build_external_functions
+        from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+            _build_external_functions,
+        )
 
         model = TestModel(custom_output_text="unused")
 
-        # Make Agent.run raise an exception
         async def broken_run(*args, **kwargs):
             raise RuntimeError("model unavailable")
 
@@ -66,44 +71,67 @@ class TestBuildExternalFunctions:
 class TestExecuteCode:
     @pytest.mark.anyio
     async def test_basic_expression(self):
-        from haiku_skills_code_execution import _execute_code
+        from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+            _execute_code,
+        )
 
-        stdout, result, success = await _execute_code("1 + 1", {})
+        stdout, result, success = await _execute_code("1 + 1")
         assert stdout == ""
         assert result == "2"
         assert success is True
 
     @pytest.mark.anyio
     async def test_print_output(self):
-        from haiku_skills_code_execution import _execute_code
+        from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+            _execute_code,
+        )
 
-        stdout, result, success = await _execute_code("print('hello')", {})
+        stdout, result, success = await _execute_code("print('hello')")
         assert "hello" in stdout
         assert result is None
         assert success is True
 
     @pytest.mark.anyio
     async def test_no_output(self):
-        from haiku_skills_code_execution import _execute_code
+        from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+            _execute_code,
+        )
 
-        stdout, result, success = await _execute_code("x = 1", {})
+        stdout, result, success = await _execute_code("x = 1")
         assert stdout == ""
         assert result is None
         assert success is True
 
     @pytest.mark.anyio
     async def test_monty_error(self):
-        from haiku_skills_code_execution import _execute_code
+        from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+            _execute_code,
+        )
 
-        stdout, result, success = await _execute_code("1 / 0", {})
+        stdout, result, success = await _execute_code("1 / 0")
         assert "Error" in (stdout or "")
         assert result is None
         assert success is False
 
+    @pytest.mark.anyio
+    async def test_with_model(self):
+        from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+            _execute_code,
+        )
+
+        model = TestModel(custom_output_text="Paris")
+        stdout, result, success = await _execute_code(
+            "x = await llm('capital of France')\nprint(x)", model
+        )
+        assert "Paris" in stdout
+        assert success is True
+
 
 class TestFormatOutput:
     def test_stdout_and_result(self):
-        from haiku_skills_code_execution import _format_output
+        from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+            _format_output,
+        )
 
         output = _format_output("x = 1\nprint(x)\nx", "1\n", "1")
         assert "```python" in output
@@ -112,7 +140,9 @@ class TestFormatOutput:
         assert "result: 1" in output
 
     def test_result_only(self):
-        from haiku_skills_code_execution import _format_output
+        from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+            _format_output,
+        )
 
         output = _format_output("1 + 1", "", "2")
         assert "```python" in output
@@ -120,13 +150,17 @@ class TestFormatOutput:
         assert "stdout:" not in output
 
     def test_no_output(self):
-        from haiku_skills_code_execution import _format_output
+        from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+            _format_output,
+        )
 
         output = _format_output("x = 1", "", None)
         assert "no output" in output.lower()
 
     def test_stdout_only(self):
-        from haiku_skills_code_execution import _format_output
+        from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+            _format_output,
+        )
 
         output = _format_output("print('hi')", "hi\n", None)
         assert "stdout:" in output
@@ -228,7 +262,7 @@ class TestRunCodeAsync:
 
 
 class TestScriptRunCode:
-    """Tests for the standalone scripts/run_code.py (unchanged)."""
+    """Tests for the standalone scripts/run_code.py."""
 
     def test_run_code_with_output(self):
         from haiku_skills_code_execution.codeexecution.scripts.run_code import main
