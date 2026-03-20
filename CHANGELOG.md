@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-03-20
+
 ## [0.9.0] - 2026-03-20
 
 ### Changed
@@ -236,7 +238,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.9.0...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.9.1...HEAD
+[0.9.1]: https://github.com/ggozad/haiku.skills/compare/0.9.0...0.9.1
 [0.9.0]: https://github.com/ggozad/haiku.skills/compare/0.8.1...0.9.0
 [0.8.1]: https://github.com/ggozad/haiku.skills/compare/0.8.0...0.8.1
 [0.8.0]: https://github.com/ggozad/haiku.skills/compare/0.7.5...0.8.0
