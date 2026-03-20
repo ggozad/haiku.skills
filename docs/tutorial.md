@@ -25,12 +25,24 @@ what you would do and provide a summary.
 
 The frontmatter fields follow the [Agent Skills specification](https://agentskills.io/specification). The markdown body becomes the sub-agent's system prompt when the skill is executed.
 
-Now wire it up with `SkillToolset`:
+Now load it with `SkillToolset` to verify discovery works — no API key needed:
 
 ```python
 from pathlib import Path
+from haiku.skills import SkillToolset
+
+toolset = SkillToolset(skill_paths=[Path("./my-skill")])
+print(toolset.skill_catalog)
+# {'my-skill': 'Helps with data analysis tasks.'}
+```
+
+`SkillToolset` discovers skills from the given paths and exposes a single `execute_skill` tool. `build_system_prompt` generates a system prompt listing the available skills. When the agent decides to use a skill, a focused sub-agent handles the request with that skill's instructions and tools.
+
+Wire it into a pydantic-ai `Agent` to run it:
+
+```python
 from pydantic_ai import Agent
-from haiku.skills import SkillToolset, build_system_prompt
+from haiku.skills import build_system_prompt
 
 toolset = SkillToolset(
     skill_paths=[Path("./my-skill")],
@@ -45,8 +57,6 @@ agent = Agent(
 result = await agent.run("Analyze this dataset.")
 print(result.output)
 ```
-
-`SkillToolset` discovers skills from the given paths and exposes a single `execute_skill` tool. `build_system_prompt` generates a system prompt listing the available skills. When the agent decides to use a skill, a focused sub-agent handles the request with that skill's instructions and tools.
 
 `skill_paths` accepts both **parent directories** (all immediate subdirectories containing `SKILL.md` are discovered) and **skill directories** (directories that directly contain `SKILL.md`). The directory name must match the skill name in the frontmatter.
 
@@ -65,50 +75,39 @@ print(result.output)
 
 ## Adding script tools
 
-Filesystem skills automatically pick up **script tools** from a `scripts/` subdirectory and **resources** listed in the `resources` frontmatter field — no extra configuration needed.
-
-Add a Python script with a `main()` function:
+Filesystem skills automatically pick up **script tools** from a `scripts/` subdirectory. Add a Python script with a `main()` function:
 
 ```
 my-skill/
 ├── SKILL.md
 └── scripts/
-    └── analyze.py
+    └── calculate.py
 ```
 
-**`scripts/analyze.py`:**
+**`scripts/calculate.py`:**
 
 ```python
-# /// script
-# dependencies = ["pandas"]
-# ///
-"""Analyze data."""
+"""Perform basic arithmetic."""
 
-import pandas as pd
-
-def main(data: str, operation: str = "describe") -> str:
-    """Analyze the given data.
+def main(expression: str) -> str:
+    """Evaluate a math expression.
 
     Args:
-        data: Input data to analyze.
-        operation: Analysis operation to perform.
+        expression: A math expression like '2 + 3 * 4'.
     """
-    df = pd.read_csv(pd.io.common.StringIO(data))
-    if operation == "describe":
-        return df.describe().to_string()
-    return f"Analyzed {len(df)} rows"
+    result = eval(expression)  # noqa: S307
+    return str(result)
 
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Analyze data.")
-    parser.add_argument("--data", required=True, help="Input data to analyze.")
-    parser.add_argument("--operation", default="describe", help="Analysis operation.")
+    parser = argparse.ArgumentParser(description="Evaluate math.")
+    parser.add_argument("--expression", required=True, help="Math expression.")
     args = parser.parse_args()
-    print(main(args.data, args.operation))
+    print(main(args.expression))
 ```
 
-Script tools are automatically discovered when the skill loads — no configuration needed. Python scripts with a `main()` function get AST-parsed into typed pydantic-ai `Tool` objects. The `# /// script` block declares [PEP 723](https://peps.python.org/pep-0723/) inline dependencies, installed automatically via `uv run`.
+Python scripts with a `main()` function get AST-parsed into typed pydantic-ai `Tool` objects automatically — no configuration needed. The `__main__` block with argparse lets the script also run standalone (`python calculate.py --expression '1+1'`).
 
 Update the `SKILL.md` instructions to reference the new tool:
 
@@ -120,14 +119,52 @@ description: Helps with data analysis tasks.
 
 # My Skill
 
-You help users analyze data. Use the `analyze` script tool to process input.
+You help users analyze data. Use the `calculate` script tool for arithmetic.
 ```
+
+!!! tip "Script dependencies"
+    Scripts that need external packages can declare [PEP 723](https://peps.python.org/pep-0723/) inline dependencies, installed automatically via `uv run`:
+
+    ```python
+    # /// script
+    # dependencies = ["pandas"]
+    # ///
+    ```
 
 See [Skills — Script tools](skills.md#script-tools) for the full resolution table, `run_script`, and `PYTHONPATH` details.
 
+## Adding resources
+
+Skills can expose files for the sub-agent to read on demand. Add a reference file and declare it in the frontmatter:
+
+```
+my-skill/
+├── SKILL.md
+├── scripts/
+│   └── calculate.py
+└── data/
+    └── formulas.txt
+```
+
+```markdown
+---
+name: my-skill
+description: Helps with data analysis tasks.
+resources:
+  - data/formulas.txt
+---
+
+# My Skill
+
+You help users analyze data. Use the `calculate` script tool for arithmetic.
+Read `data/formulas.txt` with the `read_resource` tool when you need reference formulas.
+```
+
+The sub-agent receives a `read_resource` tool that can read any file listed in `resources`. Only declared paths are accessible — other paths are rejected. See [Skills — Resources](skills.md#resources) for details.
+
 ## Turning it into an entrypoint skill
 
-Filesystem skills are great for quick iteration, but they require the consumer to know the path on disk. Entrypoint skills solve this — they're installed as Python packages and discovered automatically. This gives you:
+Filesystem skills are great for quick iteration, but they're limited to script tools (run as subprocesses) and have no access to per-skill state or AG-UI events. Entrypoint skills unlock the full feature set:
 
 - **In-process tools with state** — tool functions run in the same process and receive `RunContext[SkillRunDeps]`, so they can read and write per-skill state. Script tools run as subprocesses and have no access to state.
 - **Zero-config discovery** — `SkillToolset(use_entrypoints=True)` finds every installed skill package. No paths to manage.
@@ -249,7 +286,7 @@ meta = skill.state_metadata()
 # StateMetadata(namespace="calculator", type=<class 'CalculatorState'>, schema={...})
 ```
 
-When `execute_skill` runs a skill whose tools modify state, the toolset computes a JSON Patch delta and returns it as a `StateDeltaEvent` — compatible with the [AG-UI protocol](ag-ui.md). See [AG-UI protocol](ag-ui.md) for streaming details and state round-tripping.
+When `execute_skill` runs a skill whose tools modify state, the toolset computes a JSON Patch delta and returns it as a `StateDeltaEvent` — compatible with the [AG-UI protocol](ag-ui.md). If you're building a web frontend, see [AG-UI protocol](ag-ui.md) for how to stream state deltas to clients, round-trip state across requests, and emit custom events from skill tools.
 
 ## MCP skills
 

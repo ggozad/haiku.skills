@@ -39,7 +39,7 @@ Web search via [Brave Search API](https://brave.com/search/api/) and page conten
 uv add haiku-skills-web
 ```
 
-Requires `BRAVE_API_KEY` environment variable for search functionality.
+Tools: `search`, `fetch_page`. Requires `BRAVE_API_KEY` environment variable for search functionality.
 
 ## image-generation
 
@@ -49,6 +49,8 @@ Image generation via [Ollama](https://ollama.com/).
 uv add haiku-skills-image-generation
 ```
 
+Tools: `generate_image`. Returns the file path of the generated image.
+
 ## code-execution
 
 Sandboxed Python execution via [pydantic-monty](https://github.com/pydantic/pydantic-monty) with a built-in `await llm(prompt)` function for LLM reasoning (classify, summarize, extract).
@@ -56,6 +58,8 @@ Sandboxed Python execution via [pydantic-monty](https://github.com/pydantic/pyda
 ```bash
 uv add haiku-skills-code-execution
 ```
+
+Tools: `run_code`.
 
 ## gmail
 
