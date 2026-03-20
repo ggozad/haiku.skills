@@ -6,7 +6,6 @@
 
 import base64
 import os
-import sys
 import tempfile
 from pathlib import Path
 
@@ -54,7 +53,19 @@ def main(
 
 
 if __name__ == "__main__":
-    prompt = sys.argv[1]
-    width = int(sys.argv[2]) if len(sys.argv) > 2 else 1024
-    height = int(sys.argv[3]) if len(sys.argv) > 3 else 1024
-    print(main(prompt, width, height))
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Generate images from text prompts using Ollama."
+    )
+    parser.add_argument(
+        "--prompt", required=True, help="The text description of the image to generate."
+    )
+    parser.add_argument(
+        "--width", type=int, default=1024, help="Image width in pixels."
+    )
+    parser.add_argument(
+        "--height", type=int, default=1024, help="Image height in pixels."
+    )
+    args = parser.parse_args()
+    print(main(args.prompt, args.width, args.height))

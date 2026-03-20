@@ -120,7 +120,15 @@ def create_script_tool(path: Path) -> Tool:
     script_path = str(path.resolve())
 
     async def run_script(**kwargs: object) -> str:
-        args = [str(kwargs[name]) for name in metadata.parameters if name in kwargs]
+        args = []
+        for name, param in metadata.parameters.items():
+            if name in kwargs:
+                flag = f"--{name.replace('_', '-')}"
+                if param.annotation == "bool":
+                    if kwargs[name]:
+                        args.append(flag)
+                else:
+                    args.extend([flag, str(kwargs[name])])
         skill_dir = str(path.resolve().parent.parent)
         existing = os.environ.get("PYTHONPATH", "")
         pythonpath = f"{skill_dir}{os.pathsep}{existing}" if existing else skill_dir

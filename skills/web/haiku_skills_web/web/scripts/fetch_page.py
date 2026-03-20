@@ -4,8 +4,6 @@
 # ///
 """Fetch a web page and extract its readable content."""
 
-import sys
-
 from trafilatura import extract
 from trafilatura.downloads import fetch_response
 
@@ -36,4 +34,11 @@ def main(url: str) -> str:
 
 
 if __name__ == "__main__":
-    print(main(sys.argv[1]))
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Fetch a web page and extract its readable content."
+    )
+    parser.add_argument("--url", required=True, help="The URL of the page to fetch.")
+    args = parser.parse_args()
+    print(main(args.url))

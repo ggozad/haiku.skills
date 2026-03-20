@@ -5,7 +5,6 @@
 """Search the web using Brave Search API."""
 
 import os
-import sys
 
 import httpx
 
@@ -71,6 +70,12 @@ def main(query: str, count: int = 5) -> str:
 
 
 if __name__ == "__main__":
-    query = sys.argv[1]
-    count = int(sys.argv[2]) if len(sys.argv) > 2 else 5
-    print(main(query, count))
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Search the web using Brave Search.")
+    parser.add_argument("--query", required=True, help="The search query.")
+    parser.add_argument(
+        "--count", type=int, default=5, help="Number of results to return."
+    )
+    args = parser.parse_args()
+    print(main(args.query, args.count))

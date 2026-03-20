@@ -61,7 +61,7 @@ def send_notification(
         priority: Notification priority (1-5 or min/low/default/high/max).
         server: ntfy server URL (defaults to NTFY_SERVER env var or https://ntfy.sh).
     """
-    from haiku_skills_notifications.scripts.send_notification import main
+    from haiku_skills_notifications.notifications.scripts.send_notification import main
 
     result = main(topic, message, title, priority, server)
 
@@ -96,7 +96,7 @@ def read_notifications(
         since: How far back to look (e.g. "10m", "1h", "all").
         server: ntfy server URL (defaults to NTFY_SERVER env var or https://ntfy.sh).
     """
-    from haiku_skills_notifications.scripts.read_notifications import (
+    from haiku_skills_notifications.notifications.scripts.read_notifications import (
         _read,
         format_messages,
     )

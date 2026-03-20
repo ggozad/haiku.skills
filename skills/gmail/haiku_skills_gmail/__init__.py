@@ -1,23 +1,11 @@
-import base64
-import os
-from email.mime.text import MIMEText
 from pathlib import Path
-from typing import Any
 
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
 from pydantic import BaseModel
 from pydantic_ai import RunContext
 
 from haiku.skills.models import Skill, SkillSource
 from haiku.skills.parser import parse_skill_md
 from haiku.skills.state import SkillRunDeps
-
-SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
-
-_service: Any = None
 
 
 class EmailSummary(BaseModel):
@@ -49,121 +37,6 @@ class EmailState(BaseModel):
     drafts: list[DraftSummary] = []
 
 
-def _credentials_path() -> Path:
-    env = os.environ.get("EMAIL_CREDENTIALS_PATH")
-    if env:
-        return Path(env)
-    return Path.home() / ".config" / "haiku-skills-gmail" / "credentials.json"
-
-
-def _token_path() -> Path:
-    env = os.environ.get("EMAIL_TOKEN_PATH")
-    if env:
-        return Path(env)
-    return Path.home() / ".config" / "haiku-skills-gmail" / "token.json"
-
-
-def _get_service() -> Any:
-    global _service
-    if _service is not None:
-        return _service
-
-    creds_path = _credentials_path()
-    token_path = _token_path()
-
-    if not creds_path.exists():
-        raise FileNotFoundError(
-            f"credentials.json not found at {creds_path}. "
-            "Download OAuth2 credentials from Google Cloud Console."
-        )
-
-    creds: Any = None
-    if token_path.exists():
-        creds = Credentials.from_authorized_user_file(str(token_path), SCOPES)
-
-    if creds and creds.valid:
-        pass
-    elif creds and creds.expired and creds.refresh_token:
-        creds.refresh(Request())
-        token_path.parent.mkdir(parents=True, exist_ok=True)
-        token_path.write_text(creds.to_json())
-    else:
-        flow = InstalledAppFlow.from_client_secrets_file(str(creds_path), SCOPES)
-        creds = flow.run_local_server(port=0)
-        token_path.parent.mkdir(parents=True, exist_ok=True)
-        token_path.write_text(creds.to_json())
-
-    _service = build("gmail", "v1", credentials=creds)
-    return _service
-
-
-def _get_header(headers: list[dict[str, str]], name: str) -> str:
-    for header in headers:
-        if header["name"] == name:
-            return header["value"]
-    return ""
-
-
-def _parse_email_body(payload: dict[str, Any]) -> str:
-    mime_type = payload.get("mimeType", "")
-
-    if mime_type == "text/plain":
-        data = payload.get("body", {}).get("data", "")
-        if data:
-            return base64.urlsafe_b64decode(data).decode()
-        return ""
-
-    if mime_type.startswith("multipart/"):
-        for part in payload.get("parts", []):
-            result = _parse_email_body(part)
-            if result:
-                return result
-
-    return ""
-
-
-def _build_message(
-    to: str,
-    subject: str,
-    body: str,
-    cc: str = "",
-    bcc: str = "",
-    in_reply_to: str = "",
-    references: str = "",
-) -> dict[str, str]:
-    message = MIMEText(body)
-    message["To"] = to
-    message["Subject"] = subject
-    if cc:
-        message["Cc"] = cc
-    if bcc:
-        message["Bcc"] = bcc
-    if in_reply_to:
-        message["In-Reply-To"] = in_reply_to
-    if references:
-        message["References"] = references
-
-    raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
-    return {"raw": raw}
-
-
-def _format_email_summary(msg: dict[str, Any]) -> str:
-    headers = msg.get("payload", {}).get("headers", [])
-    subject = _get_header(headers, "Subject")
-    sender = _get_header(headers, "From")
-    date = _get_header(headers, "Date")
-    snippet = msg.get("snippet", "")
-    msg_id = msg.get("id", "")
-
-    return (
-        f"ID: {msg_id}\n"
-        f"From: {sender}\n"
-        f"Subject: {subject}\n"
-        f"Date: {date}\n"
-        f"Snippet: {snippet}"
-    )
-
-
 def search_emails(
     ctx: RunContext[SkillRunDeps],
     query: str,
@@ -175,48 +48,35 @@ def search_emails(
         query: Gmail search query (e.g. "from:alice subject:meeting").
         max_results: Maximum number of results to return.
     """
+    from haiku_skills_gmail.gmail.scripts.helpers import (
+        _format_email_summary,
+        _get_header,
+    )
+    from haiku_skills_gmail.gmail.scripts.search_emails import _search_emails
+
     try:
-        service = _get_service()
-        response = (
-            service.users()
-            .messages()
-            .list(userId="me", q=query, maxResults=max_results)
-            .execute()
-        )
+        results = _search_emails(query, max_results)
     except Exception as e:
         return f"Error: {e}"
 
-    messages = response.get("messages", [])
-    if not messages:
+    if not results:
         return f"No emails found for: {query}"
 
     summaries = []
-    for msg_ref in messages:
-        try:
-            msg = (
-                service.users()
-                .messages()
-                .get(userId="me", id=msg_ref["id"], format="metadata")
-                .execute()
-            )
-            summaries.append(_format_email_summary(msg))
+    for msg in results:
+        summaries.append(_format_email_summary(msg))
 
-            if ctx.deps and ctx.deps.state and isinstance(ctx.deps.state, EmailState):
-                headers = msg.get("payload", {}).get("headers", [])
-                ctx.deps.state.searches.setdefault(query, []).append(
-                    EmailSummary(
-                        message_id=msg["id"],
-                        thread_id=msg["threadId"],
-                        subject=_get_header(headers, "Subject"),
-                        sender=_get_header(headers, "From"),
-                        snippet=msg.get("snippet", ""),
-                    )
+        if ctx.deps and ctx.deps.state and isinstance(ctx.deps.state, EmailState):
+            headers = msg.get("payload", {}).get("headers", [])
+            ctx.deps.state.searches.setdefault(query, []).append(
+                EmailSummary(
+                    message_id=msg["id"],
+                    thread_id=msg["threadId"],
+                    subject=_get_header(headers, "Subject"),
+                    sender=_get_header(headers, "From"),
+                    snippet=msg.get("snippet", ""),
                 )
-        except Exception:
-            continue
-
-    if not summaries:
-        return f"No emails found for: {query}"
+            )
 
     return "\n\n---\n\n".join(summaries)
 
@@ -230,27 +90,22 @@ def read_email(
     Args:
         message_id: The Gmail message ID.
     """
+    from haiku_skills_gmail.gmail.scripts.read_email import _read_email
+
     try:
-        service = _get_service()
-        msg = (
-            service.users()
-            .messages()
-            .get(userId="me", id=message_id, format="full")
-            .execute()
-        )
+        email = _read_email(message_id)
     except Exception as e:
         return f"Error: {e}"
 
-    headers = msg.get("payload", {}).get("headers", [])
-    subject = _get_header(headers, "Subject")
-    sender = _get_header(headers, "From")
-    date = _get_header(headers, "Date")
-    body = _parse_email_body(msg.get("payload", {}))
-
     if ctx.deps and ctx.deps.state and isinstance(ctx.deps.state, EmailState):
-        ctx.deps.state.read_emails[message_id] = subject
+        ctx.deps.state.read_emails[message_id] = email["subject"]
 
-    return f"From: {sender}\nSubject: {subject}\nDate: {date}\n\n{body}"
+    return (
+        f"From: {email['sender']}\n"
+        f"Subject: {email['subject']}\n"
+        f"Date: {email['date']}\n\n"
+        f"{email['body']}"
+    )
 
 
 def send_email(
@@ -270,10 +125,10 @@ def send_email(
         cc: CC recipients (comma-separated).
         bcc: BCC recipients (comma-separated).
     """
+    from haiku_skills_gmail.gmail.scripts.send_email import _send_email
+
     try:
-        service = _get_service()
-        message = _build_message(to=to, subject=subject, body=body, cc=cc, bcc=bcc)
-        result = service.users().messages().send(userId="me", body=message).execute()
+        result = _send_email(to, subject, body, cc, bcc)
     except Exception as e:
         return f"Error: {e}"
 
@@ -306,55 +161,17 @@ def reply_to_email(
         body: Reply body text.
         reply_all: If True, reply to all recipients.
     """
-    try:
-        service = _get_service()
-        original = (
-            service.users()
-            .messages()
-            .get(userId="me", id=message_id, format="metadata")
-            .execute()
-        )
-    except Exception as e:
-        return f"Error: {e}"
-
-    headers = original.get("payload", {}).get("headers", [])
-    orig_subject = _get_header(headers, "Subject")
-    orig_from = _get_header(headers, "From")
-    orig_message_id = _get_header(headers, "Message-ID")
-    thread_id = original.get("threadId", "")
-
-    subject = orig_subject if orig_subject.startswith("Re: ") else f"Re: {orig_subject}"
-
-    to = orig_from
-    cc = ""
-    if reply_all:
-        profile = service.users().getProfile(userId="me").execute()
-        my_email = profile.get("emailAddress", "")
-        orig_to = _get_header(headers, "To")
-        orig_cc = _get_header(headers, "Cc")
-        cc_parts = [
-            p.strip()
-            for p in f"{orig_to}, {orig_cc}".split(",")
-            if p.strip() and my_email not in p
-        ]
-        cc = ", ".join(cc_parts)
-
-    message = _build_message(
-        to=to,
-        subject=subject,
-        body=body,
-        cc=cc,
-        in_reply_to=orig_message_id,
-        references=orig_message_id,
-    )
-    message["threadId"] = thread_id
+    from haiku_skills_gmail.gmail.scripts.reply_to_email import _reply_to_email
 
     try:
-        result = service.users().messages().send(userId="me", body=message).execute()
+        result = _reply_to_email(message_id, body, reply_all)
     except Exception as e:
         return f"Error: {e}"
 
     msg_id = result["id"]
+    thread_id = result["threadId"]
+    to = result["to"]
+    subject = result["subject"]
 
     if ctx.deps and ctx.deps.state and isinstance(ctx.deps.state, EmailState):
         ctx.deps.state.sent_emails.append(
@@ -386,15 +203,10 @@ def create_draft(
         cc: CC recipients (comma-separated).
         bcc: BCC recipients (comma-separated).
     """
+    from haiku_skills_gmail.gmail.scripts.create_draft import _create_draft
+
     try:
-        service = _get_service()
-        message = _build_message(to=to, subject=subject, body=body, cc=cc, bcc=bcc)
-        result = (
-            service.users()
-            .drafts()
-            .create(userId="me", body={"message": message})
-            .execute()
-        )
+        result = _create_draft(to, subject, body, cc, bcc)
     except Exception as e:
         return f"Error: {e}"
 
@@ -423,38 +235,21 @@ def list_drafts(
     Args:
         max_results: Maximum number of drafts to return.
     """
+    from haiku_skills_gmail.gmail.scripts.list_drafts import _list_drafts
+
     try:
-        service = _get_service()
-        response = (
-            service.users().drafts().list(userId="me", maxResults=max_results).execute()
-        )
+        drafts = _list_drafts(max_results)
     except Exception as e:
         return f"Error: {e}"
 
-    drafts = response.get("drafts", [])
     if not drafts:
         return "No drafts found."
 
     summaries = []
-    for draft_ref in drafts:
-        try:
-            draft = (
-                service.users()
-                .drafts()
-                .get(userId="me", id=draft_ref["id"], format="metadata")
-                .execute()
-            )
-            msg = draft.get("message", {})
-            headers = msg.get("payload", {}).get("headers", [])
-            subject = _get_header(headers, "Subject")
-            to = _get_header(headers, "To")
-            summaries.append(f"Draft ID: {draft['id']}\nTo: {to}\nSubject: {subject}")
-        except Exception:
-            continue
-
-    if not summaries:
-        return "No drafts found."
-
+    for d in drafts:
+        summaries.append(
+            f"Draft ID: {d['draft_id']}\nTo: {d['to']}\nSubject: {d['subject']}"
+        )
     return "\n\n---\n\n".join(summaries)
 
 
@@ -471,47 +266,28 @@ def modify_labels(
         add_labels: Comma-separated label IDs to add.
         remove_labels: Comma-separated label IDs to remove.
     """
-    add_list = [label.strip() for label in add_labels.split(",") if label.strip()]
-    remove_list = [label.strip() for label in remove_labels.split(",") if label.strip()]
+    from haiku_skills_gmail.gmail.scripts.modify_labels import _modify_labels
 
     try:
-        service = _get_service()
-        service.users().messages().modify(
-            userId="me",
-            id=message_id,
-            body={
-                "addLabelIds": add_list,
-                "removeLabelIds": remove_list,
-            },
-        ).execute()
+        return _modify_labels(message_id, add_labels, remove_labels)
     except Exception as e:
         return f"Error: {e}"
-
-    parts = []
-    if add_list:
-        parts.append(f"added [{', '.join(add_list)}]")
-    if remove_list:
-        parts.append(f"removed [{', '.join(remove_list)}]")
-
-    return f"Labels updated for message {message_id}: {', '.join(parts)}."
 
 
 def list_labels(
     ctx: RunContext[SkillRunDeps],
 ) -> str:
     """List all available Gmail labels."""
+    from haiku_skills_gmail.gmail.scripts.list_labels import _list_labels
+
     try:
-        service = _get_service()
-        response = service.users().labels().list(userId="me").execute()
+        labels = _list_labels()
     except Exception as e:
         return f"Error: {e}"
 
-    labels = response.get("labels", [])
     lines = []
     for label in labels:
-        name = label.get("name", "")
-        label_type = label.get("type", "")
-        lines.append(f"- {name} ({label_type})")
+        lines.append(f"- {label['name']} ({label['type']})")
 
     return "\n".join(lines)
 

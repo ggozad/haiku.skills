@@ -31,7 +31,7 @@ def search(ctx: RunContext[SkillRunDeps], query: str, count: int = 5) -> str:
         query: The search query.
         count: Number of results to return.
     """
-    from haiku_skills_web.scripts.search import _search
+    from haiku_skills_web.web.scripts.search import _search
 
     try:
         raw = _search(query, count)
@@ -54,7 +54,7 @@ def fetch_page(ctx: RunContext[SkillRunDeps], url: str) -> str:
     Args:
         url: The URL of the page to fetch.
     """
-    from haiku_skills_web.scripts.fetch_page import main
+    from haiku_skills_web.web.scripts.fetch_page import main
 
     content = main(url)
     if (

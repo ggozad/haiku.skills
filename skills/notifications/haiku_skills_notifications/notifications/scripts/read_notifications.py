@@ -5,12 +5,18 @@
 """Read cached messages from an ntfy.sh topic."""
 
 import json
-import sys
 from typing import Any
 
 import httpx
 
-from haiku_skills_notifications.scripts.ntfy import auth_headers, resolve_server
+try:
+    from haiku_skills_notifications.notifications.scripts.ntfy import (
+        auth_headers,
+        resolve_server,
+    )
+# Fallback for standalone execution (sys.path[0] = script dir)
+except ImportError:  # pragma: no cover
+    from ntfy import auth_headers, resolve_server  # type: ignore[no-redef]
 
 
 def _read(topic: str, since: str = "10m", server: str = "") -> list[dict[str, Any]]:
@@ -79,6 +85,19 @@ def main(topic: str, since: str = "10m", server: str = "") -> str:
 
 
 if __name__ == "__main__":
-    topic = sys.argv[1]
-    since = sys.argv[2] if len(sys.argv) > 2 else "10m"
-    print(main(topic, since))
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Read cached messages from an ntfy.sh topic."
+    )
+    parser.add_argument("--topic", required=True, help="The ntfy topic to read from.")
+    parser.add_argument(
+        "--since",
+        default="10m",
+        help='How far back to look (e.g. "10m", "1h", "all").',
+    )
+    parser.add_argument(
+        "--server", default="", help="ntfy server URL (defaults to https://ntfy.sh)."
+    )
+    args = parser.parse_args()
+    print(main(args.topic, args.since, args.server))
