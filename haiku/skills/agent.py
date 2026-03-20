@@ -498,8 +498,6 @@ class SkillToolset(FunctionToolset[Any]):
             if skill is None:
                 return f"Error: Skill '{skill_name}' not found in registry"
 
-            args = arguments
-
             namespace = skill.state_namespace
             state = self._namespaces.get(namespace) if namespace else None
             old_snapshot = (
@@ -524,7 +522,7 @@ class SkillToolset(FunctionToolset[Any]):
 
             try:
                 result = await self._call_skill_tool(
-                    skill, tool_name, args, skill_ctx
+                    skill, tool_name, arguments, skill_ctx
                 )
             except Exception as e:
                 return f"Error: {e}"
@@ -588,12 +586,7 @@ class SkillToolset(FunctionToolset[Any]):
             )
             if tool.tool_def.name == tool_name:
                 func = tool.function
-                sig = inspect.signature(func)
-                params = list(sig.parameters.values())
-                if params and params[0].annotation in (
-                    RunContext,
-                    RunContext[SkillRunDeps],
-                ):
+                if tool.takes_ctx:
                     result = func(ctx, **args)
                 else:
                     result = func(**args)
@@ -604,11 +597,11 @@ class SkillToolset(FunctionToolset[Any]):
         for ts in skill.toolsets:
             ts_tools = await ts.get_tools(ctx)
             if tool_name in ts_tools:
-                return await ts.call_tool(
-                    tool_name, args, ctx, ts_tools[tool_name]
-                )
+                return await ts.call_tool(tool_name, args, ctx, ts_tools[tool_name])
 
-        raise ValueError(f"Tool '{tool_name}' not found in skill '{skill.metadata.name}'")
+        raise ValueError(
+            f"Tool '{tool_name}' not found in skill '{skill.metadata.name}'"
+        )
 
 
 class AguiEventStream:

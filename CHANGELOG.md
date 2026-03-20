@@ -2,25 +2,9 @@
 
 ## [Unreleased]
 
-### Fixed
+### Added
 
-- **Activity snapshot `message_id` now stable**: Result snapshots share the same `message_id` as their corresponding call snapshot, so AG-UI frontends update activities in place instead of showing duplicates. Call snapshots use `replace=False` (create), result snapshots use `replace=True` (update).
-
-### Changed
-
-- **Clean separation of filesystem and entrypoint skills**: Filesystem skills use a generic `run_script` tool for script execution. Entrypoint skills provide typed in-process tools with no filesystem involvement from the framework.
-- **Removed `script_tools.py`**: AST-based script tool discovery removed. Filesystem skills no longer auto-generate typed tools from Python scripts — they use the generic `run_script` tool instead.
-- **Flattened entrypoint skill packages**: All bundled skills (web, gmail, image-generation, code-execution, notifications) simplified to flat Python packages. Nested `scripts/` directories, PEP 723 headers, and argparse `__main__` blocks removed.
-- **Renamed skills**: `codeexecution` → `code-execution`, `imagegeneration` → `image-generation` (no longer constrained by Python module naming).
-- **`Skill.source` defaults to `ENTRYPOINT`**: Factory functions no longer need to set `source=SkillSource.ENTRYPOINT` explicitly.
-- **Entrypoint skills now set `path` and auto-discover resources**: Setting `path` in the factory enables the `read_resource` tool for reference files, templates, and assets — the same resource discovery that filesystem skills have always had.
-- **Documentation rewritten**: Tutorial now progresses from filesystem skills to entrypoint packages. Skills reference updated for the new architecture.
-
-### Removed
-
-- `haiku.skills.script_tools` module (AST-based script parsing and typed tool generation)
-- Standalone CLI entry points (`__main__` blocks) from all bundled skill scripts
-- CI validation and signature verification steps for bundled skills (they are no longer filesystem skills)
+- **Optional sub-agent delegation**: `SkillToolset(delegate=False)` exposes skill tools directly to the main agent via `query_skill`, `execute_skill_tool`, and `read_skill_resource` — bypassing sub-agent LLM loops for lower latency and cost. Default (`delegate=True`) preserves existing behavior.
 
 ## [0.9.1] - 2026-03-20
 

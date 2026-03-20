@@ -11,7 +11,7 @@ from ag_ui.core import (
     EventType,
 )
 from pydantic import BaseModel
-from pydantic_ai import Agent, RunContext
+from pydantic_ai import Agent, RunContext, ToolReturn
 from pydantic_ai.messages import (
     FunctionToolCallEvent,
     FunctionToolResultEvent,
@@ -1694,12 +1694,6 @@ class TestSkillToolsetDelegate:
             resources=["references/REFERENCE.md"],
         )
         toolset = SkillToolset(skills=[skill], delegate=False)
-        agent = Agent(
-            TestModel(call_tools=[]),
-            instructions=build_system_prompt(toolset.skill_catalog),
-            toolsets=[toolset],
-        )
-        # Invoke query_skill directly via the toolset
         ctx = RunContext(
             deps=None, model=TestModel(), usage=RunUsage(), prompt="test", run_step=0
         )
@@ -1722,6 +1716,31 @@ class TestSkillToolsetDelegate:
             "query_skill", {"skill_name": "nonexistent"}, ctx, tools["query_skill"]
         )
         assert "Error" in result
+
+    async def test_query_skill_with_tool_instance(self, allow_model_requests: None):
+        """query_skill handles Tool instances (not just callables)."""
+        from pydantic_ai import Tool as PydanticTool
+
+        def greet(name: str) -> str:
+            """Greet someone by name."""
+            return f"Hello, {name}!"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="greeter", description="Greets."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use greet.",
+            tools=[PydanticTool(greet)],
+        )
+        toolset = SkillToolset(skills=[skill], delegate=False)
+        ctx = RunContext(
+            deps=None, model=TestModel(), usage=RunUsage(), prompt="test", run_step=0
+        )
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "query_skill", {"skill_name": "greeter"}, ctx, tools["query_skill"]
+        )
+        assert "greet" in result
+        assert "name" in result
 
     async def test_query_skill_with_toolset_tools(self, allow_model_requests: None):
         """query_skill includes tools from toolsets (AbstractToolset)."""
@@ -1748,3 +1767,409 @@ class TestSkillToolsetDelegate:
             "query_skill", {"skill_name": "math"}, ctx, tools["query_skill"]
         )
         assert "helper" in result
+
+
+class TestExecuteSkillTool:
+    """Tests for execute_skill_tool in delegate=False mode."""
+
+    def _make_ctx(self, deps: Any = None) -> RunContext[Any]:
+        return RunContext(
+            deps=deps, model=TestModel(), usage=RunUsage(), prompt="test", run_step=0
+        )
+
+    async def test_calls_simple_tool(self, allow_model_requests: None):
+        """execute_skill_tool calls a plain function tool."""
+
+        def greet(name: str) -> str:
+            """Greet someone."""
+            return f"Hello, {name}!"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="greeter", description="Greets."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use greet.",
+            tools=[greet],
+        )
+        toolset = SkillToolset(skills=[skill], delegate=False)
+        ctx = self._make_ctx()
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "execute_skill_tool",
+            {
+                "skill_name": "greeter",
+                "tool_name": "greet",
+                "arguments": {"name": "Alice"},
+            },
+            ctx,
+            tools["execute_skill_tool"],
+        )
+        assert result == "Hello, Alice!"
+
+    async def test_calls_async_tool(self, allow_model_requests: None):
+        """execute_skill_tool handles async tool functions."""
+
+        async def fetch(url: str) -> str:
+            """Fetch a URL."""
+            return f"content from {url}"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="fetcher", description="Fetches."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use fetch.",
+            tools=[fetch],
+        )
+        toolset = SkillToolset(skills=[skill], delegate=False)
+        ctx = self._make_ctx()
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "execute_skill_tool",
+            {
+                "skill_name": "fetcher",
+                "tool_name": "fetch",
+                "arguments": {"url": "http://example.com"},
+            },
+            ctx,
+            tools["execute_skill_tool"],
+        )
+        assert result == "content from http://example.com"
+
+    async def test_calls_tool_with_run_context(self, allow_model_requests: None):
+        """execute_skill_tool passes SkillRunDeps via RunContext to tools that need it."""
+
+        def stateful(ctx: RunContext[SkillRunDeps]) -> str:
+            """Access deps."""
+            assert ctx.deps is not None
+            assert isinstance(ctx.deps.state, CounterState)
+            return f"count={ctx.deps.state.count}"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="counter", description="Counts."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use stateful.",
+            tools=[stateful],
+            state_type=CounterState,
+            state_namespace="ns.counter",
+        )
+        toolset = SkillToolset(skills=[skill], delegate=False)
+        toolset.restore_state_snapshot({"ns.counter": {"count": 42}})
+        ctx = self._make_ctx()
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "execute_skill_tool",
+            {"skill_name": "counter", "tool_name": "stateful", "arguments": {}},
+            ctx,
+            tools["execute_skill_tool"],
+        )
+        assert result == "count=42"
+
+    async def test_state_delta_emitted(self, allow_model_requests: None):
+        """execute_skill_tool emits StateDeltaEvent when state changes."""
+        from ag_ui.core import StateDeltaEvent
+
+        def increment(ctx: RunContext[SkillRunDeps]) -> str:
+            """Increment counter."""
+            assert isinstance(ctx.deps.state, CounterState)
+            ctx.deps.state.count += 1
+            return "done"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="counter", description="Counts."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use increment.",
+            tools=[increment],
+            state_type=CounterState,
+            state_namespace="ns.counter",
+        )
+        toolset = SkillToolset(skills=[skill], delegate=False)
+        ctx = self._make_ctx()
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "execute_skill_tool",
+            {"skill_name": "counter", "tool_name": "increment", "arguments": {}},
+            ctx,
+            tools["execute_skill_tool"],
+        )
+        assert isinstance(result, ToolReturn)
+        assert any(isinstance(ev, StateDeltaEvent) for ev in result.metadata)
+        ns = toolset.get_namespace("ns.counter")
+        assert isinstance(ns, CounterState)
+        assert ns.count == 1
+
+    async def test_emitted_custom_events_in_metadata(self, allow_model_requests: None):
+        """Custom events emitted by tools appear in ToolReturn metadata."""
+
+        def emit_tool(ctx: RunContext[SkillRunDeps]) -> str:
+            """Emit a custom event."""
+            ctx.deps.emit(CustomEvent(name="progress", value={"step": 1}))
+            return "done"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="emitter", description="Emits."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use emit_tool.",
+            tools=[emit_tool],
+        )
+        toolset = SkillToolset(skills=[skill], delegate=False)
+        ctx = self._make_ctx()
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "execute_skill_tool",
+            {"skill_name": "emitter", "tool_name": "emit_tool", "arguments": {}},
+            ctx,
+            tools["execute_skill_tool"],
+        )
+        assert isinstance(result, ToolReturn)
+        custom = [ev for ev in result.metadata if isinstance(ev, CustomEvent)]
+        assert len(custom) == 1
+        assert custom[0].name == "progress"
+
+    async def test_emitted_events_via_sink(self, allow_model_requests: None):
+        """With event_sink, custom events go through sink, not metadata."""
+        sinked: list[Any] = []
+
+        async def sink(event: Any) -> None:
+            sinked.append(event)
+
+        def emit_tool(ctx: RunContext[SkillRunDeps]) -> str:
+            """Emit a custom event."""
+            ctx.deps.emit(CustomEvent(name="info", value="hello"))
+            return "done"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="emitter", description="Emits."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use emit_tool.",
+            tools=[emit_tool],
+        )
+        toolset = SkillToolset(skills=[skill], delegate=False)
+        toolset._event_sink = sink
+        ctx = self._make_ctx()
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "execute_skill_tool",
+            {"skill_name": "emitter", "tool_name": "emit_tool", "arguments": {}},
+            ctx,
+            tools["execute_skill_tool"],
+        )
+        assert result == "done"
+        assert len(sinked) == 1
+        assert isinstance(sinked[0], CustomEvent)
+
+    async def test_unknown_skill_returns_error(self, allow_model_requests: None):
+        toolset = SkillToolset(skill_paths=[FIXTURES], delegate=False)
+        ctx = self._make_ctx()
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "execute_skill_tool",
+            {"skill_name": "nonexistent", "tool_name": "x", "arguments": {}},
+            ctx,
+            tools["execute_skill_tool"],
+        )
+        assert "Error" in result
+
+    async def test_unknown_tool_returns_error(self, allow_model_requests: None):
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do things.",
+        )
+        toolset = SkillToolset(skills=[skill], delegate=False)
+        ctx = self._make_ctx()
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "execute_skill_tool",
+            {"skill_name": "a", "tool_name": "missing", "arguments": {}},
+            ctx,
+            tools["execute_skill_tool"],
+        )
+        assert "Error" in result
+
+    async def test_tool_exception_returns_error(self, allow_model_requests: None):
+        def exploding() -> str:
+            """Always raises."""
+            raise RuntimeError("boom")
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use exploding.",
+            tools=[exploding],
+        )
+        toolset = SkillToolset(skills=[skill], delegate=False)
+        ctx = self._make_ctx()
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "execute_skill_tool",
+            {"skill_name": "a", "tool_name": "exploding", "arguments": {}},
+            ctx,
+            tools["execute_skill_tool"],
+        )
+        assert "Error" in result
+        assert "boom" in result
+
+    async def test_calls_toolset_tool(self, allow_model_requests: None):
+        """execute_skill_tool can call tools from AbstractToolset instances."""
+
+        def helper(x: int) -> int:
+            """Double a number."""
+            return x * 2
+
+        fn_toolset = FunctionToolset()
+        fn_toolset.add_function(helper)
+
+        skill = Skill(
+            metadata=SkillMetadata(name="math", description="Does math."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use helper.",
+            toolsets=[fn_toolset],
+        )
+        toolset = SkillToolset(skills=[skill], delegate=False)
+        ctx = self._make_ctx()
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "execute_skill_tool",
+            {"skill_name": "math", "tool_name": "helper", "arguments": {"x": 5}},
+            ctx,
+            tools["execute_skill_tool"],
+        )
+        assert result == "10"
+
+    async def test_non_string_result_serialized(self, allow_model_requests: None):
+        """Non-string tool results are JSON-serialized."""
+
+        def get_data() -> dict[str, int]:
+            """Return some data."""
+            return {"a": 1, "b": 2}
+
+        skill = Skill(
+            metadata=SkillMetadata(name="data", description="Data."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use get_data.",
+            tools=[get_data],
+        )
+        toolset = SkillToolset(skills=[skill], delegate=False)
+        ctx = self._make_ctx()
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "execute_skill_tool",
+            {"skill_name": "data", "tool_name": "get_data", "arguments": {}},
+            ctx,
+            tools["execute_skill_tool"],
+        )
+        assert result == '{"a": 1, "b": 2}'
+
+
+class TestReadSkillResource:
+    """Tests for read_skill_resource in delegate=False mode."""
+
+    def _make_ctx(self) -> RunContext[Any]:
+        return RunContext(
+            deps=None, model=TestModel(), usage=RunUsage(), prompt="test", run_step=0
+        )
+
+    async def test_reads_valid_resource(self, allow_model_requests: None):
+        skill = Skill(
+            metadata=SkillMetadata(name="refs", description="Has refs."),
+            source=SkillSource.FILESYSTEM,
+            path=FIXTURES / "skill-with-refs",
+            resources=["references/REFERENCE.md", "assets/template.txt"],
+        )
+        toolset = SkillToolset(skills=[skill], delegate=False)
+        ctx = self._make_ctx()
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "read_skill_resource",
+            {"skill_name": "refs", "path": "references/REFERENCE.md"},
+            ctx,
+            tools["read_skill_resource"],
+        )
+        assert "Reference Guide" in result
+
+    async def test_unknown_skill_returns_error(self, allow_model_requests: None):
+        toolset = SkillToolset(skill_paths=[FIXTURES], delegate=False)
+        ctx = self._make_ctx()
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "read_skill_resource",
+            {"skill_name": "nonexistent", "path": "file.txt"},
+            ctx,
+            tools["read_skill_resource"],
+        )
+        assert "Error" in result
+
+    async def test_skill_without_path_returns_error(self, allow_model_requests: None):
+        skill = Skill(
+            metadata=SkillMetadata(name="nop", description="No path."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do things.",
+        )
+        toolset = SkillToolset(skills=[skill], delegate=False)
+        ctx = self._make_ctx()
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "read_skill_resource",
+            {"skill_name": "nop", "path": "file.txt"},
+            ctx,
+            tools["read_skill_resource"],
+        )
+        assert "Error" in result
+        assert "has no path" in result
+
+    async def test_invalid_path_returns_error(self, allow_model_requests: None):
+        skill = Skill(
+            metadata=SkillMetadata(name="refs", description="Has refs."),
+            source=SkillSource.FILESYSTEM,
+            path=FIXTURES / "skill-with-refs",
+            resources=["references/REFERENCE.md"],
+        )
+        toolset = SkillToolset(skills=[skill], delegate=False)
+        ctx = self._make_ctx()
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "read_skill_resource",
+            {"skill_name": "refs", "path": "unknown.txt"},
+            ctx,
+            tools["read_skill_resource"],
+        )
+        assert "Error" in result
+        assert "not an available resource" in result
+
+    async def test_path_traversal_returns_error(self, allow_model_requests: None):
+        skill = Skill(
+            metadata=SkillMetadata(name="refs", description="Has refs."),
+            source=SkillSource.FILESYSTEM,
+            path=FIXTURES / "skill-with-refs",
+            resources=["references/REFERENCE.md"],
+        )
+        toolset = SkillToolset(skills=[skill], delegate=False)
+        ctx = self._make_ctx()
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "read_skill_resource",
+            {"skill_name": "refs", "path": "../../../etc/passwd"},
+            ctx,
+            tools["read_skill_resource"],
+        )
+        assert "Error" in result
+
+
+class TestSystemPromptDelegate:
+    """Tests for system prompt in delegate vs direct mode."""
+
+    def test_delegate_prompt_mentions_execute_skill(self):
+        prompt = build_system_prompt("- **test**: A test skill.")
+        assert "execute_skill" in prompt
+        assert "query_skill" not in prompt
+
+    def test_direct_prompt_mentions_query_and_execute_tool(self):
+        prompt = build_system_prompt("- **test**: A test skill.", delegate=False)
+        assert "query_skill" in prompt
+        assert "execute_skill_tool" in prompt
+        assert "read_skill_resource" in prompt
+
+    def test_direct_prompt_does_not_mention_execute_skill(self):
+        prompt = build_system_prompt("- **test**: A test skill.", delegate=False)
+        lines = prompt.split("\n")
+        for line in lines:
+            if "execute_skill" in line and "execute_skill_tool" not in line:
+                pytest.fail(f"Found 'execute_skill' without '_tool' suffix: {line}")
