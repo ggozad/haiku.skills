@@ -6,6 +6,10 @@
 
 - **Optional sub-agent delegation**: `SkillToolset(delegate=False)` exposes skill tools directly to the main agent via `query_skill`, `execute_skill_tool`, and `read_skill_resource` — bypassing sub-agent LLM loops for lower latency and cost. Default (`delegate=True`) preserves existing behavior.
 
+### Changed
+
+- **`execute_skill_tool` returns raw values**: Tool results are passed through as-is instead of being JSON-serialized, consistent with pydantic-ai's `ToolReturnContent` support.
+
 ## [0.9.1] - 2026-03-20
 
 ## [0.9.0] - 2026-03-20

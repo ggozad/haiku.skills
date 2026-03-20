@@ -541,8 +541,6 @@ class SkillToolset(FunctionToolset[Any]):
             except Exception as e:
                 return f"Error: {e}"
 
-            result_str = result if isinstance(result, str) else json.dumps(result)
-
             metadata: list[BaseEvent] = []
             event_sink = self._event_sink
             if event_sink is not None:
@@ -558,8 +556,8 @@ class SkillToolset(FunctionToolset[Any]):
                     metadata.append(delta)
 
             if metadata:
-                return ToolReturn(return_value=result_str, metadata=metadata)
-            return result_str
+                return ToolReturn(return_value=result, metadata=metadata)
+            return result
 
         @self.tool
         async def read_skill_resource(

@@ -2078,10 +2078,10 @@ class TestExecuteSkillTool:
             ctx,
             tools["execute_skill_tool"],
         )
-        assert result == "10"
+        assert result == 10
 
-    async def test_non_string_result_serialized(self, allow_model_requests: None):
-        """Non-string tool results are JSON-serialized."""
+    async def test_non_string_result_passed_through(self, allow_model_requests: None):
+        """Non-string tool results are returned as-is (not JSON-serialized)."""
 
         def get_data() -> dict[str, int]:
             """Return some data."""
@@ -2102,7 +2102,7 @@ class TestExecuteSkillTool:
             ctx,
             tools["execute_skill_tool"],
         )
-        assert result == '{"a": 1, "b": 2}'
+        assert result == {"a": 1, "b": 2}
 
 
 class TestReadSkillResource:
