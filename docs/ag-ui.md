@@ -2,25 +2,7 @@
 
 haiku.skills supports the [AG-UI protocol](https://docs.ag-ui.com) for communicating state changes to frontend clients.
 
-## Per-skill state
-
-Skills can declare a Pydantic state model and a namespace. State is passed to tool functions via `RunContext[SkillRunDeps]` and tracked per namespace on the `SkillToolset`.
-
-```python
-from pydantic import BaseModel
-from haiku.skills import Skill, SkillMetadata, SkillSource
-
-class MyState(BaseModel):
-    items: list[str] = []
-
-skill = Skill(
-    metadata=SkillMetadata(name="my-skill", description="..."),
-    source=SkillSource.ENTRYPOINT,
-    instructions="...",
-    state_type=MyState,
-    state_namespace="my-skill",
-)
-```
+Skills can declare per-namespace state models — see the [Tutorial](tutorial.md#adding-state) for a walkthrough and [Skills reference](skills.md#per-skill-state) for the full API.
 
 ## State snapshots
 
@@ -85,13 +67,13 @@ When `execute_skill` delegates to a sub-agent, the sub-agent's internal tool cal
 
 ```python
 from pydantic_ai.ag_ui import AGUIAdapter
-from haiku.skills import SkillToolset, run_agui_stream
+from haiku.skills import SkillDeps, SkillToolset, run_agui_stream
 
 toolset = SkillToolset(skills=[skill])
 agent = Agent(model, instructions=..., toolsets=[toolset])
 adapter = AGUIAdapter(agent=agent, run_input=run_input)
 
-async with run_agui_stream(toolset, adapter) as stream:
+async with run_agui_stream(toolset, adapter, deps=SkillDeps()) as stream:
     async for event in stream:
         # Main-agent events (text, tool calls) and
         # sub-agent activity events arrive here in real-time
@@ -107,7 +89,7 @@ Skill tools can emit arbitrary AG-UI events (e.g. `CustomEvent` for progress rep
 ```python
 from ag_ui.core import CustomEvent
 from pydantic_ai import RunContext
-from haiku.skills.state import SkillRunDeps
+from haiku.skills import SkillRunDeps
 
 def my_tool(ctx: RunContext[SkillRunDeps]) -> str:
     """A tool that emits progress events."""

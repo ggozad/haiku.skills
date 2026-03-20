@@ -55,13 +55,12 @@ nav:
   - haiku.skills:
       - index.md
       - Installation: installation.md
-      - Quick start: quickstart.md
-      - Skills: skills.md
-      - Skill sources: skill-sources.md
+      - Tutorial: tutorial.md
+      - Skills reference: skills.md
       - Signing: signing.md
-      - Examples: examples.md
       - CLI: cli.md
       - AG-UI protocol: ag-ui.md
+      - Example skills: example-skills.md
       - Development: development.md
       - Changelog: changelog.md
 markdown_extensions:

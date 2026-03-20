@@ -100,6 +100,21 @@ verify_skill(path, unsafe=True)
 | Identities provided, valid bundle | Skill loads, `verified=True` |
 | Identities provided, invalid bundle | `SkillValidationError` (skill rejected) |
 
+### Inspecting a bundle's signer
+
+Use `get_bundle_signer` to extract the signer identity from an existing `SKILL.sigstore` bundle without performing full verification:
+
+```python
+from pathlib import Path
+from haiku.skills import get_bundle_signer
+
+signer = get_bundle_signer(Path("./skills/my-skill"))
+if signer:
+    print(f"Signed by {signer.identity} (issuer: {signer.issuer})")
+```
+
+Returns a `TrustedIdentity` if the bundle exists and can be parsed, `None` otherwise. Requires the `signing` extra.
+
 ## GitHub Actions integration
 
 Sigstore supports ambient OIDC credentials in GitHub Actions, no secrets needed. This workflow signs skills on push to main:

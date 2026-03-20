@@ -1,4 +1,4 @@
-# Skills
+# Skills reference
 
 ## SKILL.md format
 
@@ -16,7 +16,21 @@ Detailed instructions for the sub-agent go here. This content becomes
 the system prompt when the skill is executed.
 ```
 
-The frontmatter supports fields from the Agent Skills spec: `name`, `description`, `license`, `compatibility`, `metadata`, and `allowed-tools`. Unknown fields are rejected.
+### Frontmatter fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | yes | Skill name (1-64 chars, lowercase alphanumeric + hyphens). Must match the directory name for filesystem skills. |
+| `description` | string | yes | What the skill does (1-1024 chars). Shown to the main agent in the skill catalog. |
+| `license` | string | no | License identifier (e.g. `"MIT"`, `"Apache-2.0"`). |
+| `compatibility` | string | no | Compatibility notes (max 500 chars). |
+| `metadata` | map | no | Arbitrary key-value pairs (`string: string`). |
+| `allowed-tools` | list or string | no | Tool names the sub-agent may use. Accepts a YAML list or a space-separated string (`"search fetch"`). |
+
+Unknown fields are rejected.
+
+!!! note
+    `resources` is also parsed from the frontmatter but stored on the `Skill` model (not `SkillMetadata`). It accepts a list of relative paths to files the sub-agent can read via the `read_resource` tool. See [Resources](#resources) for details.
 
 ### Signing
 
@@ -58,9 +72,25 @@ agent = Agent(
 )
 ```
 
+## Per-skill model override
+
+Individual skills can specify their own model, overriding the `skill_model` set on `SkillToolset`:
+
+```python
+skill = Skill(
+    metadata=SkillMetadata(name="heavy-reasoning", description="..."),
+    source=SkillSource.ENTRYPOINT,
+    instructions="...",
+    tools=[...],
+    model="openai:gpt-4o",  # this skill always uses gpt-4o
+)
+```
+
+The `model` field accepts a model string, a pydantic-ai `Model` instance, or `None` (use the toolset default). The resolution order is: skill `model` > `SkillToolset.skill_model` > pydantic-ai default.
+
 ## Toolsets
 
-For `AbstractToolset` instances (e.g. MCP toolsets), use the `toolsets` parameter instead of `tools`. See [Skill sources](skill-sources.md#mcp) for MCP integration details.
+For `AbstractToolset` instances (e.g. MCP toolsets), use the `toolsets` parameter instead of `tools`. See the [Tutorial — MCP skills](tutorial.md#mcp-skills) section for MCP integration details.
 
 ## Script tools
 
@@ -71,7 +101,6 @@ Skills can include executable scripts in a `scripts/` directory. Python scripts 
 # dependencies = ["pandas"]
 # ///
 """Analyze data."""
-import sys
 
 import pandas as pd
 
@@ -88,9 +117,13 @@ def main(data: str, operation: str = "describe") -> str:
     return f"Analyzed {len(df)} rows"
 
 if __name__ == "__main__":
-    data = sys.argv[1]
-    operation = sys.argv[2] if len(sys.argv) > 2 else "describe"
-    print(main(data, operation))
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Analyze data.")
+    parser.add_argument("--data", required=True, help="Input data to analyze.")
+    parser.add_argument("--operation", default="describe", help="Analysis operation.")
+    args = parser.parse_args()
+    print(main(args.data, args.operation))
 ```
 
 Script tools are automatically discovered on skill loading. Scripts with a `main()` function get AST-parsed into typed pydantic-ai `Tool` objects with automatic parameter schema extraction. Scripts without `main()` are skipped (with a warning) during typed tool discovery.
@@ -124,7 +157,23 @@ from scripts.utils import helper
 
 ## Resources
 
-Skills can expose files (references, assets, templates) as resources. Sub-agents can read them on demand via the `read_resource` tool with path validation and traversal defense.
+Skills can expose files (references, assets, templates) as resources. Declare them in the `resources` frontmatter field:
+
+```markdown
+---
+name: my-skill
+description: Analyze data using reference material.
+resources:
+  - data/reference.txt
+  - data/schema.json
+---
+```
+
+When a skill has resources, the sub-agent receives a `read_resource` tool that reads them on demand:
+
+- Only paths listed in `resources` are accessible — the tool rejects anything else.
+- Resolved paths must stay within the skill directory (traversal defense).
+- Files must be text — binary files raise an error.
 
 ## Per-skill state
 
@@ -133,8 +182,7 @@ Skills can declare a Pydantic state model. State is passed to tool functions via
 ```python
 from pydantic import BaseModel
 from pydantic_ai import RunContext
-from haiku.skills import Skill, SkillMetadata, SkillSource, SkillToolset
-from haiku.skills.state import SkillRunDeps
+from haiku.skills import Skill, SkillMetadata, SkillRunDeps, SkillSource, SkillToolset
 
 class CalculatorState(BaseModel):
     history: list[str] = []
