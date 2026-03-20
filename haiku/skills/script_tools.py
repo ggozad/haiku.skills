@@ -123,11 +123,12 @@ def create_script_tool(path: Path) -> Tool:
         args = []
         for name, param in metadata.parameters.items():
             if name in kwargs:
+                flag = f"--{name.replace('_', '-')}"
                 if param.annotation == "bool":
                     if kwargs[name]:
-                        args.append(f"--{name}")
+                        args.append(flag)
                 else:
-                    args.extend([f"--{name}", str(kwargs[name])])
+                    args.extend([flag, str(kwargs[name])])
         skill_dir = str(path.resolve().parent.parent)
         existing = os.environ.get("PYTHONPATH", "")
         pythonpath = f"{skill_dir}{os.pathsep}{existing}" if existing else skill_dir

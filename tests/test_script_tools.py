@@ -192,6 +192,23 @@ class TestCreateScriptTool:
         result = await tool.function(name="World", verbose=False)
         assert result == "World:False"
 
+    async def test_multi_word_param_uses_hyphens(self, tmp_path: Path):
+        script = tmp_path / "multi.py"
+        script.write_text(
+            "import argparse\n"
+            "def main(first_name: str) -> str:\n"
+            '    """Multi-word param test."""\n'
+            "    return first_name\n"
+            'if __name__ == "__main__":\n'
+            "    parser = argparse.ArgumentParser()\n"
+            "    parser.add_argument('--first-name', required=True)\n"
+            "    args = parser.parse_args()\n"
+            "    print(main(args.first_name))\n"
+        )
+        tool = create_script_tool(script)
+        result = await tool.function(first_name="Yiorgis")
+        assert result == "Yiorgis"
+
     async def test_script_failure_raises(self, tmp_path: Path):
         script = tmp_path / "bad.py"
         script.write_text(
