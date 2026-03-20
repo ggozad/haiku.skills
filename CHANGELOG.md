@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-03-20
+
 ### Changed
 
 - **Spec-compliant skill directory layout**: Scripts now live alongside `SKILL.md` (e.g. `web/scripts/search.py`) instead of in a separate package-level `scripts/` dir
@@ -234,7 +236,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.8.1...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.9.0...HEAD
+[0.9.0]: https://github.com/ggozad/haiku.skills/compare/0.8.1...0.9.0
 [0.8.1]: https://github.com/ggozad/haiku.skills/compare/0.8.0...0.8.1
 [0.8.0]: https://github.com/ggozad/haiku.skills/compare/0.7.5...0.8.0
 [0.7.5]: https://github.com/ggozad/haiku.skills/compare/0.7.4...0.7.5
