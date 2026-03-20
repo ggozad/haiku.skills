@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import json
 import os
 import shlex
@@ -13,7 +14,7 @@ from ag_ui.core import (
     EventType,
 )
 from pydantic import BaseModel
-from pydantic_ai import Agent, RunContext, ToolReturn, UsageLimits
+from pydantic_ai import Agent, RunContext, Tool, ToolReturn, UsageLimits
 from pydantic_ai.messages import (
     AgentStreamEvent,
     FunctionToolCallEvent,
@@ -261,12 +262,14 @@ class SkillToolset(FunctionToolset[Any]):
         skill_paths: list[Path] | None = None,
         use_entrypoints: bool = False,
         skill_model: str | Model | None = None,
+        delegate: bool = True,
     ) -> None:
         super().__init__()
         self._registry = SkillRegistry()
         self._namespaces: dict[str, BaseModel] = {}
         self._last_restored_state: dict[str, Any] | None = None
         self._skill_model = skill_model
+        self._delegate = delegate
         self._event_sink: Callable[[BaseEvent], Awaitable[None]] | None = None
         if skills:
             for skill in skills:
@@ -356,6 +359,12 @@ class SkillToolset(FunctionToolset[Any]):
         return self._namespaces.get(namespace)
 
     def _register_tools(self) -> None:
+        if self._delegate:
+            self._register_delegate_tools()
+        else:
+            self._register_direct_tools()
+
+    def _register_delegate_tools(self) -> None:
         registry = self._registry
 
         @self.tool
@@ -418,6 +427,188 @@ class SkillToolset(FunctionToolset[Any]):
             if metadata:
                 return ToolReturn(return_value=result, metadata=metadata)
             return result
+
+    def _register_direct_tools(self) -> None:
+        registry = self._registry
+
+        @self.tool
+        async def query_skill(ctx: RunContext[Any], skill_name: str) -> str:
+            """Get details about a skill: instructions, available tools, and resources.
+
+            Args:
+                skill_name: The exact name of the skill to query.
+            """
+            skill = registry.get(skill_name)
+            if skill is None:
+                return f"Error: Skill '{skill_name}' not found in registry"
+
+            sections: list[str] = []
+
+            if skill.instructions:
+                sections.append(f"## Instructions\n\n{skill.instructions}")
+
+            tool_lines: list[str] = []
+            for tool_or_callable in skill.tools:
+                if isinstance(tool_or_callable, Tool):
+                    td = tool_or_callable.tool_def
+                else:
+                    td = Tool(tool_or_callable).tool_def
+                desc = f" — {td.description}" if td.description else ""
+                tool_lines.append(
+                    f"- **{td.name}**{desc}\n"
+                    f"  Schema: {json.dumps(td.parameters_json_schema)}"
+                )
+
+            for ts in skill.toolsets:
+                ts_tools = await ts.get_tools(ctx)
+                for name, ts_tool in ts_tools.items():
+                    td = ts_tool.tool_def
+                    desc = f" — {td.description}" if td.description else ""
+                    tool_lines.append(
+                        f"- **{name}**{desc}\n"
+                        f"  Schema: {json.dumps(td.parameters_json_schema)}"
+                    )
+
+            if tool_lines:
+                sections.append("## Tools\n\n" + "\n".join(tool_lines))
+
+            if skill.resources:
+                resource_list = "\n".join(f"- {r}" for r in skill.resources)
+                sections.append(f"## Resources\n\n{resource_list}")
+
+            return "\n\n".join(sections) if sections else "No details available."
+
+        @self.tool
+        async def execute_skill_tool(
+            ctx: RunContext[Any],
+            skill_name: str,
+            tool_name: str,
+            arguments: dict[str, Any],
+        ) -> str | ToolReturn:
+            """Call a specific tool from a skill.
+
+            Use query_skill first to discover available tools and their schemas.
+
+            Args:
+                skill_name: The exact name of the skill.
+                tool_name: The exact name of the tool to call.
+                arguments: Tool arguments matching the tool's parameter schema.
+            """
+            skill = registry.get(skill_name)
+            if skill is None:
+                return f"Error: Skill '{skill_name}' not found in registry"
+
+            args = arguments
+
+            namespace = skill.state_namespace
+            state = self._namespaces.get(namespace) if namespace else None
+            old_snapshot = (
+                {namespace: state.model_dump(mode="json")}
+                if namespace and state
+                else None
+            )
+
+            emitted_events: list[BaseEvent] = []
+
+            def emit(event: BaseEvent) -> None:
+                emitted_events.append(event)
+
+            deps = SkillRunDeps(state=state, emit=emit)
+            skill_ctx = RunContext(
+                deps=deps,
+                model=ctx.model,
+                usage=ctx.usage,
+                prompt=ctx.prompt,
+                run_step=ctx.run_step,
+            )
+
+            try:
+                result = await self._call_skill_tool(
+                    skill, tool_name, args, skill_ctx
+                )
+            except Exception as e:
+                return f"Error: {e}"
+
+            result_str = result if isinstance(result, str) else json.dumps(result)
+
+            metadata: list[BaseEvent] = []
+            event_sink = self._event_sink
+            if event_sink is not None:
+                for ev in emitted_events:
+                    await event_sink(ev)
+            else:
+                metadata.extend(emitted_events)
+
+            if old_snapshot is not None and namespace and state:
+                new_snapshot = {namespace: state.model_dump(mode="json")}
+                delta = compute_state_delta(old_snapshot, new_snapshot)
+                if delta is not None:
+                    metadata.append(delta)
+
+            if metadata:
+                return ToolReturn(return_value=result_str, metadata=metadata)
+            return result_str
+
+        @self.tool
+        async def read_skill_resource(
+            ctx: RunContext[Any], skill_name: str, path: str
+        ) -> str:
+            """Read a resource file from a skill's directory.
+
+            Use query_skill first to discover available resources.
+
+            Args:
+                skill_name: The exact name of the skill.
+                path: Relative path to the resource file.
+            """
+            skill = registry.get(skill_name)
+            if skill is None:
+                return f"Error: Skill '{skill_name}' not found in registry"
+            if skill.path is None:
+                return f"Error: Skill '{skill_name}' has no path"
+            reader = _create_read_resource(skill)
+            try:
+                return await reader(path=path)
+            except ValueError as e:
+                return f"Error: {e}"
+
+    async def _call_skill_tool(
+        self,
+        skill: Skill,
+        tool_name: str,
+        args: dict[str, Any],
+        ctx: RunContext[SkillRunDeps],
+    ) -> Any:
+        """Call a tool by name from a skill's tools or toolsets."""
+        for tool_or_callable in skill.tools:
+            tool = (
+                tool_or_callable
+                if isinstance(tool_or_callable, Tool)
+                else Tool(tool_or_callable)
+            )
+            if tool.tool_def.name == tool_name:
+                func = tool.function
+                sig = inspect.signature(func)
+                params = list(sig.parameters.values())
+                if params and params[0].annotation in (
+                    RunContext,
+                    RunContext[SkillRunDeps],
+                ):
+                    result = func(ctx, **args)
+                else:
+                    result = func(**args)
+                if inspect.isawaitable(result):
+                    result = await result
+                return result
+
+        for ts in skill.toolsets:
+            ts_tools = await ts.get_tools(ctx)
+            if tool_name in ts_tools:
+                return await ts.call_tool(
+                    tool_name, args, ctx, ts_tools[tool_name]
+                )
+
+        raise ValueError(f"Tool '{tool_name}' not found in skill '{skill.metadata.name}'")
 
 
 class AguiEventStream:

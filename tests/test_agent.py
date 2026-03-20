@@ -1619,3 +1619,132 @@ def _make_run_input(message: str) -> Any:
         context=[],
         forwarded_props={},
     )
+
+
+class TestSkillToolsetDelegate:
+    """Tests for SkillToolset with delegate=False."""
+
+    def test_delegate_true_by_default(self):
+        toolset = SkillToolset(skill_paths=[FIXTURES])
+        assert toolset._delegate is True
+
+    def test_delegate_false_construction(self):
+        toolset = SkillToolset(skill_paths=[FIXTURES], delegate=False)
+        assert toolset._delegate is False
+
+    async def test_delegate_false_registers_query_skill(
+        self, allow_model_requests: None
+    ):
+        """delegate=False registers query_skill instead of execute_skill."""
+
+        def greet(name: str) -> str:
+            """Greet someone by name."""
+            return f"Hello, {name}!"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="greeter", description="Greets people."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use the greet tool.",
+            tools=[greet],
+        )
+        toolset = SkillToolset(skills=[skill], delegate=False)
+        ctx = RunContext(
+            deps=None, model=TestModel(), usage=RunUsage(), prompt="test", run_step=0
+        )
+        tools = await toolset.get_tools(ctx)
+        tool_names = set(tools.keys())
+        assert "query_skill" in tool_names
+        assert "execute_skill_tool" in tool_names
+        assert "read_skill_resource" in tool_names
+        assert "execute_skill" not in tool_names
+
+    async def test_delegate_true_registers_execute_skill(
+        self, allow_model_requests: None
+    ):
+        """delegate=True (default) registers execute_skill only."""
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do things.",
+        )
+        toolset = SkillToolset(skills=[skill], delegate=True)
+        ctx = RunContext(
+            deps=None, model=TestModel(), usage=RunUsage(), prompt="test", run_step=0
+        )
+        tools = await toolset.get_tools(ctx)
+        tool_names = set(tools.keys())
+        assert "execute_skill" in tool_names
+        assert "query_skill" not in tool_names
+
+    async def test_query_skill_returns_instructions_and_tools(
+        self, allow_model_requests: None
+    ):
+        """query_skill returns skill instructions and tool definitions."""
+
+        def greet(name: str) -> str:
+            """Greet someone by name."""
+            return f"Hello, {name}!"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="greeter", description="Greets people."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use the greet tool.",
+            tools=[greet],
+            path=FIXTURES / "skill-with-refs",
+            resources=["references/REFERENCE.md"],
+        )
+        toolset = SkillToolset(skills=[skill], delegate=False)
+        agent = Agent(
+            TestModel(call_tools=[]),
+            instructions=build_system_prompt(toolset.skill_catalog),
+            toolsets=[toolset],
+        )
+        # Invoke query_skill directly via the toolset
+        ctx = RunContext(
+            deps=None, model=TestModel(), usage=RunUsage(), prompt="test", run_step=0
+        )
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "query_skill", {"skill_name": "greeter"}, ctx, tools["query_skill"]
+        )
+        assert "Use the greet tool." in result
+        assert "greet" in result
+        assert "references/REFERENCE.md" in result
+
+    async def test_query_skill_unknown_skill(self, allow_model_requests: None):
+        """query_skill returns error for unknown skill."""
+        toolset = SkillToolset(skill_paths=[FIXTURES], delegate=False)
+        ctx = RunContext(
+            deps=None, model=TestModel(), usage=RunUsage(), prompt="test", run_step=0
+        )
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "query_skill", {"skill_name": "nonexistent"}, ctx, tools["query_skill"]
+        )
+        assert "Error" in result
+
+    async def test_query_skill_with_toolset_tools(self, allow_model_requests: None):
+        """query_skill includes tools from toolsets (AbstractToolset)."""
+
+        def helper(x: int) -> int:
+            """Double a number."""
+            return x * 2
+
+        fn_toolset = FunctionToolset()
+        fn_toolset.add_function(helper)
+
+        skill = Skill(
+            metadata=SkillMetadata(name="math", description="Does math."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use helper.",
+            toolsets=[fn_toolset],
+        )
+        toolset = SkillToolset(skills=[skill], delegate=False)
+        ctx = RunContext(
+            deps=None, model=TestModel(), usage=RunUsage(), prompt="test", run_step=0
+        )
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "query_skill", {"skill_name": "math"}, ctx, tools["query_skill"]
+        )
+        assert "helper" in result
