@@ -1,5 +1,4 @@
 import asyncio
-import functools
 import inspect
 import json
 import os
@@ -271,7 +270,7 @@ class SkillToolset(FunctionToolset[Any]):
         self._last_restored_state: dict[str, Any] | None = None
         self._skill_model = skill_model
         self._delegate = delegate
-        self._get_skill_tool_map = functools.lru_cache(self._get_skill_tool_map)
+        self._skill_tool_cache: dict[str, dict[str, Tool]] = {}
         self._event_sink: Callable[[BaseEvent], Awaitable[None]] | None = None
         if skills:
             for skill in skills:
@@ -362,6 +361,8 @@ class SkillToolset(FunctionToolset[Any]):
 
     def _get_skill_tool_map(self, skill_name: str) -> dict[str, Tool]:
         """Get cached Tool instances for a skill's in-process tools."""
+        if skill_name in self._skill_tool_cache:
+            return self._skill_tool_cache[skill_name]
         skill = self._registry.get(skill_name)
         if skill is None:
             return {}
@@ -373,6 +374,36 @@ class SkillToolset(FunctionToolset[Any]):
                 else Tool(tool_or_callable)
             )
             result[tool.tool_def.name] = tool
+        self._skill_tool_cache[skill_name] = result
+        return result
+
+    def _state_snapshot(
+        self, skill: Skill
+    ) -> tuple[str | None, BaseModel | None, dict[str, Any] | None]:
+        """Capture state before a tool/skill execution."""
+        namespace = skill.state_namespace
+        state = self._namespaces.get(namespace) if namespace else None
+        old_snapshot = (
+            {namespace: state.model_dump(mode="json")} if namespace and state else None
+        )
+        return namespace, state, old_snapshot
+
+    def _wrap_result(
+        self,
+        result: Any,
+        namespace: str | None,
+        state: BaseModel | None,
+        old_snapshot: dict[str, Any] | None,
+        metadata: list[BaseEvent],
+    ) -> Any:
+        """Append state delta to metadata and wrap in ToolReturn if needed."""
+        if old_snapshot is not None and namespace and state:
+            new_snapshot = {namespace: state.model_dump(mode="json")}
+            delta = compute_state_delta(old_snapshot, new_snapshot)
+            if delta is not None:
+                metadata.append(delta)
+        if metadata:
+            return ToolReturn(return_value=result, metadata=metadata)
         return result
 
     def _register_tools(self) -> None:
@@ -411,14 +442,7 @@ class SkillToolset(FunctionToolset[Any]):
                 else model_override or ctx.model
             )
 
-            namespace = skill.state_namespace
-            state = self._namespaces.get(namespace) if namespace else None
-            old_snapshot = (
-                {namespace: state.model_dump(mode="json")}
-                if namespace and state
-                else None
-            )
-
+            namespace, state, old_snapshot = self._state_snapshot(skill)
             event_sink = self._event_sink
 
             try:
@@ -435,15 +459,7 @@ class SkillToolset(FunctionToolset[Any]):
                 )
                 metadata.extend(emitted_events)
 
-            if old_snapshot is not None and namespace and state:
-                new_snapshot = {namespace: state.model_dump(mode="json")}
-                delta = compute_state_delta(old_snapshot, new_snapshot)
-                if delta is not None:
-                    metadata.append(delta)
-
-            if metadata:
-                return ToolReturn(return_value=result, metadata=metadata)
-            return result
+            return self._wrap_result(result, namespace, state, old_snapshot, metadata)
 
     def _register_direct_tools(self) -> None:
         registry = self._registry
@@ -512,13 +528,7 @@ class SkillToolset(FunctionToolset[Any]):
             if skill is None:
                 return f"Error: Skill '{skill_name}' not found in registry"
 
-            namespace = skill.state_namespace
-            state = self._namespaces.get(namespace) if namespace else None
-            old_snapshot = (
-                {namespace: state.model_dump(mode="json")}
-                if namespace and state
-                else None
-            )
+            namespace, state, old_snapshot = self._state_snapshot(skill)
 
             emitted_events: list[BaseEvent] = []
 
@@ -549,15 +559,7 @@ class SkillToolset(FunctionToolset[Any]):
             else:
                 metadata.extend(emitted_events)
 
-            if old_snapshot is not None and namespace and state:
-                new_snapshot = {namespace: state.model_dump(mode="json")}
-                delta = compute_state_delta(old_snapshot, new_snapshot)
-                if delta is not None:
-                    metadata.append(delta)
-
-            if metadata:
-                return ToolReturn(return_value=result, metadata=metadata)
-            return result
+            return self._wrap_result(result, namespace, state, old_snapshot, metadata)
 
         @self.tool
         async def read_skill_resource(
