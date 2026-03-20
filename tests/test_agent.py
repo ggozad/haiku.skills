@@ -1769,6 +1769,52 @@ class TestSkillToolsetDelegate:
         assert "helper" in result
 
 
+class TestSkillToolCache:
+    """Tests for cached Tool wrapping in delegate=False mode."""
+
+    def test_tool_cache_returns_same_objects(self):
+        """Calling _get_skill_tool_map twice returns identical Tool instances."""
+
+        def greet(name: str) -> str:
+            """Greet someone."""
+            return f"Hello, {name}!"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="greeter", description="Greets."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use greet.",
+            tools=[greet],
+        )
+        toolset = SkillToolset(skills=[skill], delegate=False)
+        first = toolset._get_skill_tool_map("greeter")
+        second = toolset._get_skill_tool_map("greeter")
+        assert first is second
+        assert "greet" in first
+
+    def test_tool_cache_handles_tool_instances(self):
+        """Cache works for pre-wrapped Tool instances too."""
+        from pydantic_ai import Tool as PydanticTool
+
+        def greet(name: str) -> str:
+            """Greet someone."""
+            return f"Hello, {name}!"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="greeter", description="Greets."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use greet.",
+            tools=[PydanticTool(greet)],
+        )
+        toolset = SkillToolset(skills=[skill], delegate=False)
+        tool_map = toolset._get_skill_tool_map("greeter")
+        assert "greet" in tool_map
+
+    def test_tool_cache_unknown_skill(self):
+        """Cache returns empty dict for unknown skill."""
+        toolset = SkillToolset(skill_paths=[FIXTURES], delegate=False)
+        assert toolset._get_skill_tool_map("nonexistent") == {}
+
+
 class TestExecuteSkillTool:
     """Tests for execute_skill_tool in delegate=False mode."""
 

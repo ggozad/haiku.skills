@@ -1,4 +1,5 @@
 import asyncio
+import functools
 import inspect
 import json
 import os
@@ -270,6 +271,7 @@ class SkillToolset(FunctionToolset[Any]):
         self._last_restored_state: dict[str, Any] | None = None
         self._skill_model = skill_model
         self._delegate = delegate
+        self._get_skill_tool_map = functools.lru_cache(self._get_skill_tool_map)
         self._event_sink: Callable[[BaseEvent], Awaitable[None]] | None = None
         if skills:
             for skill in skills:
@@ -357,6 +359,21 @@ class SkillToolset(FunctionToolset[Any]):
     def get_namespace(self, namespace: str) -> BaseModel | None:
         """Get state instance for a namespace."""
         return self._namespaces.get(namespace)
+
+    def _get_skill_tool_map(self, skill_name: str) -> dict[str, Tool]:
+        """Get cached Tool instances for a skill's in-process tools."""
+        skill = self._registry.get(skill_name)
+        if skill is None:
+            return {}
+        result: dict[str, Tool] = {}
+        for tool_or_callable in skill.tools:
+            tool = (
+                tool_or_callable
+                if isinstance(tool_or_callable, Tool)
+                else Tool(tool_or_callable)
+            )
+            result[tool.tool_def.name] = tool
+        return result
 
     def _register_tools(self) -> None:
         if self._delegate:
@@ -448,11 +465,8 @@ class SkillToolset(FunctionToolset[Any]):
                 sections.append(f"## Instructions\n\n{skill.instructions}")
 
             tool_lines: list[str] = []
-            for tool_or_callable in skill.tools:
-                if isinstance(tool_or_callable, Tool):
-                    td = tool_or_callable.tool_def
-                else:
-                    td = Tool(tool_or_callable).tool_def
+            for tool in self._get_skill_tool_map(skill_name).values():
+                td = tool.tool_def
                 desc = f" — {td.description}" if td.description else ""
                 tool_lines.append(
                     f"- **{td.name}**{desc}\n"
@@ -578,21 +592,17 @@ class SkillToolset(FunctionToolset[Any]):
         ctx: RunContext[SkillRunDeps],
     ) -> Any:
         """Call a tool by name from a skill's tools or toolsets."""
-        for tool_or_callable in skill.tools:
-            tool = (
-                tool_or_callable
-                if isinstance(tool_or_callable, Tool)
-                else Tool(tool_or_callable)
-            )
-            if tool.tool_def.name == tool_name:
-                func = tool.function
-                if tool.takes_ctx:
-                    result = func(ctx, **args)
-                else:
-                    result = func(**args)
-                if inspect.isawaitable(result):
-                    result = await result
-                return result
+        tool_map = self._get_skill_tool_map(skill.metadata.name)
+        if tool_name in tool_map:
+            tool = tool_map[tool_name]
+            func = tool.function
+            if tool.takes_ctx:
+                result = func(ctx, **args)
+            else:
+                result = func(**args)
+            if inspect.isawaitable(result):
+                result = await result
+            return result
 
         for ts in skill.toolsets:
             ts_tools = await ts.get_tools(ctx)
