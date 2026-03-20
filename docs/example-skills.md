@@ -41,7 +41,7 @@ uv add haiku-skills-web
 
 Requires `BRAVE_API_KEY` environment variable for search functionality.
 
-## imagegeneration
+## image-generation
 
 Image generation via [Ollama](https://ollama.com/).
 
@@ -49,7 +49,7 @@ Image generation via [Ollama](https://ollama.com/).
 uv add haiku-skills-image-generation
 ```
 
-## codeexecution
+## code-execution
 
 Sandboxed Python execution via [pydantic-monty](https://github.com/pydantic/pydantic-monty) with a built-in `await llm(prompt)` function for LLM reasoning (classify, summarize, extract).
 
@@ -87,6 +87,10 @@ Requires an ntfy.sh server. The public instance at `https://ntfy.sh` works out o
 
 Tools: `send_notification`, `read_notifications`. See the [skill README](https://github.com/ggozad/haiku.skills/tree/main/skills/notifications) for self-hosted setup instructions.
 
-## RAG
+## External: RAG
 
-For a more elaborate use case involving retrieval-augmented generation, see the [haiku.rag](https://github.com/ggozad/haiku.rag) project which provides a full RAG skill for haiku.skills.
+For retrieval-augmented generation, the separate [haiku.rag](https://github.com/ggozad/haiku.rag) project provides a full RAG skill for haiku.skills. It is not part of this repository — install it independently:
+
+```bash
+uv add haiku.rag
+```

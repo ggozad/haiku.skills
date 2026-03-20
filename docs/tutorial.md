@@ -51,7 +51,7 @@ print(result.output)
 `skill_paths` accepts both **parent directories** (all immediate subdirectories containing `SKILL.md` are discovered) and **skill directories** (directories that directly contain `SKILL.md`). The directory name must match the skill name in the frontmatter.
 
 !!! note
-    When a skill directory has validation errors (bad frontmatter, name mismatch, etc.), the error is collected and discovery continues with the remaining directories. The CLI prints these errors as warnings to stderr.
+    When a skill directory has validation errors (bad frontmatter, name mismatch, etc.), the error is collected and discovery continues with the remaining directories. Non-existent paths are also collected as errors rather than aborting. The CLI prints these errors as warnings to stderr.
 
 !!! tip "Customizing the system prompt"
     `build_system_prompt` accepts an optional `preamble` keyword argument to replace the default opening line (`"You are a helpful assistant with access to specialized skills."`):
@@ -188,7 +188,12 @@ haiku-skills chat --use-entrypoints -m openai:gpt-4o
 ```
 
 !!! note "Priority"
-    Skills passed via `skills=` take priority over entrypoint-discovered skills. If a manually provided skill has the same name as an entrypoint skill, the entrypoint is silently skipped. This lets you override an entrypoint skill with a custom configuration.
+    Skills passed via `skills=` take priority over entrypoint-discovered skills. If a manually provided skill has the same name as an entrypoint skill, the entrypoint is silently skipped. This lets you override an entrypoint skill with a custom configuration — for example, passing custom parameters to a factory:
+
+    ```python
+    custom_skill = create_my_skill(db_path="/custom/path")
+    toolset = SkillToolset(skills=[custom_skill], use_entrypoints=True)
+    ```
 
 ## Adding state
 
@@ -207,6 +212,7 @@ class CalculatorState(BaseModel):
 def add(ctx: RunContext[SkillRunDeps], a: float, b: float) -> float:
     """Add two numbers."""
     result = a + b
+    # Guard: deps and state are only populated when run via SkillToolset
     if ctx.deps and ctx.deps.state and isinstance(ctx.deps.state, CalculatorState):
         ctx.deps.state.history.append(f"{a} + {b} = {result}")
     return result

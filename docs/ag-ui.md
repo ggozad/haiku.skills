@@ -67,13 +67,13 @@ When `execute_skill` delegates to a sub-agent, the sub-agent's internal tool cal
 
 ```python
 from pydantic_ai.ag_ui import AGUIAdapter
-from haiku.skills import SkillToolset, run_agui_stream
+from haiku.skills import SkillDeps, SkillToolset, run_agui_stream
 
 toolset = SkillToolset(skills=[skill])
 agent = Agent(model, instructions=..., toolsets=[toolset])
 adapter = AGUIAdapter(agent=agent, run_input=run_input)
 
-async with run_agui_stream(toolset, adapter) as stream:
+async with run_agui_stream(toolset, adapter, deps=SkillDeps()) as stream:
     async for event in stream:
         # Main-agent events (text, tool calls) and
         # sub-agent activity events arrive here in real-time
