@@ -1468,6 +1468,42 @@ class TestRunSkillWithScripts:
         result, *_ = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
         assert result
 
+    async def test_no_run_script_when_skill_has_typed_tools(
+        self, tmp_path: Path, allow_model_requests: None
+    ):
+        scripts_dir = tmp_path / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "hello.py").write_text(
+            "import sys\nprint(f'Hello, {sys.argv[1]}!')\n"
+        )
+
+        def my_tool() -> str:
+            """A typed tool."""
+            return "ok"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="typed", description="Has typed tools."),
+            source=SkillSource.FILESYSTEM,
+            path=tmp_path,
+            instructions="Use typed tools.",
+            tools=[my_tool],
+        )
+        captured: dict[str, Any] = {}
+        original_init = Agent.__init__
+
+        def patched_init(self: Any, *args: Any, **kwargs: Any) -> None:
+            captured["tools"] = kwargs.get("tools", [])
+            original_init(self, *args, **kwargs)
+
+        with patch.object(Agent, "__init__", patched_init):
+            await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
+
+        tool_names = [
+            getattr(t, "__name__", None) or getattr(t, "name", None)
+            for t in captured["tools"]
+        ]
+        assert "run_script" not in tool_names
+
 
 class TestEventsToActivity:
     def test_empty_events(self):
