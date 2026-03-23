@@ -18,7 +18,7 @@ def allow_model_requests():
 
 
 def pytest_recording_configure(config: Any, vcr: "VCR"):
-    from . import json_body_serializer
+    from tests import json_body_serializer
 
     vcr.register_serializer("yaml", json_body_serializer)
 

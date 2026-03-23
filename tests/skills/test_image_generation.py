@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from .conftest import make_ctx
+from tests.skills.conftest import make_ctx
 
 
 class TestImageGeneration:

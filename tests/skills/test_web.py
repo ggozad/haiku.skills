@@ -2,7 +2,7 @@
 
 import pytest
 
-from .conftest import make_ctx
+from tests.skills.conftest import make_ctx
 
 
 def _make_fetch_response(data: bytes, content_type: str, url: str):

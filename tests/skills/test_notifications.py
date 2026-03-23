@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from .conftest import make_ctx
+from tests.skills.conftest import make_ctx
 
 
 class TestNotifications:

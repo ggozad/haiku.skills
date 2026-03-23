@@ -3,7 +3,7 @@
 import pytest
 from pydantic_ai.models.test import TestModel
 
-from .conftest import make_ctx
+from tests.skills.conftest import make_ctx
 
 
 class TestCreateSkill:
