@@ -208,6 +208,11 @@ def _build_cli():
             "--skill-model",
             help="Model to use for skill sub-agents (e.g. 'ollama:llama3')",
         ),
+        no_subagents: bool = typer.Option(
+            False,
+            "--no-subagents",
+            help="Expose skill tools directly instead of delegating to sub-agents",
+        ),
     ) -> None:
         model_name = model or os.environ.get("HAIKU_SKILLS_MODEL") or "ollama:gpt-oss"
 
@@ -226,6 +231,11 @@ def _build_cli():
         else:
             selected = [s for n in registry.names if (s := registry.get(n)) is not None]
 
-        run_chat(model=model_name, skills=selected, skill_model=skill_model)
+        run_chat(
+            model=model_name,
+            skills=selected,
+            skill_model=skill_model,
+            use_subagents=not no_subagents,
+        )
 
     return app

@@ -10,6 +10,7 @@ def run_chat(
     skills: list[Skill] | None = None,
     use_entrypoints: bool = False,
     skill_model: str | None = None,
+    use_subagents: bool = True,
 ) -> None:
     """Run the chat TUI."""
     try:
@@ -27,5 +28,6 @@ def run_chat(
         skills=skills,
         use_entrypoints=use_entrypoints,
         skill_model=skill_model,
+        use_subagents=use_subagents,
     )
     app.run()

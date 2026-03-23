@@ -262,14 +262,14 @@ class SkillToolset(FunctionToolset[Any]):
         skill_paths: list[Path] | None = None,
         use_entrypoints: bool = False,
         skill_model: str | Model | None = None,
-        delegate: bool = True,
+        use_subagents: bool = True,
     ) -> None:
         super().__init__()
         self._registry = SkillRegistry()
         self._namespaces: dict[str, BaseModel] = {}
         self._last_restored_state: dict[str, Any] | None = None
         self._skill_model = skill_model
-        self._delegate = delegate
+        self._use_subagents = use_subagents
         self._skill_tool_cache: dict[str, dict[str, Tool]] = {}
         self._event_sink: Callable[[BaseEvent], Awaitable[None]] | None = None
         if skills:
@@ -407,12 +407,12 @@ class SkillToolset(FunctionToolset[Any]):
         return result
 
     def _register_tools(self) -> None:
-        if self._delegate:
-            self._register_delegate_tools()
+        if self._use_subagents:
+            self._register_subagent_tools()
         else:
             self._register_direct_tools()
 
-    def _register_delegate_tools(self) -> None:
+    def _register_subagent_tools(self) -> None:
         registry = self._registry
 
         @self.tool

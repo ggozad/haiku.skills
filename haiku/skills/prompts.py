@@ -1,6 +1,6 @@
 DEFAULT_PREAMBLE = "You are a helpful assistant with access to specialized skills."
 
-_DELEGATE_PROMPT = """\
+_SUBAGENT_PROMPT = """\
 {preamble}
 
 ## Available skills
@@ -44,10 +44,10 @@ def build_system_prompt(
     skill_catalog: str,
     *,
     preamble: str = DEFAULT_PREAMBLE,
-    delegate: bool = True,
+    use_subagents: bool = True,
 ) -> str:
     """Build the main agent system prompt from a skill catalog."""
-    template = _DELEGATE_PROMPT if delegate else _DIRECT_PROMPT
+    template = _SUBAGENT_PROMPT if use_subagents else _DIRECT_PROMPT
     return template.format(preamble=preamble, skill_catalog=skill_catalog)
 
 

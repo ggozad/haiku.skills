@@ -140,14 +140,17 @@ class ChatApp(App):
         skills: list[Skill] | None = None,
         use_entrypoints: bool = False,
         skill_model: str | None = None,
+        use_subagents: bool = True,
     ) -> None:
         super().__init__()
         self._model = model
+        self._use_subagents = use_subagents
         self._toolset = SkillToolset(
             skill_paths=skill_paths,
             skills=skills,
             use_entrypoints=use_entrypoints,
             skill_model=skill_model,
+            use_subagents=use_subagents,
         )
         self._agent: Agent[None, str] | None = None
         self._messages: list[Any] = []  # AG-UI Message objects
@@ -177,7 +180,9 @@ class ChatApp(App):
     async def on_mount(self) -> None:
         self._agent = Agent(
             self._model,
-            instructions=build_system_prompt(self._toolset.skill_catalog),
+            instructions=build_system_prompt(
+                self._toolset.skill_catalog, use_subagents=self._use_subagents
+            ),
             toolsets=[self._toolset],
         )
         self._state = self._toolset.build_state_snapshot()
