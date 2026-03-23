@@ -119,7 +119,7 @@ For `AbstractToolset` instances (e.g. MCP toolsets), use the `toolsets` paramete
 
 ## Resources
 
-Filesystem skills automatically discover resource files — any non-script, non-Python file in the skill directory. The sub-agent receives a `read_resource` tool to read them on demand:
+Skills automatically discover resource files — any non-script, non-Python file in the skill directory. For filesystem skills, resources are discovered during path scanning. For entrypoint skills, set `path` in the factory and resources are discovered automatically. The sub-agent receives a `read_resource` tool to read them on demand:
 
 - Resolved paths must stay within the skill directory (traversal defense).
 - Files must be text — binary files raise an error.

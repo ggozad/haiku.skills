@@ -16,6 +16,7 @@ class TestCreateSkill:
         assert skill.state_type is not None
         assert skill.state_namespace == "code-execution"
         assert len(skill.tools) == 1
+        assert skill.path is not None
 
 
 class TestBuildExternalFunctions:

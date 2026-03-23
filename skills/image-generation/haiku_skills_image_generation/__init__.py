@@ -55,6 +55,7 @@ def create_skill() -> Skill:
     return Skill(
         metadata=metadata,
         instructions=instructions,
+        path=Path(__file__).parent,
         tools=[generate_image],
         state_type=ImageState,
         state_namespace="image-generation",

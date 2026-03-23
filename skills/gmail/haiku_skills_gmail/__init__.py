@@ -298,6 +298,7 @@ def create_skill() -> Skill:
     return Skill(
         metadata=metadata,
         instructions=instructions,
+        path=Path(__file__).parent,
         tools=[
             search_emails,
             read_email,
