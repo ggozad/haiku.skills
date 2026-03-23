@@ -162,7 +162,9 @@ class TestGmail:
         expired_creds.valid = False
         expired_creds.expired = True
         expired_creds.refresh_token = "refresh-token"
-        expired_creds.refresh.side_effect = Exception("Token has been expired or revoked.")
+        expired_creds.refresh.side_effect = Exception(
+            "Token has been expired or revoked."
+        )
 
         fresh_creds = MagicMock()
         fresh_creds.valid = True
