@@ -128,6 +128,7 @@ class TestGmail:
         mock_creds.expired = True
         mock_creds.refresh_token = "refresh-token"
         mock_creds.to_json.return_value = '{"token": "refreshed"}'
+        mock_creds.refresh.side_effect = lambda _req: setattr(mock_creds, "valid", True)
 
         mock_creds_cls = MagicMock()
         mock_creds_cls.from_authorized_user_file.return_value = mock_creds
@@ -146,6 +147,51 @@ class TestGmail:
         assert result == "gmail_service"
         mock_creds.refresh.assert_called_once_with(mock_request)
         assert token_file.read_text() == '{"token": "refreshed"}'
+
+    def test_get_service_token_refresh_failure_falls_back_to_browser(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ):
+        import haiku_skills_gmail._auth as auth_mod
+
+        token_file = tmp_path / "token.json"
+        token_file.write_text("{}")
+        creds_file = tmp_path / "credentials.json"
+        creds_file.write_text("{}")
+
+        expired_creds = MagicMock()
+        expired_creds.valid = False
+        expired_creds.expired = True
+        expired_creds.refresh_token = "refresh-token"
+        expired_creds.refresh.side_effect = Exception("Token has been expired or revoked.")
+
+        fresh_creds = MagicMock()
+        fresh_creds.valid = True
+        fresh_creds.to_json.return_value = '{"token": "new"}'
+
+        mock_creds_cls = MagicMock()
+        mock_creds_cls.from_authorized_user_file.return_value = expired_creds
+
+        mock_flow = MagicMock()
+        mock_flow.run_local_server.return_value = fresh_creds
+        mock_flow_cls = MagicMock()
+        mock_flow_cls.from_client_secrets_file.return_value = mock_flow
+
+        mock_build = MagicMock(return_value="gmail_service")
+        mock_request_cls = MagicMock()
+
+        monkeypatch.setattr(auth_mod, "_token_path", lambda: token_file)
+        monkeypatch.setattr(auth_mod, "_credentials_path", lambda: creds_file)
+        monkeypatch.setattr("haiku_skills_gmail._auth.Credentials", mock_creds_cls)
+        monkeypatch.setattr("haiku_skills_gmail._auth.build", mock_build)
+        monkeypatch.setattr("haiku_skills_gmail._auth.Request", mock_request_cls)
+        monkeypatch.setattr("haiku_skills_gmail._auth.InstalledAppFlow", mock_flow_cls)
+
+        result = auth_mod._get_service()
+        assert result == "gmail_service"
+        expired_creds.refresh.assert_called_once()
+        mock_flow.run_local_server.assert_called_once_with(port=0)
+        assert token_file.read_text() == '{"token": "new"}'
+        mock_build.assert_called_once_with("gmail", "v1", credentials=fresh_creds)
 
     def test_get_service_browser_flow(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
