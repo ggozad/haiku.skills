@@ -186,11 +186,7 @@ async def _run_skill(
             f"Use the `read_resource` tool to read any of these files.\n\n"
         )
         tools.append(_create_read_resource(skill))
-    # Only add the generic run_script fallback when the skill has no typed
-    # tools. Filesystem skills get typed tools from discover_script_tools();
-    # entrypoint skills provide their own in-process tools. Adding run_script
-    # alongside typed tools confuses the LLM into calling the wrong one.
-    if skill.path and (skill.path / "scripts").is_dir() and not skill.tools:
+    if skill.path and (skill.path / "scripts").is_dir():
         tools.append(_create_run_script(skill))
         script_files = sorted(
             str(f.relative_to(skill.path))

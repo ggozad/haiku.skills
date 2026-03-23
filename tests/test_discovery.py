@@ -39,10 +39,10 @@ class TestDiscoverFromPaths:
             assert skill.instructions is not None
         assert errors == []
 
-    def test_script_tools_loaded(self):
+    def test_filesystem_skills_have_no_tools(self):
         skills, errors = discover_from_paths([FIXTURES])
         by_name = {s.metadata.name: s for s in skills}
-        assert len(by_name["simple-skill"].tools) == 1
+        assert by_name["simple-skill"].tools == []
 
     def test_resources_loaded(self):
         skills, errors = discover_from_paths([FIXTURES])
