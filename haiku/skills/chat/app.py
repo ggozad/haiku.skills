@@ -153,7 +153,8 @@ class ChatApp(App):
             use_subagents=use_subagents,
         )
         self._agent: Agent[None, str] | None = None
-        self._messages: list[Any] = []  # AG-UI Message objects
+        self._messages: list[Any] = []  # AG-UI Message objects (for display)
+        self._message_history: list[Any] = []  # pydantic-ai ModelMessage list (for LLM)
         self._state: dict[str, Any] = {}
         self._is_processing = False
         self._current_worker: Worker[None] | None = None
@@ -219,10 +220,11 @@ class ChatApp(App):
         chat_history = self.query_one(ChatHistory)
         await chat_history.show_thinking()
 
+        latest_message = self._messages[-1:]
         run_input = RunAgentInput(
             thread_id="tui",
             run_id=str(uuid.uuid4()),
-            messages=self._messages,
+            messages=latest_message,
             state=self._state,
             tools=[],
             context=[],
@@ -234,13 +236,23 @@ class ChatApp(App):
             run_input=run_input,
         )
 
+        captured_messages: list[Any] = []
+
+        def on_complete(result: Any) -> None:
+            captured_messages.extend(result.all_messages())
+
         message = None
         accumulated_text = ""
         tool_call_args: dict[str, str] = {}
         tool_call_names: dict[str, str] = {}
 
         try:
-            async with run_agui_stream(self._toolset, adapter) as stream:
+            async with run_agui_stream(
+                self._toolset,
+                adapter,
+                message_history=self._message_history or None,
+                on_complete=on_complete,
+            ) as stream:
                 async for event in stream:
                     if event.type == EventType.TEXT_MESSAGE_START:
                         chat_history.hide_thinking()
@@ -339,6 +351,8 @@ class ChatApp(App):
             chat_history.hide_thinking()
             await chat_history.add_message("assistant", f"Error: {e}")
         finally:
+            if captured_messages:
+                self._message_history = list(captured_messages)
             self._is_processing = False
             self._current_worker = None
             chat_input = self.query_one(Input)
@@ -387,6 +401,7 @@ class ChatApp(App):
 
     async def action_clear_chat(self) -> None:
         self._messages = []
+        self._message_history = []
         self._state = self._toolset.build_state_snapshot()
         chat_history = self.query_one(ChatHistory)
         await chat_history.clear_messages()

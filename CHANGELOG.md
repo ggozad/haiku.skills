@@ -11,6 +11,10 @@
 
 - **`execute_skill_tool` returns raw values**: Tool results are passed through as-is instead of being JSON-serialized, consistent with pydantic-ai's `ToolReturnContent` support.
 
+### Fixed
+
+- **Chat TUI preserves full message history**: Tool calls and their results are now retained across turns via pydantic-ai message history, so the LLM no longer re-invokes tools for information it already retrieved.
+
 ## [0.9.1] - 2026-03-20
 
 ## [0.9.0] - 2026-03-20
