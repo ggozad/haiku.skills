@@ -44,24 +44,6 @@ jobs:
           python-version-file: "pyproject.toml"
       - name: Install dependencies
         run: uv sync --all-extras
-      - name: Validate bundled skills
-        run: |
-          uv run haiku-skills validate \
-            skills/web/haiku_skills_web/web \
-            skills/image-generation/haiku_skills_image_generation/imagegeneration \
-            skills/code-execution/haiku_skills_code_execution/codeexecution \
-            skills/gmail/haiku_skills_gmail/gmail \
-            skills/notifications/haiku_skills_notifications/notifications
-      - name: Verify skill signatures
-        run: |
-          for skill in \
-            skills/web/haiku_skills_web/web \
-            skills/image-generation/haiku_skills_image_generation/imagegeneration \
-            skills/code-execution/haiku_skills_code_execution/codeexecution \
-            skills/gmail/haiku_skills_gmail/gmail \
-            skills/notifications/haiku_skills_notifications/notifications; do
-            uv run haiku-skills verify --unsafe "$skill"
-          done
 
   test:
     needs: [lint]

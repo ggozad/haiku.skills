@@ -3,7 +3,7 @@ from pathlib import Path
 from pydantic import BaseModel
 from pydantic_ai import RunContext
 
-from haiku.skills.models import Skill, SkillSource
+from haiku.skills.models import Skill
 from haiku.skills.parser import parse_skill_md
 from haiku.skills.state import SkillRunDeps
 
@@ -32,9 +32,7 @@ def generate_image(
         width: Image width in pixels.
         height: Image height in pixels.
     """
-    from haiku_skills_image_generation.imagegeneration.scripts.generate_image import (
-        main,
-    )
+    from haiku_skills_image_generation._generate_image import main
 
     path = main(prompt, width=width, height=height)
 
@@ -52,15 +50,12 @@ def generate_image(
 
 
 def create_skill() -> Skill:
-    skill_dir = Path(__file__).parent / "imagegeneration"
-    metadata, instructions = parse_skill_md(skill_dir / "SKILL.md")
+    metadata, instructions = parse_skill_md(Path(__file__).parent / "SKILL.md")
 
     return Skill(
         metadata=metadata,
-        source=SkillSource.ENTRYPOINT,
-        path=skill_dir,
         instructions=instructions,
         tools=[generate_image],
         state_type=ImageState,
-        state_namespace="imagegeneration",
+        state_namespace="image-generation",
     )

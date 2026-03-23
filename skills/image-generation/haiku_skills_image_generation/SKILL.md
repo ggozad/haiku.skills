@@ -1,5 +1,5 @@
 ---
-name: imagegeneration
+name: image-generation
 description: Generate images from text prompts using Ollama.
 ---
 
@@ -14,18 +14,6 @@ The tool accepts `width` and `height` parameters (default 1024x1024) and returns
 1. Craft a detailed prompt describing the desired image.
 2. Call `generate_image` with the prompt and optional dimensions.
 3. The tool returns a file path. Display it to the user as `![description](path)`.
-
-## Available Scripts
-
-### `scripts/generate_image.py`
-
-Generate images from text prompts using Ollama.
-
-```
---prompt    (required) The text description of the image to generate.
---width     (default: 1024) Image width in pixels.
---height    (default: 1024) Image height in pixels.
-```
 
 ## Guidelines
 

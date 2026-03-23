@@ -6,7 +6,6 @@ from pydantic import ValidationError
 
 from haiku.skills.models import Skill, SkillSource, SkillValidationError
 from haiku.skills.parser import parse_skill_md
-from haiku.skills.script_tools import discover_script_tools
 from haiku.skills.signing import TrustedIdentity, verify_skill
 
 
@@ -37,7 +36,6 @@ def _load_skill_from_directory(
         source=SkillSource.FILESYSTEM,
         path=skill_dir,
         instructions=instructions,
-        tools=discover_script_tools(skill_dir),
         resources=discover_resources(skill_dir),
         verified=verified,
     )

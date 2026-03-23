@@ -1,14 +1,10 @@
 """Tests for the notifications skill package."""
 
-import io
-import runpy
 from unittest.mock import MagicMock
 
 import pytest
 
-from haiku.skills.models import SkillSource
-
-from .conftest import SKILLS_ROOT, make_ctx
+from .conftest import make_ctx
 
 
 class TestNotifications:
@@ -21,15 +17,13 @@ class TestNotifications:
             skill.metadata.description
             == "Send and receive push notifications via ntfy.sh."
         )
-        assert skill.source == SkillSource.ENTRYPOINT
-        assert skill.path is not None
         assert skill.instructions is not None
         assert skill.state_type is not None
         assert skill.state_namespace == "notifications"
         assert len(skill.tools) == 2
 
     def test_send_notification(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.notifications.scripts.send_notification as mod
+        import haiku_skills_notifications._send_notification as mod
         import httpx
 
         def mock_post(url, content, headers):
@@ -42,7 +36,7 @@ class TestNotifications:
         monkeypatch.setattr(mod.httpx, "post", mock_post)
         monkeypatch.delenv("NTFY_TOKEN", raising=False)
 
-        from haiku_skills_notifications.notifications.scripts.send_notification import (
+        from haiku_skills_notifications._send_notification import (
             main,
         )
 
@@ -52,7 +46,7 @@ class TestNotifications:
     def test_send_notification_with_title_and_priority(
         self, monkeypatch: pytest.MonkeyPatch
     ):
-        import haiku_skills_notifications.notifications.scripts.send_notification as mod
+        import haiku_skills_notifications._send_notification as mod
         import httpx
 
         captured_headers: dict[str, str] = {}
@@ -66,7 +60,7 @@ class TestNotifications:
         monkeypatch.setattr(mod.httpx, "post", mock_post)
         monkeypatch.delenv("NTFY_TOKEN", raising=False)
 
-        from haiku_skills_notifications.notifications.scripts.send_notification import (
+        from haiku_skills_notifications._send_notification import (
             main,
         )
 
@@ -76,7 +70,7 @@ class TestNotifications:
         assert captured_headers["X-Priority"] == "high"
 
     def test_send_notification_error(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.notifications.scripts.send_notification as mod
+        import haiku_skills_notifications._send_notification as mod
         import httpx
 
         def mock_post(url, content, headers):
@@ -85,7 +79,7 @@ class TestNotifications:
         monkeypatch.setattr(mod.httpx, "post", mock_post)
         monkeypatch.delenv("NTFY_TOKEN", raising=False)
 
-        from haiku_skills_notifications.notifications.scripts.send_notification import (
+        from haiku_skills_notifications._send_notification import (
             main,
         )
 
@@ -94,7 +88,7 @@ class TestNotifications:
         assert "connection failed" in result
 
     def test_send_notification_custom_server(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.notifications.scripts.send_notification as mod
+        import haiku_skills_notifications._send_notification as mod
         import httpx
 
         captured_url = ""
@@ -109,7 +103,7 @@ class TestNotifications:
         monkeypatch.setattr(mod.httpx, "post", mock_post)
         monkeypatch.delenv("NTFY_TOKEN", raising=False)
 
-        from haiku_skills_notifications.notifications.scripts.send_notification import (
+        from haiku_skills_notifications._send_notification import (
             main,
         )
 
@@ -117,7 +111,7 @@ class TestNotifications:
         assert captured_url == "http://localhost:2586/test-topic"
 
     def test_send_notification_server_from_env(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.notifications.scripts.send_notification as mod
+        import haiku_skills_notifications._send_notification as mod
         import httpx
 
         captured_url = ""
@@ -133,7 +127,7 @@ class TestNotifications:
         monkeypatch.setenv("NTFY_SERVER", "http://myserver:8080")
         monkeypatch.delenv("NTFY_TOKEN", raising=False)
 
-        from haiku_skills_notifications.notifications.scripts.send_notification import (
+        from haiku_skills_notifications._send_notification import (
             main,
         )
 
@@ -141,7 +135,7 @@ class TestNotifications:
         assert captured_url == "http://myserver:8080/test-topic"
 
     def test_send_notification_auth_token(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.notifications.scripts.send_notification as mod
+        import haiku_skills_notifications._send_notification as mod
         import httpx
 
         captured_headers: dict[str, str] = {}
@@ -155,7 +149,7 @@ class TestNotifications:
         monkeypatch.setattr(mod.httpx, "post", mock_post)
         monkeypatch.setenv("NTFY_TOKEN", "tk_secret123")
 
-        from haiku_skills_notifications.notifications.scripts.send_notification import (
+        from haiku_skills_notifications._send_notification import (
             main,
         )
 
@@ -163,7 +157,7 @@ class TestNotifications:
         assert captured_headers["Authorization"] == "Bearer tk_secret123"
 
     def test_send_notification_tool_with_state(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.notifications.scripts.send_notification as mod
+        import haiku_skills_notifications._send_notification as mod
         import httpx
 
         def mock_post(url, content, headers):
@@ -192,7 +186,7 @@ class TestNotifications:
     def test_send_notification_tool_error_no_state(
         self, monkeypatch: pytest.MonkeyPatch
     ):
-        import haiku_skills_notifications.notifications.scripts.send_notification as mod
+        import haiku_skills_notifications._send_notification as mod
         import httpx
 
         def mock_post(url, content, headers):
@@ -212,39 +206,8 @@ class TestNotifications:
         assert result.startswith("Error:")
         assert len(state.sent) == 0
 
-    def test_send_notification_main_entry(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.notifications.scripts.send_notification as mod
-        import httpx
-
-        def mock_post(url, content, headers):
-            resp = MagicMock(spec=httpx.Response)
-            resp.raise_for_status = MagicMock()
-            return resp
-
-        monkeypatch.setattr(mod.httpx, "post", mock_post)
-        monkeypatch.delenv("NTFY_TOKEN", raising=False)
-
-        monkeypatch.setattr(
-            "sys.argv",
-            ["send_notification.py", "--topic", "test-topic", "--message", "Hello"],
-        )
-        captured = io.StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
-
-        script = (
-            SKILLS_ROOT
-            / "notifications"
-            / "haiku_skills_notifications"
-            / "notifications"
-            / "scripts"
-            / "send_notification.py"
-        )
-        runpy.run_path(str(script), run_name="__main__")
-
-        assert "Notification sent" in captured.getvalue()
-
     def test_read_notifications(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.notifications.scripts.read_notifications as mod
+        import haiku_skills_notifications._read_notifications as mod
         import httpx
 
         lines = "\n".join(
@@ -266,7 +229,7 @@ class TestNotifications:
         monkeypatch.setattr(mod.httpx, "get", mock_get)
         monkeypatch.delenv("NTFY_TOKEN", raising=False)
 
-        from haiku_skills_notifications.notifications.scripts.read_notifications import (
+        from haiku_skills_notifications._read_notifications import (
             main,
         )
 
@@ -277,7 +240,7 @@ class TestNotifications:
         assert "(priority: 5)" in result
 
     def test_read_notifications_no_messages(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.notifications.scripts.read_notifications as mod
+        import haiku_skills_notifications._read_notifications as mod
         import httpx
 
         def mock_get(url, params, headers):
@@ -289,7 +252,7 @@ class TestNotifications:
         monkeypatch.setattr(mod.httpx, "get", mock_get)
         monkeypatch.delenv("NTFY_TOKEN", raising=False)
 
-        from haiku_skills_notifications.notifications.scripts.read_notifications import (
+        from haiku_skills_notifications._read_notifications import (
             main,
         )
 
@@ -297,7 +260,7 @@ class TestNotifications:
         assert result == "No messages on topic 'test-topic'."
 
     def test_read_notifications_error(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.notifications.scripts.read_notifications as mod
+        import haiku_skills_notifications._read_notifications as mod
         import httpx
 
         def mock_get(url, params, headers):
@@ -306,7 +269,7 @@ class TestNotifications:
         monkeypatch.setattr(mod.httpx, "get", mock_get)
         monkeypatch.delenv("NTFY_TOKEN", raising=False)
 
-        from haiku_skills_notifications.notifications.scripts.read_notifications import (
+        from haiku_skills_notifications._read_notifications import (
             main,
         )
 
@@ -315,7 +278,7 @@ class TestNotifications:
         assert "connection failed" in result
 
     def test_read_notifications_custom_server(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.notifications.scripts.read_notifications as mod
+        import haiku_skills_notifications._read_notifications as mod
         import httpx
 
         captured_url = ""
@@ -331,7 +294,7 @@ class TestNotifications:
         monkeypatch.setattr(mod.httpx, "get", mock_get)
         monkeypatch.delenv("NTFY_TOKEN", raising=False)
 
-        from haiku_skills_notifications.notifications.scripts.read_notifications import (
+        from haiku_skills_notifications._read_notifications import (
             main,
         )
 
@@ -339,7 +302,7 @@ class TestNotifications:
         assert captured_url == "http://localhost:2586/test-topic/json"
 
     def test_read_notifications_auth_token(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.notifications.scripts.read_notifications as mod
+        import haiku_skills_notifications._read_notifications as mod
         import httpx
 
         captured_headers: dict[str, str] = {}
@@ -354,7 +317,7 @@ class TestNotifications:
         monkeypatch.setattr(mod.httpx, "get", mock_get)
         monkeypatch.setenv("NTFY_TOKEN", "tk_secret123")
 
-        from haiku_skills_notifications.notifications.scripts.read_notifications import (
+        from haiku_skills_notifications._read_notifications import (
             main,
         )
 
@@ -362,7 +325,7 @@ class TestNotifications:
         assert captured_headers["Authorization"] == "Bearer tk_secret123"
 
     def test_read_notifications_tool_with_state(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.notifications.scripts.read_notifications as mod
+        import haiku_skills_notifications._read_notifications as mod
         import httpx
 
         lines = "\n".join(
@@ -400,7 +363,7 @@ class TestNotifications:
     def test_read_notifications_tool_no_messages_state(
         self, monkeypatch: pytest.MonkeyPatch
     ):
-        import haiku_skills_notifications.notifications.scripts.read_notifications as mod
+        import haiku_skills_notifications._read_notifications as mod
         import httpx
 
         def mock_get(url, params, headers):
@@ -426,7 +389,7 @@ class TestNotifications:
     def test_read_notifications_tool_error_no_state(
         self, monkeypatch: pytest.MonkeyPatch
     ):
-        import haiku_skills_notifications.notifications.scripts.read_notifications as mod
+        import haiku_skills_notifications._read_notifications as mod
         import httpx
 
         def mock_get(url, params, headers):
@@ -446,37 +409,6 @@ class TestNotifications:
         assert result.startswith("Error:")
         assert len(state.received) == 0
 
-    def test_read_notifications_main_entry(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_notifications.notifications.scripts.read_notifications as mod
-        import httpx
-
-        def mock_get(url, params, headers):
-            resp = MagicMock(spec=httpx.Response)
-            resp.raise_for_status = MagicMock()
-            resp.text = ""
-            return resp
-
-        monkeypatch.setattr(mod.httpx, "get", mock_get)
-        monkeypatch.delenv("NTFY_TOKEN", raising=False)
-
-        monkeypatch.setattr(
-            "sys.argv", ["read_notifications.py", "--topic", "test-topic"]
-        )
-        captured = io.StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
-
-        script = (
-            SKILLS_ROOT
-            / "notifications"
-            / "haiku_skills_notifications"
-            / "notifications"
-            / "scripts"
-            / "read_notifications.py"
-        )
-        runpy.run_path(str(script), run_name="__main__")
-
-        assert "No messages" in captured.getvalue()
-
     def test_parse_priority(self):
         from haiku_skills_notifications import _parse_priority
 
@@ -492,7 +424,7 @@ class TestNotifications:
     def test_send_notification_tool_priority_stored_as_int(
         self, monkeypatch: pytest.MonkeyPatch
     ):
-        import haiku_skills_notifications.notifications.scripts.send_notification as mod
+        import haiku_skills_notifications._send_notification as mod
         import httpx
 
         def mock_post(url, content, headers):
@@ -514,7 +446,7 @@ class TestNotifications:
         assert state.sent[0].priority == 4
 
     def test_format_messages(self):
-        from haiku_skills_notifications.notifications.scripts.read_notifications import (
+        from haiku_skills_notifications._read_notifications import (
             format_messages,
         )
 
@@ -529,7 +461,7 @@ class TestNotifications:
         assert "(priority: 3)" not in result
 
     def test_resolve_server(self, monkeypatch: pytest.MonkeyPatch):
-        from haiku_skills_notifications.notifications.scripts.ntfy import resolve_server
+        from haiku_skills_notifications._ntfy import resolve_server
 
         monkeypatch.delenv("NTFY_SERVER", raising=False)
         assert resolve_server() == "https://ntfy.sh"
@@ -539,7 +471,7 @@ class TestNotifications:
         assert resolve_server("http://explicit:8080") == "http://explicit:8080"
 
     def test_auth_headers(self, monkeypatch: pytest.MonkeyPatch):
-        from haiku_skills_notifications.notifications.scripts.ntfy import auth_headers
+        from haiku_skills_notifications._ntfy import auth_headers
 
         monkeypatch.delenv("NTFY_TOKEN", raising=False)
         assert auth_headers() == {}

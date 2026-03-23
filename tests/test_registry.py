@@ -72,14 +72,12 @@ class TestSkillRegistry:
         assert "# Simple Skill" in skill.instructions
         assert errors == []
 
-    def test_discover_loads_script_tools(self):
+    def test_filesystem_skills_have_no_tools(self):
         registry = SkillRegistry()
         errors = registry.discover(paths=[FIXTURES])
         skill = registry.get("simple-skill")
         assert skill is not None
-        assert len(skill.tools) == 1
-        tool = skill.tools[0]
-        assert hasattr(tool, "name") and tool.name == "greet"
+        assert skill.tools == []
         assert errors == []
 
     def test_discover_loads_resources(self):

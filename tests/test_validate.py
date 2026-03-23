@@ -15,32 +15,6 @@ class TestValidateFixtures:
         assert errors == []
 
 
-class TestValidateDistributableSkills:
-    def test_web_valid(self):
-        from haiku_skills_web import create_skill
-
-        skill = create_skill()
-        assert skill.path is not None
-        errors = validate(skill.path)
-        assert errors == []
-
-    def test_image_generation_valid(self):
-        from haiku_skills_image_generation import create_skill
-
-        skill = create_skill()
-        assert skill.path is not None
-        errors = validate(skill.path)
-        assert errors == []
-
-    def test_code_execution_valid(self):
-        from haiku_skills_code_execution import create_skill
-
-        skill = create_skill()
-        assert skill.path is not None
-        errors = validate(skill.path)
-        assert errors == []
-
-
 class TestValidateInvalid:
     def test_nonexistent_path(self):
         errors = validate(Path("/tmp/nonexistent"))

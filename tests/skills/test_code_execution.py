@@ -1,14 +1,9 @@
 """Tests for the code execution skill package."""
 
-import io
-import runpy
-
 import pytest
 from pydantic_ai.models.test import TestModel
 
-from haiku.skills.models import SkillSource
-
-from .conftest import SKILLS_ROOT, make_ctx
+from .conftest import make_ctx
 
 
 class TestCreateSkill:
@@ -16,18 +11,16 @@ class TestCreateSkill:
         from haiku_skills_code_execution import create_skill
 
         skill = create_skill()
-        assert skill.metadata.name == "codeexecution"
-        assert skill.source == SkillSource.ENTRYPOINT
-        assert skill.path is not None
+        assert skill.metadata.name == "code-execution"
         assert skill.instructions is not None
         assert skill.state_type is not None
-        assert skill.state_namespace == "codeexecution"
+        assert skill.state_namespace == "code-execution"
         assert len(skill.tools) == 1
 
 
 class TestBuildExternalFunctions:
     def test_returns_dict_with_llm_key(self):
-        from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+        from haiku_skills_code_execution.sandbox import (
             _build_external_functions,
         )
 
@@ -38,7 +31,7 @@ class TestBuildExternalFunctions:
 
     @pytest.mark.anyio
     async def test_llm_calls_agent_and_returns_output(self):
-        from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+        from haiku_skills_code_execution.sandbox import (
             _build_external_functions,
         )
 
@@ -49,7 +42,7 @@ class TestBuildExternalFunctions:
 
     @pytest.mark.anyio
     async def test_llm_returns_error_string_on_failure(self, monkeypatch):
-        from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+        from haiku_skills_code_execution.sandbox import (
             _build_external_functions,
         )
 
@@ -71,7 +64,7 @@ class TestBuildExternalFunctions:
 class TestExecuteCode:
     @pytest.mark.anyio
     async def test_basic_expression(self):
-        from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+        from haiku_skills_code_execution.sandbox import (
             _execute_code,
         )
 
@@ -82,7 +75,7 @@ class TestExecuteCode:
 
     @pytest.mark.anyio
     async def test_print_output(self):
-        from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+        from haiku_skills_code_execution.sandbox import (
             _execute_code,
         )
 
@@ -93,7 +86,7 @@ class TestExecuteCode:
 
     @pytest.mark.anyio
     async def test_no_output(self):
-        from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+        from haiku_skills_code_execution.sandbox import (
             _execute_code,
         )
 
@@ -104,7 +97,7 @@ class TestExecuteCode:
 
     @pytest.mark.anyio
     async def test_monty_error(self):
-        from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+        from haiku_skills_code_execution.sandbox import (
             _execute_code,
         )
 
@@ -115,7 +108,7 @@ class TestExecuteCode:
 
     @pytest.mark.anyio
     async def test_with_external_functions(self):
-        from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+        from haiku_skills_code_execution.sandbox import (
             _build_external_functions,
             _execute_code,
         )
@@ -131,7 +124,7 @@ class TestExecuteCode:
 
 class TestFormatOutput:
     def test_stdout_and_result(self):
-        from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+        from haiku_skills_code_execution.sandbox import (
             _format_output,
         )
 
@@ -142,7 +135,7 @@ class TestFormatOutput:
         assert "result: 1" in output
 
     def test_result_only(self):
-        from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+        from haiku_skills_code_execution.sandbox import (
             _format_output,
         )
 
@@ -152,7 +145,7 @@ class TestFormatOutput:
         assert "stdout:" not in output
 
     def test_no_output(self):
-        from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+        from haiku_skills_code_execution.sandbox import (
             _format_output,
         )
 
@@ -160,7 +153,7 @@ class TestFormatOutput:
         assert "no output" in output.lower()
 
     def test_stdout_only(self):
-        from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+        from haiku_skills_code_execution.sandbox import (
             _format_output,
         )
 
@@ -261,44 +254,3 @@ class TestRunCodeAsync:
         assert "Error" in result
         assert len(state.executions) == 1
         assert state.executions[0].success is False
-
-
-class TestScriptRunCode:
-    """Tests for the standalone scripts/run_code.py."""
-
-    def test_run_code_with_output(self):
-        from haiku_skills_code_execution.codeexecution.scripts.run_code import main
-
-        result = main("print(1 + 1)")
-        assert "```python" in result
-        assert "print(1 + 1)" in result
-        assert "2" in result
-
-    def test_run_code_with_result(self):
-        from haiku_skills_code_execution.codeexecution.scripts.run_code import main
-
-        result = main("1 + 1")
-        assert "result: 2" in result
-
-    def test_run_code_no_output(self):
-        from haiku_skills_code_execution.codeexecution.scripts.run_code import main
-
-        result = main("x = 1")
-        assert "no output" in result.lower()
-
-    def test_main_entry(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("sys.argv", ["run_code.py", "--code", "1 + 1"])
-        captured = io.StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
-
-        script = (
-            SKILLS_ROOT
-            / "code-execution"
-            / "haiku_skills_code_execution"
-            / "codeexecution"
-            / "scripts"
-            / "run_code.py"
-        )
-        runpy.run_path(str(script), run_name="__main__")
-
-        assert "result" in captured.getvalue()

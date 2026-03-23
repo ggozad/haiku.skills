@@ -1,4 +1,3 @@
-import os
 from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
@@ -1306,22 +1305,6 @@ class TestCreateRunScript:
         with pytest.raises(RuntimeError, match="failed"):
             await run_script(script="scripts/fail.py")
 
-    async def test_nonzero_exit_includes_stdout(self, tmp_path: Path):
-        scripts_dir = tmp_path / "scripts"
-        scripts_dir.mkdir()
-        (scripts_dir / "usage.py").write_text(
-            "import sys\nprint('Usage: usage.py <arg>')\nsys.exit(1)\n"
-        )
-        skill = Skill(
-            metadata=SkillMetadata(name="s", description="Test."),
-            source=SkillSource.FILESYSTEM,
-            path=tmp_path,
-            instructions="Use scripts.",
-        )
-        run_script = _create_run_script(skill)
-        with pytest.raises(RuntimeError, match="Usage: usage.py <arg>"):
-            await run_script(script="scripts/usage.py")
-
     async def test_py_script_can_import_sibling_modules(self, tmp_path: Path):
         scripts_dir = tmp_path / "scripts"
         scripts_dir.mkdir()
@@ -1364,38 +1347,6 @@ class TestCreateRunScript:
         result = await run_script(script="scripts/greet", arguments="Bob")
         assert "Hey, Bob!" in result
 
-    async def test_executes_js_script(self, tmp_path: Path):
-        scripts_dir = tmp_path / "scripts"
-        scripts_dir.mkdir()
-        (scripts_dir / "greet.js").write_text(
-            "console.log(`Hello, ${process.argv[2]}!`);\n"
-        )
-        skill = Skill(
-            metadata=SkillMetadata(name="s", description="Test."),
-            source=SkillSource.FILESYSTEM,
-            path=tmp_path,
-            instructions="Use scripts.",
-        )
-        run_script = _create_run_script(skill)
-        result = await run_script(script="scripts/greet.js", arguments="World")
-        assert "Hello, World!" in result
-
-    async def test_executes_ts_script(self, tmp_path: Path):
-        scripts_dir = tmp_path / "scripts"
-        scripts_dir.mkdir()
-        (scripts_dir / "greet.ts").write_text(
-            "const name: string = process.argv[2];\nconsole.log(`Hello, ${name}!`);\n"
-        )
-        skill = Skill(
-            metadata=SkillMetadata(name="s", description="Test."),
-            source=SkillSource.FILESYSTEM,
-            path=tmp_path,
-            instructions="Use scripts.",
-        )
-        run_script = _create_run_script(skill)
-        result = await run_script(script="scripts/greet.ts", arguments="World")
-        assert "Hello, World!" in result
-
     async def test_custom_script_runner(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ):
@@ -1412,33 +1363,6 @@ class TestCreateRunScript:
         run_script = _create_run_script(skill)
         result = await run_script(script="scripts/greet.rb", arguments="World")
         assert "Hello, World!" in result
-
-    async def test_lists_js_ts_scripts_in_prompt(
-        self, tmp_path: Path, allow_model_requests: None
-    ):
-        scripts_dir = tmp_path / "scripts"
-        scripts_dir.mkdir()
-        (scripts_dir / "fetch.js").write_text("console.log('fetched');\n")
-        (scripts_dir / "transform.ts").write_text("console.log('transformed');\n")
-        (scripts_dir / "process.py").write_text("print('processed')\n")
-        skill = Skill(
-            metadata=SkillMetadata(name="scripted", description="Has scripts."),
-            source=SkillSource.FILESYSTEM,
-            path=tmp_path,
-            instructions="Use scripts.",
-        )
-        result, *_ = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
-        assert result
-        # Verify all script types appear in the prompt by checking
-        # via the skill prompt construction path
-        script_files = sorted(
-            str(f.relative_to(tmp_path))
-            for f in (tmp_path / "scripts").rglob("*")
-            if f.is_file() and (f.suffix in SCRIPT_RUNNERS or os.access(f, os.X_OK))
-        )
-        assert "scripts/fetch.js" in script_files
-        assert "scripts/transform.ts" in script_files
-        assert "scripts/process.py" in script_files
 
 
 class TestRunSkillWithScripts:
@@ -1467,42 +1391,6 @@ class TestRunSkillWithScripts:
         )
         result, *_ = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
         assert result
-
-    async def test_no_run_script_when_skill_has_typed_tools(
-        self, tmp_path: Path, allow_model_requests: None
-    ):
-        scripts_dir = tmp_path / "scripts"
-        scripts_dir.mkdir()
-        (scripts_dir / "hello.py").write_text(
-            "import sys\nprint(f'Hello, {sys.argv[1]}!')\n"
-        )
-
-        def my_tool() -> str:
-            """A typed tool."""
-            return "ok"
-
-        skill = Skill(
-            metadata=SkillMetadata(name="typed", description="Has typed tools."),
-            source=SkillSource.FILESYSTEM,
-            path=tmp_path,
-            instructions="Use typed tools.",
-            tools=[my_tool],
-        )
-        captured: dict[str, Any] = {}
-        original_init = Agent.__init__
-
-        def patched_init(self: Any, *args: Any, **kwargs: Any) -> None:
-            captured["tools"] = kwargs.get("tools", [])
-            original_init(self, *args, **kwargs)
-
-        with patch.object(Agent, "__init__", patched_init):
-            await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
-
-        tool_names = [
-            getattr(t, "__name__", None) or getattr(t, "name", None)
-            for t in captured["tools"]
-        ]
-        assert "run_script" not in tool_names
 
 
 class TestEventsToActivity:

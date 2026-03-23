@@ -9,16 +9,12 @@ Skill-powered AI agents implementing the [Agent Skills specification](https://ag
 
 `SkillToolset` is a pydantic-ai `FunctionToolset` that you attach to your own agent. It exposes a single `execute_skill` tool. When the agent calls it, a **focused sub-agent** spins up with only that skill's instructions and tools — then returns the result. The main agent never sees the skill's internal tools, so its tool space stays clean no matter how many skills you load.
 
-This sub-agent architecture means each skill runs in isolation with its own system prompt, tools, and token budget. Skills don't interfere with each other, tool descriptions don't compete for attention, and failures in one skill can't confuse another.
-
 ## Features
 
 - **Sub-agent execution** — Each skill runs in its own agent with dedicated instructions and tools
-- **Skill discovery** — Scan filesystem paths for [SKILL.md](https://agentskills.io/specification) directories or load from Python entrypoints
-- **In-process tools** — Attach pydantic-ai `Tool` functions or `AbstractToolset` instances to skills
-- **Per-skill state** — Skills declare a Pydantic state model and namespace; state is passed to tools via `RunContext` and tracked on the toolset
-- **AG-UI protocol** — State changes emit `StateDeltaEvent` (JSON Patch), compatible with the [AG-UI protocol](https://docs.ag-ui.com)
-- **Script tools** — Python, JavaScript, TypeScript, and shell scripts in `scripts/`; Python scripts with a `main()` function are AST-parsed for typed tool schemas and executed via `uv run` with [PEP 723](https://peps.python.org/pep-0723/) dependency support
+- **Filesystem skills** — Load [SKILL.md](https://agentskills.io/specification) directories with scripts in Python, JavaScript, TypeScript, or shell
+- **Entrypoint skills** — Install skill packages with typed in-process tools, per-skill state, and zero-config discovery
+- **Per-skill state** — Pydantic state models tracked per namespace; state changes emit `StateDeltaEvent` (JSON Patch) for the [AG-UI protocol](https://docs.ag-ui.com)
 - **MCP integration** — Wrap any MCP server (stdio, SSE, streamable HTTP) as a skill
 - **Signing and verification** — Identity-based skill signing via [sigstore](https://www.sigstore.dev/)
 

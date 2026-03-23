@@ -3,7 +3,7 @@ from pathlib import Path
 from pydantic import BaseModel
 from pydantic_ai import RunContext
 
-from haiku.skills.models import Skill, SkillSource
+from haiku.skills.models import Skill
 from haiku.skills.parser import parse_skill_md
 from haiku.skills.state import SkillRunDeps
 
@@ -31,7 +31,7 @@ def search(ctx: RunContext[SkillRunDeps], query: str, count: int = 5) -> str:
         query: The search query.
         count: Number of results to return.
     """
-    from haiku_skills_web.web.scripts.search import _search
+    from haiku_skills_web._search import _search
 
     try:
         raw = _search(query, count)
@@ -54,7 +54,7 @@ def fetch_page(ctx: RunContext[SkillRunDeps], url: str) -> str:
     Args:
         url: The URL of the page to fetch.
     """
-    from haiku_skills_web.web.scripts.fetch_page import main
+    from haiku_skills_web._fetch_page import main
 
     content = main(url)
     if (
@@ -69,13 +69,10 @@ def fetch_page(ctx: RunContext[SkillRunDeps], url: str) -> str:
 
 
 def create_skill() -> Skill:
-    skill_dir = Path(__file__).parent / "web"
-    metadata, instructions = parse_skill_md(skill_dir / "SKILL.md")
+    metadata, instructions = parse_skill_md(Path(__file__).parent / "SKILL.md")
 
     return Skill(
         metadata=metadata,
-        source=SkillSource.ENTRYPOINT,
-        path=skill_dir,
         instructions=instructions,
         tools=[search, fetch_page],
         state_type=WebState,

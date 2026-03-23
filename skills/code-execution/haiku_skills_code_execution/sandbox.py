@@ -1,10 +1,5 @@
-# /// script
-# requires-python = ">=3.13"
-# dependencies = ["pydantic-monty", "pydantic-ai-slim"]
-# ///
 """Execute Python code safely in a sandboxed environment."""
 
-import asyncio
 from collections.abc import Callable
 from typing import Any
 
@@ -69,31 +64,3 @@ def _format_output(code: str, stdout: str, result: str | None) -> str:
     if not stdout and result is None:
         parts.append("Code executed successfully (no output).")
     return "\n".join(parts)
-
-
-def main(code: str, model: str = "") -> str:
-    """Execute Python code and return the output.
-
-    Args:
-        code: The Python code to execute.
-        model: Model identifier (e.g. "openai:gpt-4o"). Enables await llm() in sandbox.
-    """
-    external_fns = _build_external_functions(model) if model else None
-    stdout, result, success = asyncio.run(_execute_code(code, external_fns))
-    return _format_output(code, stdout, result)
-
-
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(
-        description="Execute Python code in a sandboxed environment."
-    )
-    parser.add_argument("--code", required=True, help="The Python code to execute.")
-    parser.add_argument(
-        "--model",
-        default="",
-        help="Model identifier (e.g. 'openai:gpt-4o'). Enables await llm() in sandbox.",
-    )
-    args = parser.parse_args()
-    print(main(args.code, args.model))

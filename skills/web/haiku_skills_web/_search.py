@@ -1,7 +1,3 @@
-# /// script
-# requires-python = ">=3.13"
-# dependencies = ["httpx"]
-# ///
 """Search the web using Brave Search API."""
 
 import os
@@ -67,15 +63,3 @@ def main(query: str, count: int = 5) -> str:
         )
 
     return "\n\n---\n\n".join(formatted) if formatted else "No results found."
-
-
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Search the web using Brave Search.")
-    parser.add_argument("--query", required=True, help="The search query.")
-    parser.add_argument(
-        "--count", type=int, default=5, help="Number of results to return."
-    )
-    args = parser.parse_args()
-    print(main(args.query, args.count))
