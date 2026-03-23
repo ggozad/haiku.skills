@@ -31,9 +31,10 @@ _DIRECT_PROMPT = """\
 ## Instructions
 
 - For general conversation or questions that don't need skills, respond directly
-- Use query_skill to discover a skill's instructions, tools, and resources \
-before calling its tools
+- Use query_skill to discover a skill's instructions, tools, scripts, and \
+resources before calling its tools
 - Use execute_skill_tool to call a specific tool from a skill
+- Use run_skill_script to execute scripts from a skill's scripts/ directory
 - Use read_skill_resource to read resource files from a skill's directory
 - The user cannot see tool responses directly. You must synthesize the \
 information returned by tools into your own reply\

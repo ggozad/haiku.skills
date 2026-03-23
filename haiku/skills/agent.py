@@ -502,6 +502,18 @@ class SkillToolset(FunctionToolset[Any]):
             if tool_lines:
                 sections.append("## Tools\n\n" + "\n".join(tool_lines))
 
+            if skill.path and (skill.path / "scripts").is_dir():
+                script_files = sorted(
+                    str(f.relative_to(skill.path))
+                    for f in (skill.path / "scripts").rglob("*")
+                    if f.is_file()
+                    and f.name != "__init__.py"
+                    and (f.suffix in SCRIPT_RUNNERS or os.access(f, os.X_OK))
+                )
+                if script_files:
+                    script_list = "\n".join(f"- {s}" for s in script_files)
+                    sections.append(f"## Scripts\n\n{script_list}")
+
             if skill.resources:
                 resource_list = "\n".join(f"- {r}" for r in skill.resources)
                 sections.append(f"## Resources\n\n{resource_list}")
@@ -582,6 +594,33 @@ class SkillToolset(FunctionToolset[Any]):
             try:
                 return await reader(path=path)
             except ValueError as e:
+                return f"Error: {e}"
+
+        @self.tool
+        async def run_skill_script(
+            ctx: RunContext[Any],
+            skill_name: str,
+            script: str,
+            arguments: str = "",
+        ) -> str:
+            """Execute a script from a skill's scripts/ directory.
+
+            Use query_skill first to discover available scripts.
+
+            Args:
+                skill_name: The exact name of the skill.
+                script: Relative path to the script (e.g. 'scripts/extract.py').
+                arguments: Command-line arguments for the script.
+            """
+            skill = registry.get(skill_name)
+            if skill is None:
+                return f"Error: Skill '{skill_name}' not found in registry"
+            if skill.path is None or not (skill.path / "scripts").is_dir():
+                return f"Error: Skill '{skill_name}' has no scripts"
+            runner = _create_run_script(skill)
+            try:
+                return await runner(script=script, arguments=arguments)
+            except (ValueError, RuntimeError) as e:
                 return f"Error: {e}"
 
     async def _call_skill_tool(

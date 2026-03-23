@@ -4,7 +4,7 @@
 
 ### Added
 
-- **Optional sub-agent delegation**: `SkillToolset(use_subagents=False)` exposes skill tools directly to the main agent via `query_skill`, `execute_skill_tool`, and `read_skill_resource` — bypassing sub-agent LLM loops for lower latency and cost. Default (`use_subagents=True`) preserves existing behavior.
+- **Optional sub-agent delegation**: `SkillToolset(use_subagents=False)` exposes skill tools directly to the main agent via `query_skill`, `execute_skill_tool`, `run_skill_script`, and `read_skill_resource` — bypassing sub-agent LLM loops for lower latency and cost. Default (`use_subagents=True`) preserves existing behavior.
 - **`--no-subagents` CLI flag**: `haiku-skills chat --no-subagents` runs the TUI in direct mode.
 
 ### Changed

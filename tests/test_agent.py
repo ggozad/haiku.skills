@@ -2183,6 +2183,129 @@ class TestReadSkillResource:
         assert "Error" in result
 
 
+class TestRunSkillScriptDirect:
+    """Tests for run_skill_script in use_subagents=False mode."""
+
+    async def test_tool_registered(self, allow_model_requests: None):
+        """run_skill_script is available in direct mode."""
+        toolset = SkillToolset(skill_paths=[FIXTURES], use_subagents=False)
+        ctx = _make_ctx()
+        tools = await toolset.get_tools(ctx)
+        assert "run_skill_script" in tools
+
+    async def test_executes_script(self, allow_model_requests: None):
+        toolset = SkillToolset(skill_paths=[FIXTURES], use_subagents=False)
+        ctx = _make_ctx()
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "run_skill_script",
+            {
+                "skill_name": "simple-skill",
+                "script": "scripts/greet.py",
+                "arguments": "--name Alice",
+            },
+            ctx,
+            tools["run_skill_script"],
+        )
+        assert "Hello, Alice!" in result
+
+    async def test_unknown_skill_returns_error(self, allow_model_requests: None):
+        toolset = SkillToolset(skill_paths=[FIXTURES], use_subagents=False)
+        ctx = _make_ctx()
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "run_skill_script",
+            {
+                "skill_name": "nonexistent",
+                "script": "scripts/greet.py",
+                "arguments": "",
+            },
+            ctx,
+            tools["run_skill_script"],
+        )
+        assert "Error" in result
+
+    async def test_skill_without_path_returns_error(self, allow_model_requests: None):
+        skill = Skill(
+            metadata=SkillMetadata(name="nop", description="No path."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do things.",
+        )
+        toolset = SkillToolset(skills=[skill], use_subagents=False)
+        ctx = _make_ctx()
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "run_skill_script",
+            {"skill_name": "nop", "script": "scripts/x.py", "arguments": ""},
+            ctx,
+            tools["run_skill_script"],
+        )
+        assert "Error" in result
+        assert "has no scripts" in result
+
+    async def test_script_failure_returns_error(
+        self, tmp_path: Path, allow_model_requests: None
+    ):
+        scripts_dir = tmp_path / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "fail.py").write_text(
+            "import sys\nprint('oops', file=sys.stderr)\nsys.exit(1)\n"
+        )
+        (tmp_path / "SKILL.md").write_text(
+            "---\nname: failing\ndescription: Fails.\n---\nInstructions.\n"
+        )
+        toolset = SkillToolset(skill_paths=[tmp_path], use_subagents=False)
+        ctx = _make_ctx()
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "run_skill_script",
+            {"skill_name": "failing", "script": "scripts/fail.py", "arguments": ""},
+            ctx,
+            tools["run_skill_script"],
+        )
+        assert "Error" in result
+
+
+class TestQuerySkillScripts:
+    """Tests for query_skill listing scripts in direct mode."""
+
+    async def test_lists_scripts(self, allow_model_requests: None):
+        toolset = SkillToolset(skill_paths=[FIXTURES], use_subagents=False)
+        ctx = _make_ctx()
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "query_skill",
+            {"skill_name": "simple-skill"},
+            ctx,
+            tools["query_skill"],
+        )
+        assert "scripts/greet.py" in result
+
+    async def test_no_scripts_section_for_entrypoint_skill(
+        self, allow_model_requests: None
+    ):
+        def greet(name: str) -> str:
+            """Greet someone."""
+            return f"Hello, {name}!"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="greeter", description="Greets."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use greet.",
+            tools=[greet],
+        )
+        toolset = SkillToolset(skills=[skill], use_subagents=False)
+        ctx = _make_ctx()
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "query_skill",
+            {"skill_name": "greeter"},
+            ctx,
+            tools["query_skill"],
+        )
+        assert "Scripts" not in result
+
+
 class TestSystemPromptModes:
     """Tests for system prompt in subagent vs direct mode."""
 
@@ -2191,10 +2314,11 @@ class TestSystemPromptModes:
         assert "execute_skill" in prompt
         assert "query_skill" not in prompt
 
-    def test_direct_prompt_mentions_query_and_execute_tool(self):
+    def test_direct_prompt_mentions_all_tools(self):
         prompt = build_system_prompt("- **test**: A test skill.", use_subagents=False)
         assert "query_skill" in prompt
         assert "execute_skill_tool" in prompt
+        assert "run_skill_script" in prompt
         assert "read_skill_resource" in prompt
 
     def test_direct_prompt_does_not_mention_execute_skill(self):
