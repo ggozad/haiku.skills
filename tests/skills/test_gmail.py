@@ -29,6 +29,7 @@ class TestGmail:
         assert skill.state_type is not None
         assert skill.state_namespace == "gmail"
         assert len(skill.tools) == 8
+        assert skill.path is not None
 
     # -- Config --
 

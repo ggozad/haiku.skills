@@ -26,6 +26,7 @@ class TestWeb:
         assert skill.state_type is not None
         assert skill.state_namespace == "web"
         assert len(skill.tools) == 2
+        assert skill.path is not None
 
     @pytest.mark.vcr()
     def test_search(self, monkeypatch: pytest.MonkeyPatch):

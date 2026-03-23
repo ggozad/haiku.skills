@@ -131,6 +131,7 @@ def create_skill() -> Skill:
     return Skill(
         metadata=metadata,
         instructions=instructions,
+        path=Path(__file__).parent,
         tools=[send_notification, read_notifications],
         state_type=NotificationState,
         state_namespace="notifications",

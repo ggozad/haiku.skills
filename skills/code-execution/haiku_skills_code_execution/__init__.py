@@ -54,6 +54,7 @@ def create_skill() -> Skill:
     return Skill(
         metadata=metadata,
         instructions=instructions,
+        path=Path(__file__).parent,
         tools=[run_code],
         state_type=CodeState,
         state_namespace="code-execution",

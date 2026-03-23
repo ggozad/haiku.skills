@@ -82,7 +82,7 @@ The skill directory is prepended to `PYTHONPATH`, so Python scripts can import s
 
 ### Resources
 
-Filesystem skills can also expose files (references, templates, data) as resources. Any non-script, non-Python file in the skill directory is automatically discovered. The sub-agent receives a `read_resource` tool to read these on demand.
+Skills can expose files (references, templates, data) as resources. Any non-script, non-Python file in the skill directory is automatically discovered. The sub-agent receives a `read_resource` tool to read these on demand. This works for both filesystem and entrypoint skills (entrypoint skills must set `path` in their factory).
 
 ### Creating a filesystem skill
 
@@ -170,9 +170,12 @@ def create_skill() -> Skill:
     return Skill(
         metadata=metadata,
         instructions=instructions,
+        path=Path(__file__).parent,
         tools=[add],
     )
 ```
+
+Setting `path` enables automatic resource discovery — any non-script, non-Python files in the package directory become available to the sub-agent via a `read_resource` tool.
 
 Include a `SKILL.md` alongside `__init__.py` for metadata and instructions:
 
@@ -237,6 +240,7 @@ def create_skill() -> Skill:
     return Skill(
         metadata=metadata,
         instructions=instructions,
+        path=Path(__file__).parent,
         tools=[add],
         state_type=CalculatorState,
         state_namespace="calculator",

@@ -9,7 +9,7 @@
 - **Flattened entrypoint skill packages**: All bundled skills (web, gmail, image-generation, code-execution, notifications) simplified to flat Python packages. Nested `scripts/` directories, PEP 723 headers, and argparse `__main__` blocks removed.
 - **Renamed skills**: `codeexecution` → `code-execution`, `imagegeneration` → `image-generation` (no longer constrained by Python module naming).
 - **`Skill.source` defaults to `ENTRYPOINT`**: Factory functions no longer need to set `source=SkillSource.ENTRYPOINT` explicitly.
-- **Entrypoint skills no longer set `path`**: Only filesystem skills have `path` set.
+- **Entrypoint skills now set `path` and auto-discover resources**: Setting `path` in the factory enables the `read_resource` tool for reference files, templates, and assets — the same resource discovery that filesystem skills have always had.
 - **Documentation rewritten**: Tutorial now progresses from filesystem skills to entrypoint packages. Skills reference updated for the new architecture.
 
 ### Removed

@@ -74,6 +74,7 @@ def create_skill() -> Skill:
     return Skill(
         metadata=metadata,
         instructions=instructions,
+        path=Path(__file__).parent,
         tools=[search, fetch_page],
         state_type=WebState,
         state_namespace="web",

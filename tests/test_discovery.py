@@ -325,6 +325,58 @@ class TestDiscoverFromEntrypoints:
         assert skills[0].metadata.name == "ep-skill"
         assert skills[0].source == SkillSource.ENTRYPOINT
 
+    def test_auto_populates_resources_from_path(self, monkeypatch: pytest.MonkeyPatch):
+        skill = Skill(
+            metadata=SkillMetadata(name="ep-skill", description="From entrypoint."),
+            source=SkillSource.ENTRYPOINT,
+            path=FIXTURES / "skill-with-refs",
+        )
+        mock_ep = MagicMock()
+        mock_ep.load.return_value = lambda: skill
+
+        monkeypatch.setattr(
+            "haiku.skills.discovery.entry_points",
+            lambda group: [mock_ep],
+        )
+        skills = discover_from_entrypoints()
+        assert len(skills) == 1
+        assert "references/REFERENCE.md" in skills[0].resources
+        assert "assets/template.txt" in skills[0].resources
+
+    def test_does_not_overwrite_existing_resources(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        skill = Skill(
+            metadata=SkillMetadata(name="ep-skill", description="From entrypoint."),
+            source=SkillSource.ENTRYPOINT,
+            path=FIXTURES / "skill-with-refs",
+            resources=["custom.txt"],
+        )
+        mock_ep = MagicMock()
+        mock_ep.load.return_value = lambda: skill
+
+        monkeypatch.setattr(
+            "haiku.skills.discovery.entry_points",
+            lambda group: [mock_ep],
+        )
+        skills = discover_from_entrypoints()
+        assert skills[0].resources == ["custom.txt"]
+
+    def test_no_resources_without_path(self, monkeypatch: pytest.MonkeyPatch):
+        skill = Skill(
+            metadata=SkillMetadata(name="ep-skill", description="From entrypoint."),
+            source=SkillSource.ENTRYPOINT,
+        )
+        mock_ep = MagicMock()
+        mock_ep.load.return_value = lambda: skill
+
+        monkeypatch.setattr(
+            "haiku.skills.discovery.entry_points",
+            lambda group: [mock_ep],
+        )
+        skills = discover_from_entrypoints()
+        assert skills[0].resources == []
+
     def test_empty_entrypoints(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             "haiku.skills.discovery.entry_points",

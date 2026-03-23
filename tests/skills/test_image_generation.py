@@ -21,6 +21,7 @@ class TestImageGeneration:
         assert skill.state_type is not None
         assert skill.state_namespace == "image-generation"
         assert len(skill.tools) == 1
+        assert skill.path is not None
 
     @pytest.mark.vcr()
     def test_generate_image(self, tmp_path: Path):

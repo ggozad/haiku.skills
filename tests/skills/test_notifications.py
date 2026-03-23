@@ -21,6 +21,7 @@ class TestNotifications:
         assert skill.state_type is not None
         assert skill.state_namespace == "notifications"
         assert len(skill.tools) == 2
+        assert skill.path is not None
 
     def test_send_notification(self, monkeypatch: pytest.MonkeyPatch):
         import haiku_skills_notifications._send_notification as mod
