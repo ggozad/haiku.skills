@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Clean separation of filesystem and entrypoint skills**: Filesystem skills use a generic `run_script` tool for script execution. Entrypoint skills provide typed in-process tools with no filesystem involvement from the framework.
+- **Removed `script_tools.py`**: AST-based script tool discovery removed. Filesystem skills no longer auto-generate typed tools from Python scripts — they use the generic `run_script` tool instead.
+- **Flattened entrypoint skill packages**: All bundled skills (web, gmail, image-generation, code-execution, notifications) simplified to flat Python packages. Nested `scripts/` directories, PEP 723 headers, and argparse `__main__` blocks removed.
+- **Renamed skills**: `codeexecution` → `code-execution`, `imagegeneration` → `image-generation` (no longer constrained by Python module naming).
+- **`Skill.source` defaults to `ENTRYPOINT`**: Factory functions no longer need to set `source=SkillSource.ENTRYPOINT` explicitly.
+- **Entrypoint skills no longer set `path`**: Only filesystem skills have `path` set.
+- **Documentation rewritten**: Tutorial now progresses from filesystem skills to entrypoint packages. Skills reference updated for the new architecture.
+
+### Removed
+
+- `haiku.skills.script_tools` module (AST-based script parsing and typed tool generation)
+- Standalone CLI entry points (`__main__` blocks) from all bundled skill scripts
+- CI validation and signature verification steps for bundled skills (they are no longer filesystem skills)
+
 ## [0.9.1] - 2026-03-20
 
 ## [0.9.0] - 2026-03-20
