@@ -13,6 +13,7 @@
 
 ### Fixed
 
+- **Activity snapshot `message_id` now stable**: Result snapshots share the same `message_id` as their corresponding call snapshot, so AG-UI frontends update activities in place instead of showing duplicates. Call snapshots use `replace=False` (create), result snapshots use `replace=True` (update).
 - **Chat TUI preserves full message history**: Tool calls and their results are now retained across turns via pydantic-ai message history, so the LLM no longer re-invokes tools for information it already retrieved.
 
 ## [0.9.1] - 2026-03-20

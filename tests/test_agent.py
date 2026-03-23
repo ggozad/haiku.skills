@@ -2246,12 +2246,14 @@ class TestRunSkillScriptDirect:
     async def test_script_failure_returns_error(
         self, tmp_path: Path, allow_model_requests: None
     ):
-        scripts_dir = tmp_path / "scripts"
+        skill_dir = tmp_path / "failing"
+        skill_dir.mkdir()
+        scripts_dir = skill_dir / "scripts"
         scripts_dir.mkdir()
         (scripts_dir / "fail.py").write_text(
             "import sys\nprint('oops', file=sys.stderr)\nsys.exit(1)\n"
         )
-        (tmp_path / "SKILL.md").write_text(
+        (skill_dir / "SKILL.md").write_text(
             "---\nname: failing\ndescription: Fails.\n---\nInstructions.\n"
         )
         toolset = SkillToolset(skill_paths=[tmp_path], use_subagents=False)
@@ -2264,6 +2266,34 @@ class TestRunSkillScriptDirect:
             tools["run_skill_script"],
         )
         assert "Error" in result
+        assert "failed" in result
+
+    async def test_path_traversal_returns_error(
+        self, tmp_path: Path, allow_model_requests: None
+    ):
+        skill_dir = tmp_path / "traversal"
+        skill_dir.mkdir()
+        scripts_dir = skill_dir / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "ok.py").write_text("print('ok')\n")
+        (skill_dir / "SKILL.md").write_text(
+            "---\nname: traversal\ndescription: Test.\n---\nInstructions.\n"
+        )
+        toolset = SkillToolset(skill_paths=[tmp_path], use_subagents=False)
+        ctx = _make_ctx()
+        tools = await toolset.get_tools(ctx)
+        result = await toolset.call_tool(
+            "run_skill_script",
+            {
+                "skill_name": "traversal",
+                "script": "../../../etc/passwd",
+                "arguments": "",
+            },
+            ctx,
+            tools["run_skill_script"],
+        )
+        assert "Error" in result
+        assert "not under scripts" in result
 
 
 class TestQuerySkillScripts:
