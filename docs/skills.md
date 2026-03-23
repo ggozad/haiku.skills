@@ -4,7 +4,7 @@
 
 haiku.skills supports two distinct skill types:
 
-**Filesystem skills** are directories following the [Agent Skills specification](https://agentskills.io/specification). They contain a `SKILL.md` file and optional `scripts/`, `references/`, and `assets/` directories. The sub-agent gets a `run_script` tool to execute scripts as subprocesses. Portable and shareable — no Python packaging required.
+**Filesystem skills** are directories following the [Agent Skills specification](https://agentskills.io/specification). They contain a `SKILL.md` file and optional `scripts/`, `references/`, and `assets/` directories. Scripts are executed as subprocesses via the `run_script` tool (sub-agent mode) or `run_skill_script` tool (direct mode). Portable and shareable — no Python packaging required.
 
 **Entrypoint skills** are Python packages that provide typed tools running in-process. They support per-skill state, standard dependency management, and zero-config discovery via Python entrypoints. All [example skills](example-skills.md) that ship with haiku.skills are entrypoint packages.
 
@@ -20,8 +20,8 @@ description: A brief description of what the skill does.
 
 # My Skill
 
-Detailed instructions for the sub-agent go here. This content becomes
-the system prompt when the skill is executed.
+Detailed instructions go here. In sub-agent mode, this content becomes
+the sub-agent's system prompt. In direct mode, it is returned by query_skill.
 ```
 
 ### Frontmatter fields
@@ -33,7 +33,7 @@ the system prompt when the skill is executed.
 | `license` | string | no | License identifier (e.g. `"MIT"`, `"Apache-2.0"`). |
 | `compatibility` | string | no | Compatibility notes (max 500 chars). |
 | `metadata` | map | no | Arbitrary key-value pairs (`string: string`). |
-| `allowed-tools` | list or string | no | Tool names the sub-agent may use. Accepts a YAML list or a space-separated string (`"search fetch"`). |
+| `allowed-tools` | list or string | no | Tool names the agent may use. Accepts a YAML list or a space-separated string (`"search fetch"`). |
 
 Unknown fields are rejected.
 
@@ -49,7 +49,7 @@ haiku-skills validate ./my-skill
 
 ## Script tools (filesystem skills)
 
-Filesystem skills can include executable scripts in a `scripts/` directory. The sub-agent receives a `run_script` tool that executes them as subprocesses — the sub-agent itself has no direct filesystem access.
+Filesystem skills can include executable scripts in a `scripts/` directory. In sub-agent mode, the sub-agent receives a `run_script` tool. In direct mode, the main agent uses `run_skill_script`. Both execute scripts as subprocesses.
 
 Scripts should use named flags (`--flag value`) and support `--help`, following the [Agent Skills script conventions](https://agentskills.io/skill-creation/using-scripts).
 
@@ -98,9 +98,9 @@ agent = Agent(
 )
 ```
 
-## Per-skill model override
+## Per-skill model override (sub-agent mode)
 
-Individual skills can specify their own model, overriding the `skill_model` set on `SkillToolset`:
+In sub-agent mode, individual skills can specify their own model, overriding the `skill_model` set on `SkillToolset`:
 
 ```python
 skill = Skill(
@@ -113,13 +113,15 @@ skill = Skill(
 
 The resolution order is: skill `model` > `SkillToolset.skill_model` > pydantic-ai default.
 
+In direct mode, skill tools run in the main agent's context, so these model overrides have no effect.
+
 ## Toolsets
 
 For `AbstractToolset` instances (e.g. MCP toolsets), use the `toolsets` parameter instead of `tools`. See the [Tutorial — MCP skills](tutorial.md#mcp-skills) section for details.
 
 ## Resources
 
-Skills automatically discover resource files — any non-script, non-Python file in the skill directory. For filesystem skills, resources are discovered during path scanning. For entrypoint skills, set `path` in the factory and resources are discovered automatically. The sub-agent receives a `read_resource` tool to read them on demand:
+Skills automatically discover resource files — any non-script, non-Python file in the skill directory. For filesystem skills, resources are discovered during path scanning. For entrypoint skills, set `path` in the factory and resources are discovered automatically. In sub-agent mode, the sub-agent receives a `read_resource` tool; in direct mode, the main agent uses `read_skill_resource`.
 
 - Resolved paths must stay within the skill directory (traversal defense).
 - Files must be text — binary files raise an error.
@@ -162,7 +164,7 @@ toolset = SkillToolset(skills=[skill])
 print(toolset.build_state_snapshot())  # {"calculator": {"history": []}}
 ```
 
-When `execute_skill` runs a skill whose tools modify state, the toolset computes a JSON Patch delta and returns it as a `StateDeltaEvent` — compatible with the [AG-UI protocol](https://docs.ag-ui.com). See [AG-UI protocol](ag-ui.md) for details.
+When a skill's tools modify state, the toolset computes a JSON Patch delta and returns it as a `StateDeltaEvent` — compatible with the [AG-UI protocol](https://docs.ag-ui.com). This works in both sub-agent and direct mode. See [AG-UI protocol](ag-ui.md) for details.
 
 ### Introspecting state
 

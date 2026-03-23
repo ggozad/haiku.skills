@@ -4,13 +4,14 @@ Skill-powered AI agents implementing the [Agent Skills specification](https://ag
 
 ## How it works
 
-`SkillToolset` is a pydantic-ai `FunctionToolset` that you attach to your own agent. It exposes a single `execute_skill` tool. When the agent calls it, a **focused sub-agent** spins up with only that skill's instructions and tools — then returns the result. The main agent never sees the skill's internal tools, so its tool space stays clean no matter how many skills you load.
+`SkillToolset` is a pydantic-ai `FunctionToolset` that you attach to your own agent. It supports two execution modes:
 
-This sub-agent architecture means each skill runs in isolation with its own system prompt, tools, and token budget. Skills don't interfere with each other, tool descriptions don't compete for attention, and failures in one skill can't confuse another.
+- **Sub-agent mode** (default) — Exposes a single `execute_skill` tool. When the agent calls it, a focused sub-agent spins up with only that skill's instructions and tools, then returns the result. Each skill runs in isolation with its own system prompt, tools, and token budget.
+- **Direct mode** (`use_subagents=False`) — Exposes `query_skill`, `execute_skill_tool`, `run_skill_script`, and `read_skill_resource` tools. The main agent calls skill tools directly — no sub-agent LLM loops, lower latency, and the agent retains tool results in its conversation context.
 
 ## Features
 
-- **Sub-agent execution** — Each skill runs in its own agent with dedicated instructions and tools
+- **Two execution modes** — Sub-agent delegation for isolation, or direct tool access for speed and context retention
 - **Filesystem skills** — Load [SKILL.md](https://agentskills.io/specification) directories with scripts in Python, JavaScript, TypeScript, or shell
 - **Entrypoint skills** — Install skill packages with typed in-process tools, per-skill state, and zero-config discovery
 - **Per-skill state** — Pydantic state models tracked per namespace; state changes emit `StateDeltaEvent` (JSON Patch) for the [AG-UI protocol](https://docs.ag-ui.com)

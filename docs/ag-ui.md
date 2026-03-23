@@ -55,13 +55,13 @@ Schemas are standard [JSON Schema](https://json-schema.org/) generated from the 
 
 ## State deltas
 
-When `execute_skill` runs a skill whose tools modify state, the toolset computes a [JSON Patch](https://jsonpatch.com/) delta between the state before and after execution. This delta is returned as a `StateDeltaEvent`, compatible with the AG-UI protocol.
+When a skill's tools modify state, the toolset computes a [JSON Patch](https://jsonpatch.com/) delta between the state before and after execution. This delta is returned as a `StateDeltaEvent`, compatible with the AG-UI protocol. This works in both sub-agent mode (`execute_skill`) and direct mode (`execute_skill_tool`).
 
 Frontends can apply these patches incrementally to keep their view of the agent's state in sync without polling or full state transfers.
 
 ## Real-time sub-agent events
 
-When `execute_skill` delegates to a sub-agent, the sub-agent's internal tool calls (search, fetch, etc.) are emitted as `ActivitySnapshotEvent` messages with activity types `skill_tool_call` and `skill_tool_result`.
+In sub-agent mode, when `execute_skill` delegates to a sub-agent, the sub-agent's internal tool calls (search, fetch, etc.) are emitted as `ActivitySnapshotEvent` messages with activity types `skill_tool_call` and `skill_tool_result`. In direct mode, tool calls are visible as regular AG-UI `ToolCall*` events since the main agent invokes them directly.
 
 `run_agui_stream()` merges main-agent events with these activity events into a single real-time stream:
 
@@ -118,7 +118,7 @@ async def stream_chat(request):
 ```
 
 !!! note
-    `adapter.run_stream()` still works without `run_agui_stream` — sub-agent activity events will arrive in batch via `ToolReturn.metadata` instead of streaming in real-time.
+    `adapter.run_stream()` still works without `run_agui_stream` — in sub-agent mode, activity events will arrive in batch via `ToolReturn.metadata` instead of streaming in real-time.
 
 ## State round-tripping
 
@@ -144,7 +144,7 @@ agent = Agent(
 ```
 
 !!! note
-    `SkillDeps` operates at the agent level — it carries the full AG-UI state dict (all namespaces) and is managed by the adapter. `SkillRunDeps`, on the other hand, is internal to `SkillToolset`: when a skill sub-agent runs, it receives `SkillRunDeps` containing only that skill's per-namespace state model. You don't need to create `SkillRunDeps` yourself.
+    `SkillDeps` operates at the agent level — it carries the full AG-UI state dict (all namespaces) and is managed by the adapter. `SkillRunDeps`, on the other hand, is internal to `SkillToolset`: in sub-agent mode, each skill's sub-agent receives `SkillRunDeps` with that skill's state; in direct mode, `execute_skill_tool` creates a `SkillRunDeps` for each tool call. You don't need to create `SkillRunDeps` yourself.
 
 !!! tip "Custom dependencies"
     If your agent needs additional dependencies beyond state, create your own dataclass with a `state: dict[str, Any]` field:
