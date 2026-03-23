@@ -3,7 +3,7 @@ from pathlib import Path
 from pydantic import BaseModel
 from pydantic_ai import RunContext
 
-from haiku.skills.models import Skill, SkillSource
+from haiku.skills.models import Skill
 from haiku.skills.parser import parse_skill_md
 from haiku.skills.state import SkillRunDeps
 
@@ -61,7 +61,7 @@ def send_notification(
         priority: Notification priority (1-5 or min/low/default/high/max).
         server: ntfy server URL (defaults to NTFY_SERVER env var or https://ntfy.sh).
     """
-    from haiku_skills_notifications.notifications.scripts.send_notification import main
+    from haiku_skills_notifications._send_notification import main
 
     result = main(topic, message, title, priority, server)
 
@@ -96,7 +96,7 @@ def read_notifications(
         since: How far back to look (e.g. "10m", "1h", "all").
         server: ntfy server URL (defaults to NTFY_SERVER env var or https://ntfy.sh).
     """
-    from haiku_skills_notifications.notifications.scripts.read_notifications import (
+    from haiku_skills_notifications._read_notifications import (
         _read,
         format_messages,
     )
@@ -126,13 +126,10 @@ def read_notifications(
 
 
 def create_skill() -> Skill:
-    skill_dir = Path(__file__).parent / "notifications"
-    metadata, instructions = parse_skill_md(skill_dir / "SKILL.md")
+    metadata, instructions = parse_skill_md(Path(__file__).parent / "SKILL.md")
 
     return Skill(
         metadata=metadata,
-        source=SkillSource.ENTRYPOINT,
-        path=skill_dir,
         instructions=instructions,
         tools=[send_notification, read_notifications],
         state_type=NotificationState,

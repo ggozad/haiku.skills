@@ -1,7 +1,3 @@
-# /// script
-# requires-python = ">=3.13"
-# dependencies = ["trafilatura"]
-# ///
 """Fetch a web page and extract its readable content."""
 
 from trafilatura import extract
@@ -31,14 +27,3 @@ def main(url: str) -> str:
         return "Error: could not extract content from the page."
 
     return content
-
-
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(
-        description="Fetch a web page and extract its readable content."
-    )
-    parser.add_argument("--url", required=True, help="The URL of the page to fetch.")
-    args = parser.parse_args()
-    print(main(args.url))

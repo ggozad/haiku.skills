@@ -74,7 +74,7 @@ class Skill(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     metadata: SkillMetadata
-    source: SkillSource
+    source: SkillSource = SkillSource.ENTRYPOINT
     verified: bool = False
     path: Path | None = None
     instructions: str | None = None

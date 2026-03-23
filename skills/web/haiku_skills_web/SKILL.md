@@ -16,25 +16,6 @@ Use the **fetch_page** tool to visit a URL and extract its readable content.
 
 Use a maximum of 3 search queries per task.
 
-## Available Scripts
-
-### `scripts/search.py`
-
-Search the web using Brave Search.
-
-```
---query     (required) The search query.
---count     (default: 5) Number of results to return.
-```
-
-### `scripts/fetch_page.py`
-
-Fetch a web page and extract its readable content.
-
-```
---url       (required) The URL of the page to fetch.
-```
-
 ## Guidelines
 
 - Always cite sources with URLs when presenting findings.

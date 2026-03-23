@@ -3,7 +3,7 @@ from pathlib import Path
 from pydantic import BaseModel
 from pydantic_ai import RunContext
 
-from haiku.skills.models import Skill, SkillSource
+from haiku.skills.models import Skill
 from haiku.skills.parser import parse_skill_md
 from haiku.skills.state import SkillRunDeps
 
@@ -25,7 +25,7 @@ async def run_code(ctx: RunContext[SkillRunDeps], code: str) -> str:
     Args:
         code: The Python code to execute.
     """
-    from haiku_skills_code_execution.codeexecution.scripts.run_code import (
+    from haiku_skills_code_execution.sandbox import (
         _build_external_functions,
         _execute_code,
         _format_output,
@@ -49,15 +49,12 @@ async def run_code(ctx: RunContext[SkillRunDeps], code: str) -> str:
 
 
 def create_skill() -> Skill:
-    skill_dir = Path(__file__).parent / "codeexecution"
-    metadata, instructions = parse_skill_md(skill_dir / "SKILL.md")
+    metadata, instructions = parse_skill_md(Path(__file__).parent / "SKILL.md")
 
     return Skill(
         metadata=metadata,
-        source=SkillSource.ENTRYPOINT,
-        path=skill_dir,
         instructions=instructions,
         tools=[run_code],
         state_type=CodeState,
-        state_namespace="codeexecution",
+        state_namespace="code-execution",
     )

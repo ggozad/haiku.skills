@@ -23,7 +23,7 @@ Repository = "https://github.com/ggozad/haiku.skills"
 Issues = "https://github.com/ggozad/haiku.skills/issues"
 
 [project.entry-points."haiku.skills"]
-imagegeneration = "haiku_skills_image_generation:create_skill"
+image-generation = "haiku_skills_image_generation:create_skill"
 
 [tool.uv.sources]
 haiku-skills = { workspace = true }

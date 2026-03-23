@@ -1,7 +1,3 @@
-# /// script
-# requires-python = ">=3.13"
-# dependencies = ["httpx"]
-# ///
 """Read cached messages from an ntfy.sh topic."""
 
 import json
@@ -9,14 +5,7 @@ from typing import Any
 
 import httpx
 
-try:
-    from haiku_skills_notifications.notifications.scripts.ntfy import (
-        auth_headers,
-        resolve_server,
-    )
-# Fallback for standalone execution (sys.path[0] = script dir)
-except ImportError:  # pragma: no cover
-    from ntfy import auth_headers, resolve_server  # type: ignore[no-redef]
+from haiku_skills_notifications._ntfy import auth_headers, resolve_server
 
 
 def _read(topic: str, since: str = "10m", server: str = "") -> list[dict[str, Any]]:
@@ -66,13 +55,7 @@ def format_messages(messages: list[dict[str, Any]]) -> str:
 
 
 def main(topic: str, since: str = "10m", server: str = "") -> str:
-    """Read cached messages from an ntfy.sh topic.
-
-    Args:
-        topic: The ntfy topic to read from.
-        since: How far back to look (e.g. "10m", "1h", "all").
-        server: ntfy server URL (defaults to NTFY_SERVER env var or https://ntfy.sh).
-    """
+    """Read cached messages from an ntfy.sh topic."""
     try:
         messages = _read(topic, since, server)
     except (httpx.HTTPError, RuntimeError) as e:
@@ -82,22 +65,3 @@ def main(topic: str, since: str = "10m", server: str = "") -> str:
         return f"No messages on topic '{topic}'."
 
     return format_messages(messages)
-
-
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(
-        description="Read cached messages from an ntfy.sh topic."
-    )
-    parser.add_argument("--topic", required=True, help="The ntfy topic to read from.")
-    parser.add_argument(
-        "--since",
-        default="10m",
-        help='How far back to look (e.g. "10m", "1h", "all").',
-    )
-    parser.add_argument(
-        "--server", default="", help="ntfy server URL (defaults to https://ntfy.sh)."
-    )
-    args = parser.parse_args()
-    print(main(args.topic, args.since, args.server))

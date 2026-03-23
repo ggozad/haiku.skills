@@ -3,7 +3,7 @@ from pathlib import Path
 from pydantic import BaseModel
 from pydantic_ai import RunContext
 
-from haiku.skills.models import Skill, SkillSource
+from haiku.skills.models import Skill
 from haiku.skills.parser import parse_skill_md
 from haiku.skills.state import SkillRunDeps
 
@@ -48,11 +48,11 @@ def search_emails(
         query: Gmail search query (e.g. "from:alice subject:meeting").
         max_results: Maximum number of results to return.
     """
-    from haiku_skills_gmail.gmail.scripts.helpers import (
+    from haiku_skills_gmail._helpers import (
         _format_email_summary,
         _get_header,
     )
-    from haiku_skills_gmail.gmail.scripts.search_emails import _search_emails
+    from haiku_skills_gmail._search_emails import _search_emails
 
     try:
         results = _search_emails(query, max_results)
@@ -90,7 +90,7 @@ def read_email(
     Args:
         message_id: The Gmail message ID.
     """
-    from haiku_skills_gmail.gmail.scripts.read_email import _read_email
+    from haiku_skills_gmail._read_email import _read_email
 
     try:
         email = _read_email(message_id)
@@ -125,7 +125,7 @@ def send_email(
         cc: CC recipients (comma-separated).
         bcc: BCC recipients (comma-separated).
     """
-    from haiku_skills_gmail.gmail.scripts.send_email import _send_email
+    from haiku_skills_gmail._send_email import _send_email
 
     try:
         result = _send_email(to, subject, body, cc, bcc)
@@ -161,7 +161,7 @@ def reply_to_email(
         body: Reply body text.
         reply_all: If True, reply to all recipients.
     """
-    from haiku_skills_gmail.gmail.scripts.reply_to_email import _reply_to_email
+    from haiku_skills_gmail._reply_to_email import _reply_to_email
 
     try:
         result = _reply_to_email(message_id, body, reply_all)
@@ -203,7 +203,7 @@ def create_draft(
         cc: CC recipients (comma-separated).
         bcc: BCC recipients (comma-separated).
     """
-    from haiku_skills_gmail.gmail.scripts.create_draft import _create_draft
+    from haiku_skills_gmail._create_draft import _create_draft
 
     try:
         result = _create_draft(to, subject, body, cc, bcc)
@@ -235,7 +235,7 @@ def list_drafts(
     Args:
         max_results: Maximum number of drafts to return.
     """
-    from haiku_skills_gmail.gmail.scripts.list_drafts import _list_drafts
+    from haiku_skills_gmail._list_drafts import _list_drafts
 
     try:
         drafts = _list_drafts(max_results)
@@ -266,7 +266,7 @@ def modify_labels(
         add_labels: Comma-separated label IDs to add.
         remove_labels: Comma-separated label IDs to remove.
     """
-    from haiku_skills_gmail.gmail.scripts.modify_labels import _modify_labels
+    from haiku_skills_gmail._modify_labels import _modify_labels
 
     try:
         return _modify_labels(message_id, add_labels, remove_labels)
@@ -278,7 +278,7 @@ def list_labels(
     ctx: RunContext[SkillRunDeps],
 ) -> str:
     """List all available Gmail labels."""
-    from haiku_skills_gmail.gmail.scripts.list_labels import _list_labels
+    from haiku_skills_gmail._list_labels import _list_labels
 
     try:
         labels = _list_labels()
@@ -293,13 +293,10 @@ def list_labels(
 
 
 def create_skill() -> Skill:
-    skill_dir = Path(__file__).parent / "gmail"
-    metadata, instructions = parse_skill_md(skill_dir / "SKILL.md")
+    metadata, instructions = parse_skill_md(Path(__file__).parent / "SKILL.md")
 
     return Skill(
         metadata=metadata,
-        source=SkillSource.ENTRYPOINT,
-        path=skill_dir,
         instructions=instructions,
         tools=[
             search_emails,

@@ -6,16 +6,14 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from haiku.skills.models import SkillSource
-
-from .conftest import SKILLS_ROOT, make_ctx
+from .conftest import make_ctx
 
 
 class TestGmail:
     @pytest.fixture(autouse=True)
     def _reset_globals(self, monkeypatch: pytest.MonkeyPatch):
         """Reset module-level singleton state between tests."""
-        import haiku_skills_gmail.gmail.scripts.auth as auth_mod
+        import haiku_skills_gmail._auth as auth_mod
 
         monkeypatch.setattr(auth_mod, "_service", None)
 
@@ -27,8 +25,6 @@ class TestGmail:
         assert (
             skill.metadata.description == "Search, read, send, and manage Gmail emails."
         )
-        assert skill.source == SkillSource.ENTRYPOINT
-        assert skill.path is not None
         assert skill.instructions is not None
         assert skill.state_type is not None
         assert skill.state_namespace == "gmail"
@@ -38,7 +34,7 @@ class TestGmail:
 
     def test_credentials_path_default(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.delenv("EMAIL_CREDENTIALS_PATH", raising=False)
-        from haiku_skills_gmail.gmail.scripts.auth import _credentials_path
+        from haiku_skills_gmail._auth import _credentials_path
 
         result = _credentials_path()
         assert (
@@ -48,27 +44,27 @@ class TestGmail:
 
     def test_credentials_path_from_env(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("EMAIL_CREDENTIALS_PATH", "/tmp/my-creds.json")
-        from haiku_skills_gmail.gmail.scripts.auth import _credentials_path
+        from haiku_skills_gmail._auth import _credentials_path
 
         assert _credentials_path() == Path("/tmp/my-creds.json")
 
     def test_token_path_default(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.delenv("EMAIL_TOKEN_PATH", raising=False)
-        from haiku_skills_gmail.gmail.scripts.auth import _token_path
+        from haiku_skills_gmail._auth import _token_path
 
         result = _token_path()
         assert result == Path.home() / ".config" / "haiku-skills-gmail" / "token.json"
 
     def test_token_path_from_env(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("EMAIL_TOKEN_PATH", "/tmp/my-token.json")
-        from haiku_skills_gmail.gmail.scripts.auth import _token_path
+        from haiku_skills_gmail._auth import _token_path
 
         assert _token_path() == Path("/tmp/my-token.json")
 
     # -- Auth --
 
     def test_get_service_cached(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_gmail.gmail.scripts.auth as auth_mod
+        import haiku_skills_gmail._auth as auth_mod
 
         sentinel = MagicMock()
         monkeypatch.setattr(auth_mod, "_service", sentinel)
@@ -77,7 +73,7 @@ class TestGmail:
         assert result is sentinel
 
     def test_get_service_no_credentials_file(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_gmail.gmail.scripts.auth as auth_mod
+        import haiku_skills_gmail._auth as auth_mod
 
         monkeypatch.setattr(
             auth_mod, "_credentials_path", lambda: Path("/nonexistent/creds.json")
@@ -89,7 +85,7 @@ class TestGmail:
     def test_get_service_from_token(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ):
-        import haiku_skills_gmail.gmail.scripts.auth as auth_mod
+        import haiku_skills_gmail._auth as auth_mod
 
         token_file = tmp_path / "token.json"
         token_file.write_text("{}")
@@ -106,10 +102,8 @@ class TestGmail:
 
         monkeypatch.setattr(auth_mod, "_token_path", lambda: token_file)
         monkeypatch.setattr(auth_mod, "_credentials_path", lambda: creds_file)
-        monkeypatch.setattr(
-            "haiku_skills_gmail.gmail.scripts.auth.Credentials", mock_creds_cls
-        )
-        monkeypatch.setattr("haiku_skills_gmail.gmail.scripts.auth.build", mock_build)
+        monkeypatch.setattr("haiku_skills_gmail._auth.Credentials", mock_creds_cls)
+        monkeypatch.setattr("haiku_skills_gmail._auth.build", mock_build)
 
         result = auth_mod._get_service()
         assert result == "gmail_service"
@@ -122,7 +116,7 @@ class TestGmail:
     def test_get_service_token_refresh(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ):
-        import haiku_skills_gmail.gmail.scripts.auth as auth_mod
+        import haiku_skills_gmail._auth as auth_mod
 
         token_file = tmp_path / "token.json"
         token_file.write_text("{}")
@@ -144,13 +138,9 @@ class TestGmail:
 
         monkeypatch.setattr(auth_mod, "_token_path", lambda: token_file)
         monkeypatch.setattr(auth_mod, "_credentials_path", lambda: creds_file)
-        monkeypatch.setattr(
-            "haiku_skills_gmail.gmail.scripts.auth.Credentials", mock_creds_cls
-        )
-        monkeypatch.setattr("haiku_skills_gmail.gmail.scripts.auth.build", mock_build)
-        monkeypatch.setattr(
-            "haiku_skills_gmail.gmail.scripts.auth.Request", mock_request_cls
-        )
+        monkeypatch.setattr("haiku_skills_gmail._auth.Credentials", mock_creds_cls)
+        monkeypatch.setattr("haiku_skills_gmail._auth.build", mock_build)
+        monkeypatch.setattr("haiku_skills_gmail._auth.Request", mock_request_cls)
 
         result = auth_mod._get_service()
         assert result == "gmail_service"
@@ -160,7 +150,7 @@ class TestGmail:
     def test_get_service_browser_flow(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ):
-        import haiku_skills_gmail.gmail.scripts.auth as auth_mod
+        import haiku_skills_gmail._auth as auth_mod
 
         token_file = tmp_path / "token.json"
         creds_file = tmp_path / "credentials.json"
@@ -179,10 +169,8 @@ class TestGmail:
 
         monkeypatch.setattr(auth_mod, "_token_path", lambda: token_file)
         monkeypatch.setattr(auth_mod, "_credentials_path", lambda: creds_file)
-        monkeypatch.setattr(
-            "haiku_skills_gmail.gmail.scripts.auth.InstalledAppFlow", mock_flow_cls
-        )
-        monkeypatch.setattr("haiku_skills_gmail.gmail.scripts.auth.build", mock_build)
+        monkeypatch.setattr("haiku_skills_gmail._auth.InstalledAppFlow", mock_flow_cls)
+        monkeypatch.setattr("haiku_skills_gmail._auth.build", mock_build)
 
         result = auth_mod._get_service()
         assert result == "gmail_service"
@@ -195,7 +183,7 @@ class TestGmail:
     # -- Helpers --
 
     def test_get_header(self):
-        from haiku_skills_gmail.gmail.scripts.helpers import _get_header
+        from haiku_skills_gmail._helpers import _get_header
 
         headers = [
             {"name": "Subject", "value": "Hello"},
@@ -205,13 +193,13 @@ class TestGmail:
         assert _get_header(headers, "From") == "alice@example.com"
 
     def test_get_header_missing(self):
-        from haiku_skills_gmail.gmail.scripts.helpers import _get_header
+        from haiku_skills_gmail._helpers import _get_header
 
         assert _get_header([], "Subject") == ""
         assert _get_header([{"name": "From", "value": "x"}], "Subject") == ""
 
     def test_parse_email_body_plain(self):
-        from haiku_skills_gmail.gmail.scripts.helpers import _parse_email_body
+        from haiku_skills_gmail._helpers import _parse_email_body
 
         payload = {
             "mimeType": "text/plain",
@@ -220,7 +208,7 @@ class TestGmail:
         assert _parse_email_body(payload) == "Hello World"
 
     def test_parse_email_body_multipart(self):
-        from haiku_skills_gmail.gmail.scripts.helpers import _parse_email_body
+        from haiku_skills_gmail._helpers import _parse_email_body
 
         payload = {
             "mimeType": "multipart/alternative",
@@ -238,7 +226,7 @@ class TestGmail:
         assert _parse_email_body(payload) == "Plain text"
 
     def test_parse_email_body_multipart_no_plain(self):
-        from haiku_skills_gmail.gmail.scripts.helpers import _parse_email_body
+        from haiku_skills_gmail._helpers import _parse_email_body
 
         payload = {
             "mimeType": "multipart/alternative",
@@ -252,13 +240,13 @@ class TestGmail:
         assert _parse_email_body(payload) == ""
 
     def test_parse_email_body_plain_empty_data(self):
-        from haiku_skills_gmail.gmail.scripts.helpers import _parse_email_body
+        from haiku_skills_gmail._helpers import _parse_email_body
 
         payload = {"mimeType": "text/plain", "body": {"data": ""}}
         assert _parse_email_body(payload) == ""
 
     def test_parse_email_body_nested_multipart(self):
-        from haiku_skills_gmail.gmail.scripts.helpers import _parse_email_body
+        from haiku_skills_gmail._helpers import _parse_email_body
 
         payload = {
             "mimeType": "multipart/mixed",
@@ -277,7 +265,7 @@ class TestGmail:
         assert _parse_email_body(payload) == "Nested"
 
     def test_build_message(self):
-        from haiku_skills_gmail.gmail.scripts.helpers import _build_message
+        from haiku_skills_gmail._helpers import _build_message
 
         result = _build_message(
             to="bob@example.com",
@@ -292,7 +280,7 @@ class TestGmail:
         assert "Hello Bob" in decoded
 
     def test_build_message_with_cc_bcc(self):
-        from haiku_skills_gmail.gmail.scripts.helpers import _build_message
+        from haiku_skills_gmail._helpers import _build_message
 
         result = _build_message(
             to="bob@example.com",
@@ -307,7 +295,7 @@ class TestGmail:
         assert "Bcc: dave@example.com" in decoded
 
     def test_build_message_with_headers(self):
-        from haiku_skills_gmail.gmail.scripts.helpers import _build_message
+        from haiku_skills_gmail._helpers import _build_message
 
         result = _build_message(
             to="bob@example.com",
@@ -322,7 +310,7 @@ class TestGmail:
         assert "References: <msg123@example.com>" in decoded
 
     def test_format_email_summary(self):
-        from haiku_skills_gmail.gmail.scripts.helpers import _format_email_summary
+        from haiku_skills_gmail._helpers import _format_email_summary
 
         msg = {
             "id": "msg1",
@@ -376,14 +364,14 @@ class TestGmail:
 
     def _patch_service(self, monkeypatch, service):
         """Patch _get_service across all script modules that import it."""
-        import haiku_skills_gmail.gmail.scripts.create_draft as create_draft_mod
-        import haiku_skills_gmail.gmail.scripts.list_drafts as list_drafts_mod
-        import haiku_skills_gmail.gmail.scripts.list_labels as list_labels_mod
-        import haiku_skills_gmail.gmail.scripts.modify_labels as modify_labels_mod
-        import haiku_skills_gmail.gmail.scripts.read_email as read_email_mod
-        import haiku_skills_gmail.gmail.scripts.reply_to_email as reply_to_email_mod
-        import haiku_skills_gmail.gmail.scripts.search_emails as search_emails_mod
-        import haiku_skills_gmail.gmail.scripts.send_email as send_email_mod
+        import haiku_skills_gmail._create_draft as create_draft_mod
+        import haiku_skills_gmail._list_drafts as list_drafts_mod
+        import haiku_skills_gmail._list_labels as list_labels_mod
+        import haiku_skills_gmail._modify_labels as modify_labels_mod
+        import haiku_skills_gmail._read_email as read_email_mod
+        import haiku_skills_gmail._reply_to_email as reply_to_email_mod
+        import haiku_skills_gmail._search_emails as search_emails_mod
+        import haiku_skills_gmail._send_email as send_email_mod
 
         for mod in (
             search_emails_mod,
@@ -895,530 +883,3 @@ class TestGmail:
         result = list_labels(ctx)
         assert result.startswith("Error:")
         assert "API error" in result
-
-
-class TestGmailScripts:
-    """Tests for standalone gmail script main() functions and __main__ entries."""
-
-    @pytest.fixture(autouse=True)
-    def _reset_globals(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_gmail.gmail.scripts.auth as auth_mod
-
-        monkeypatch.setattr(auth_mod, "_service", None)
-
-    def _mock_service(self) -> MagicMock:
-        return MagicMock()
-
-    def _sample_message(
-        self,
-        msg_id: str = "msg1",
-        thread_id: str = "thread1",
-        subject: str = "Test Subject",
-        sender: str = "alice@example.com",
-        snippet: str = "Preview text...",
-        body_data: str = "SGVsbG8gV29ybGQ=",
-    ) -> dict:
-        return {
-            "id": msg_id,
-            "threadId": thread_id,
-            "snippet": snippet,
-            "payload": {
-                "headers": [
-                    {"name": "Subject", "value": subject},
-                    {"name": "From", "value": sender},
-                    {"name": "Date", "value": "Mon, 10 Mar 2026"},
-                    {"name": "Message-ID", "value": f"<{msg_id}@example.com>"},
-                ],
-                "mimeType": "text/plain",
-                "body": {"data": body_data},
-            },
-        }
-
-    def _patch_script_service(self, monkeypatch, mod, service):
-        monkeypatch.setattr(mod, "_get_service", lambda: service)
-
-    def _patch_auth_service(self, monkeypatch, service):
-        """Patch _get_service on auth module (for runpy.run_path tests)."""
-        import haiku_skills_gmail.gmail.scripts.auth as auth_mod
-
-        monkeypatch.setattr(auth_mod, "_get_service", lambda: service)
-
-    # -- search_emails --
-
-    def test_search_emails_main(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_gmail.gmail.scripts.search_emails as mod
-
-        service = self._mock_service()
-        msg = self._sample_message()
-        service.users().messages().list.return_value.execute.return_value = {
-            "messages": [{"id": "msg1"}],
-        }
-        service.users().messages().get.return_value.execute.return_value = msg
-        self._patch_script_service(monkeypatch, mod, service)
-
-        result = mod.main("from:alice")
-        assert "msg1" in result
-        assert "Test Subject" in result
-
-    def test_search_emails_main_error(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_gmail.gmail.scripts.search_emails as mod
-
-        self._patch_script_service(monkeypatch, mod, None)
-        monkeypatch.setattr(
-            mod,
-            "_search_emails",
-            lambda *a, **kw: (_ for _ in ()).throw(RuntimeError("fail")),
-        )
-
-        result = mod.main("test")
-        assert result.startswith("Error:")
-
-    def test_search_emails_main_no_results(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_gmail.gmail.scripts.search_emails as mod
-
-        service = self._mock_service()
-        service.users().messages().list.return_value.execute.return_value = {}
-        self._patch_script_service(monkeypatch, mod, service)
-
-        result = mod.main("nonexistent")
-        assert "No emails found" in result
-
-    def test_search_emails_main_entry(self, monkeypatch: pytest.MonkeyPatch):
-        import io
-        import runpy
-
-        service = self._mock_service()
-        service.users().messages().list.return_value.execute.return_value = {}
-        self._patch_auth_service(monkeypatch, service)
-
-        monkeypatch.setattr("sys.argv", ["search_emails.py", "--query", "test"])
-        captured = io.StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
-
-        script = (
-            SKILLS_ROOT
-            / "gmail"
-            / "haiku_skills_gmail"
-            / "gmail"
-            / "scripts"
-            / "search_emails.py"
-        )
-        runpy.run_path(str(script), run_name="__main__")
-        assert "No emails found" in captured.getvalue()
-
-    # -- read_email --
-
-    def test_read_email_main(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_gmail.gmail.scripts.read_email as mod
-
-        service = self._mock_service()
-        msg = self._sample_message()
-        service.users().messages().get.return_value.execute.return_value = msg
-        self._patch_script_service(monkeypatch, mod, service)
-
-        result = mod.main("msg1")
-        assert "Test Subject" in result
-        assert "Hello World" in result
-
-    def test_read_email_main_error(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_gmail.gmail.scripts.read_email as mod
-
-        service = self._mock_service()
-        service.users().messages().get.return_value.execute.side_effect = RuntimeError(
-            "not found"
-        )
-        self._patch_script_service(monkeypatch, mod, service)
-
-        result = mod.main("bad_id")
-        assert result.startswith("Error:")
-
-    def test_read_email_main_entry(self, monkeypatch: pytest.MonkeyPatch):
-        import io
-        import runpy
-
-        service = self._mock_service()
-        service.users().messages().get.return_value.execute.side_effect = RuntimeError(
-            "not found"
-        )
-        self._patch_auth_service(monkeypatch, service)
-
-        monkeypatch.setattr("sys.argv", ["read_email.py", "--message-id", "msg1"])
-        captured = io.StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
-
-        script = (
-            SKILLS_ROOT
-            / "gmail"
-            / "haiku_skills_gmail"
-            / "gmail"
-            / "scripts"
-            / "read_email.py"
-        )
-        runpy.run_path(str(script), run_name="__main__")
-        assert "Error:" in captured.getvalue()
-
-    # -- send_email --
-
-    def test_send_email_main(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_gmail.gmail.scripts.send_email as mod
-
-        service = self._mock_service()
-        service.users().messages().send.return_value.execute.return_value = {
-            "id": "sent1",
-            "threadId": "thread1",
-        }
-        self._patch_script_service(monkeypatch, mod, service)
-
-        result = mod.main("bob@example.com", "Hello", "Hi Bob")
-        assert "sent1" in result
-
-    def test_send_email_main_error(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_gmail.gmail.scripts.send_email as mod
-
-        service = self._mock_service()
-        service.users().messages().send.return_value.execute.side_effect = RuntimeError(
-            "fail"
-        )
-        self._patch_script_service(monkeypatch, mod, service)
-
-        result = mod.main("bob@example.com", "Hello", "Hi")
-        assert result.startswith("Error:")
-
-    def test_send_email_main_entry(self, monkeypatch: pytest.MonkeyPatch):
-        import io
-        import runpy
-
-        service = self._mock_service()
-        service.users().messages().send.return_value.execute.return_value = {
-            "id": "sent1",
-            "threadId": "thread1",
-        }
-        self._patch_auth_service(monkeypatch, service)
-
-        monkeypatch.setattr(
-            "sys.argv",
-            [
-                "send_email.py",
-                "--to",
-                "bob@example.com",
-                "--subject",
-                "Hi",
-                "--body",
-                "Hello",
-            ],
-        )
-        captured = io.StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
-
-        script = (
-            SKILLS_ROOT
-            / "gmail"
-            / "haiku_skills_gmail"
-            / "gmail"
-            / "scripts"
-            / "send_email.py"
-        )
-        runpy.run_path(str(script), run_name="__main__")
-        assert "sent1" in captured.getvalue()
-
-    # -- reply_to_email --
-
-    def test_reply_to_email_main(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_gmail.gmail.scripts.reply_to_email as mod
-
-        service = self._mock_service()
-        original = self._sample_message(msg_id="orig1", thread_id="thread1")
-        service.users().messages().get.return_value.execute.return_value = original
-        service.users().messages().send.return_value.execute.return_value = {
-            "id": "reply1",
-            "threadId": "thread1",
-        }
-        self._patch_script_service(monkeypatch, mod, service)
-
-        result = mod.main("orig1", "Thanks!")
-        assert "reply1" in result
-
-    def test_reply_to_email_main_error(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_gmail.gmail.scripts.reply_to_email as mod
-
-        service = self._mock_service()
-        service.users().messages().get.return_value.execute.side_effect = RuntimeError(
-            "fail"
-        )
-        self._patch_script_service(monkeypatch, mod, service)
-
-        result = mod.main("bad_id", "Hello")
-        assert result.startswith("Error:")
-
-    def test_reply_to_email_main_entry(self, monkeypatch: pytest.MonkeyPatch):
-        import io
-        import runpy
-
-        service = self._mock_service()
-        service.users().messages().get.return_value.execute.side_effect = RuntimeError(
-            "fail"
-        )
-        self._patch_auth_service(monkeypatch, service)
-
-        monkeypatch.setattr(
-            "sys.argv",
-            ["reply_to_email.py", "--message-id", "orig1", "--body", "Thanks!"],
-        )
-        captured = io.StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
-
-        script = (
-            SKILLS_ROOT
-            / "gmail"
-            / "haiku_skills_gmail"
-            / "gmail"
-            / "scripts"
-            / "reply_to_email.py"
-        )
-        runpy.run_path(str(script), run_name="__main__")
-        assert "Error:" in captured.getvalue()
-
-    # -- create_draft --
-
-    def test_create_draft_main(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_gmail.gmail.scripts.create_draft as mod
-
-        service = self._mock_service()
-        service.users().drafts().create.return_value.execute.return_value = {
-            "id": "draft1",
-            "message": {"id": "msg1"},
-        }
-        self._patch_script_service(monkeypatch, mod, service)
-
-        result = mod.main("bob@example.com", "Draft", "Body")
-        assert "draft1" in result
-
-    def test_create_draft_main_error(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_gmail.gmail.scripts.create_draft as mod
-
-        service = self._mock_service()
-        service.users().drafts().create.return_value.execute.side_effect = RuntimeError(
-            "fail"
-        )
-        self._patch_script_service(monkeypatch, mod, service)
-
-        result = mod.main("bob@example.com", "Draft", "Body")
-        assert result.startswith("Error:")
-
-    def test_create_draft_main_entry(self, monkeypatch: pytest.MonkeyPatch):
-        import io
-        import runpy
-
-        service = self._mock_service()
-        service.users().drafts().create.return_value.execute.return_value = {
-            "id": "draft1",
-            "message": {"id": "msg1"},
-        }
-        self._patch_auth_service(monkeypatch, service)
-
-        monkeypatch.setattr(
-            "sys.argv",
-            [
-                "create_draft.py",
-                "--to",
-                "bob@example.com",
-                "--subject",
-                "Hi",
-                "--body",
-                "Hello",
-            ],
-        )
-        captured = io.StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
-
-        script = (
-            SKILLS_ROOT
-            / "gmail"
-            / "haiku_skills_gmail"
-            / "gmail"
-            / "scripts"
-            / "create_draft.py"
-        )
-        runpy.run_path(str(script), run_name="__main__")
-        assert "draft1" in captured.getvalue()
-
-    # -- list_drafts --
-
-    def test_list_drafts_main(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_gmail.gmail.scripts.list_drafts as mod
-
-        service = self._mock_service()
-        service.users().drafts().list.return_value.execute.return_value = {
-            "drafts": [{"id": "draft1", "message": {"id": "msg1"}}],
-        }
-        service.users().drafts().get.return_value.execute.return_value = {
-            "id": "draft1",
-            "message": {
-                "id": "msg1",
-                "payload": {
-                    "headers": [
-                        {"name": "Subject", "value": "Draft 1"},
-                        {"name": "To", "value": "alice@example.com"},
-                    ],
-                },
-            },
-        }
-        self._patch_script_service(monkeypatch, mod, service)
-
-        result = mod.main()
-        assert "draft1" in result
-        assert "Draft 1" in result
-
-    def test_list_drafts_main_empty(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_gmail.gmail.scripts.list_drafts as mod
-
-        service = self._mock_service()
-        service.users().drafts().list.return_value.execute.return_value = {}
-        self._patch_script_service(monkeypatch, mod, service)
-
-        result = mod.main()
-        assert "No drafts found" in result
-
-    def test_list_drafts_main_error(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_gmail.gmail.scripts.list_drafts as mod
-
-        service = self._mock_service()
-        service.users().drafts().list.return_value.execute.side_effect = RuntimeError(
-            "fail"
-        )
-        self._patch_script_service(monkeypatch, mod, service)
-
-        result = mod.main()
-        assert result.startswith("Error:")
-
-    def test_list_drafts_main_entry(self, monkeypatch: pytest.MonkeyPatch):
-        import io
-        import runpy
-
-        service = self._mock_service()
-        service.users().drafts().list.return_value.execute.return_value = {}
-        self._patch_auth_service(monkeypatch, service)
-
-        monkeypatch.setattr("sys.argv", ["list_drafts.py"])
-        captured = io.StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
-
-        script = (
-            SKILLS_ROOT
-            / "gmail"
-            / "haiku_skills_gmail"
-            / "gmail"
-            / "scripts"
-            / "list_drafts.py"
-        )
-        runpy.run_path(str(script), run_name="__main__")
-        assert "No drafts" in captured.getvalue()
-
-    # -- modify_labels --
-
-    def test_modify_labels_main(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_gmail.gmail.scripts.modify_labels as mod
-
-        service = self._mock_service()
-        service.users().messages().modify.return_value.execute.return_value = {
-            "id": "msg1",
-        }
-        self._patch_script_service(monkeypatch, mod, service)
-
-        result = mod.main("msg1", add_labels="STARRED")
-        assert "msg1" in result
-
-    def test_modify_labels_main_error(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_gmail.gmail.scripts.modify_labels as mod
-
-        service = self._mock_service()
-        service.users().messages().modify.return_value.execute.side_effect = (
-            RuntimeError("fail")
-        )
-        self._patch_script_service(monkeypatch, mod, service)
-
-        result = mod.main("msg1", add_labels="STARRED")
-        assert result.startswith("Error:")
-
-    def test_modify_labels_main_entry(self, monkeypatch: pytest.MonkeyPatch):
-        import io
-        import runpy
-
-        service = self._mock_service()
-        service.users().messages().modify.return_value.execute.return_value = {
-            "id": "msg1",
-        }
-        self._patch_auth_service(monkeypatch, service)
-
-        monkeypatch.setattr(
-            "sys.argv",
-            ["modify_labels.py", "--message-id", "msg1", "--add-labels", "STARRED"],
-        )
-        captured = io.StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
-
-        script = (
-            SKILLS_ROOT
-            / "gmail"
-            / "haiku_skills_gmail"
-            / "gmail"
-            / "scripts"
-            / "modify_labels.py"
-        )
-        runpy.run_path(str(script), run_name="__main__")
-        assert "msg1" in captured.getvalue()
-
-    # -- list_labels --
-
-    def test_list_labels_main(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_gmail.gmail.scripts.list_labels as mod
-
-        service = self._mock_service()
-        service.users().labels().list.return_value.execute.return_value = {
-            "labels": [
-                {"id": "INBOX", "name": "INBOX", "type": "system"},
-            ],
-        }
-        self._patch_script_service(monkeypatch, mod, service)
-
-        result = mod.main()
-        assert "INBOX" in result
-
-    def test_list_labels_main_error(self, monkeypatch: pytest.MonkeyPatch):
-        import haiku_skills_gmail.gmail.scripts.list_labels as mod
-
-        service = self._mock_service()
-        service.users().labels().list.return_value.execute.side_effect = RuntimeError(
-            "fail"
-        )
-        self._patch_script_service(monkeypatch, mod, service)
-
-        result = mod.main()
-        assert result.startswith("Error:")
-
-    def test_list_labels_main_entry(self, monkeypatch: pytest.MonkeyPatch):
-        import io
-        import runpy
-
-        service = self._mock_service()
-        service.users().labels().list.return_value.execute.return_value = {
-            "labels": [
-                {"id": "INBOX", "name": "INBOX", "type": "system"},
-            ],
-        }
-        self._patch_auth_service(monkeypatch, service)
-
-        monkeypatch.setattr("sys.argv", ["list_labels.py"])
-        captured = io.StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
-
-        script = (
-            SKILLS_ROOT
-            / "gmail"
-            / "haiku_skills_gmail"
-            / "gmail"
-            / "scripts"
-            / "list_labels.py"
-        )
-        runpy.run_path(str(script), run_name="__main__")
-        assert "INBOX" in captured.getvalue()

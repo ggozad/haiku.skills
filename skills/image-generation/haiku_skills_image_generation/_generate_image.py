@@ -1,7 +1,3 @@
-# /// script
-# requires-python = ">=3.13"
-# dependencies = ["httpx"]
-# ///
 """Generate images from text prompts using Ollama."""
 
 import base64
@@ -50,22 +46,3 @@ def main(
     output_path.write_bytes(image_data)
 
     return str(output_path)
-
-
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(
-        description="Generate images from text prompts using Ollama."
-    )
-    parser.add_argument(
-        "--prompt", required=True, help="The text description of the image to generate."
-    )
-    parser.add_argument(
-        "--width", type=int, default=1024, help="Image width in pixels."
-    )
-    parser.add_argument(
-        "--height", type=int, default=1024, help="Image height in pixels."
-    )
-    args = parser.parse_args()
-    print(main(args.prompt, args.width, args.height))
