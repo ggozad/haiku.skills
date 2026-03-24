@@ -126,6 +126,19 @@ def _create_read_resource(skill: Skill) -> Callable[..., Any]:
     return read_resource
 
 
+def _discover_scripts(skill: Skill) -> list[str]:
+    """List available scripts for a skill, as relative paths."""
+    if not skill.path or not (skill.path / "scripts").is_dir():
+        return []
+    return sorted(
+        str(f.relative_to(skill.path))
+        for f in (skill.path / "scripts").rglob("*")
+        if f.is_file()
+        and f.name != "__init__.py"
+        and (f.suffix in SCRIPT_RUNNERS or os.access(f, os.X_OK))
+    )
+
+
 def _create_run_script(skill: Skill) -> Callable[..., Any]:
     """Create a run_script tool bound to a specific skill."""
     assert skill.path is not None
@@ -190,13 +203,7 @@ async def _run_skill(
         tools.append(_create_read_resource(skill))
     if skill.path and (skill.path / "scripts").is_dir():
         tools.append(_create_run_script(skill))
-        script_files = sorted(
-            str(f.relative_to(skill.path))
-            for f in (skill.path / "scripts").rglob("*")
-            if f.is_file()
-            and f.name != "__init__.py"
-            and (f.suffix in SCRIPT_RUNNERS or os.access(f, os.X_OK))
-        )
+        script_files = _discover_scripts(skill)
         if script_files:
             script_list = "\n".join(f"- {s}" for s in script_files)
             scripts_section = (
@@ -502,17 +509,10 @@ class SkillToolset(FunctionToolset[Any]):
             if tool_lines:
                 sections.append("## Tools\n\n" + "\n".join(tool_lines))
 
-            if skill.path and (skill.path / "scripts").is_dir():
-                script_files = sorted(
-                    str(f.relative_to(skill.path))
-                    for f in (skill.path / "scripts").rglob("*")
-                    if f.is_file()
-                    and f.name != "__init__.py"
-                    and (f.suffix in SCRIPT_RUNNERS or os.access(f, os.X_OK))
-                )
-                if script_files:
-                    script_list = "\n".join(f"- {s}" for s in script_files)
-                    sections.append(f"## Scripts\n\n{script_list}")
+            script_files = _discover_scripts(skill)
+            if script_files:
+                script_list = "\n".join(f"- {s}" for s in script_files)
+                sections.append(f"## Scripts\n\n{script_list}")
 
             if skill.resources:
                 resource_list = "\n".join(f"- {r}" for r in skill.resources)
@@ -526,7 +526,7 @@ class SkillToolset(FunctionToolset[Any]):
             skill_name: str,
             tool_name: str,
             arguments: dict[str, Any],
-        ) -> str | ToolReturn:
+        ) -> Any:
             """Call a specific tool from a skill.
 
             Use query_skill first to discover available tools and their schemas.

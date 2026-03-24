@@ -1660,6 +1660,7 @@ class TestSkillToolsetDirect:
         assert "query_skill" in tool_names
         assert "execute_skill_tool" in tool_names
         assert "read_skill_resource" in tool_names
+        assert "run_skill_script" in tool_names
         assert "execute_skill" not in tool_names
 
     async def test_use_subagents_true_registers_execute_skill(
