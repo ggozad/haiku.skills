@@ -1,0 +1,1015 @@
+interactions:
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '2980'
+      content-type:
+      - application/json
+      host:
+      - 127.0.0.1:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a helpful assistant with access to specialized skills.
+
+          ## Available skills
+
+          - **greeting-maker-filesystem**: Produce personalized greetings for employees. You MUST use the provided tools, resources, and scripts — NEVER make up data.
+
+          ## Instructions
+
+          - For general conversation or questions that don't need skills, respond directly
+          - Use query_skill to discover a skill's instructions, tools, scripts, and resources before calling its tools
+          - Use execute_skill_tool to call a specific tool from a skill
+          - Use run_skill_script to execute scripts from a skill's scripts/ directory
+          - Use read_skill_resource to read resource files from a skill's directory
+          - The user cannot see tool responses directly. You must synthesize the information returned by tools into your own reply
+        role: system
+      - content: Use the greeting maker skill to produce a greeting for employee 42.
+        role: user
+      model: gpt-oss
+      stream: false
+      tool_choice: auto
+      tools:
+      - function:
+          description: 'Get details about a skill: instructions, available tools, and resources.'
+          name: query_skill
+          parameters:
+            additionalProperties: false
+            properties:
+              skill_name:
+                description: The exact name of the skill to query.
+                type: string
+            required:
+            - skill_name
+            type: object
+          strict: true
+        type: function
+      - function:
+          description: |-
+            Call a specific tool from a skill.
+
+            Use query_skill first to discover available tools and their schemas.
+          name: execute_skill_tool
+          parameters:
+            additionalProperties: false
+            properties:
+              arguments:
+                additionalProperties: true
+                description: Tool arguments matching the tool's parameter schema.
+                properties: {}
+                type: object
+              skill_name:
+                description: The exact name of the skill.
+                type: string
+              tool_name:
+                description: The exact name of the tool to call.
+                type: string
+            required:
+            - skill_name
+            - tool_name
+            - arguments
+            type: object
+        type: function
+      - function:
+          description: |-
+            Read a resource file from a skill's directory.
+
+            Use query_skill first to discover available resources.
+          name: read_skill_resource
+          parameters:
+            additionalProperties: false
+            properties:
+              path:
+                description: Relative path to the resource file.
+                type: string
+              skill_name:
+                description: The exact name of the skill.
+                type: string
+            required:
+            - skill_name
+            - path
+            type: object
+          strict: true
+        type: function
+      - function:
+          description: |-
+            Execute a script from a skill's scripts/ directory.
+
+            Use query_skill first to discover available scripts.
+          name: run_skill_script
+          parameters:
+            additionalProperties: false
+            properties:
+              arguments:
+                default: ''
+                description: Command-line arguments for the script.
+                type: string
+              script:
+                description: Relative path to the script (e.g. 'scripts/extract.py').
+                type: string
+              skill_name:
+                description: The exact name of the skill.
+                type: string
+            required:
+            - skill_name
+            - script
+            type: object
+        type: function
+    uri: http://127.0.0.1:11434/v1/chat/completions
+  response:
+    headers:
+      content-length:
+      - '552'
+      content-type:
+      - application/json
+    parsed_body:
+      choices:
+      - finish_reason: tool_calls
+        index: 0
+        message:
+          content: ''
+          reasoning: We need to use greeting-maker-filesystem skill. First query its details to know tools.
+          role: assistant
+          tool_calls:
+          - function:
+              arguments: '{"skill_name":"greeting-maker-filesystem"}'
+              name: query_skill
+            id: call_6vvr9n56
+            index: 0
+            type: function
+      created: 1774349994
+      id: chatcmpl-219
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 47
+        prompt_tokens: 537
+        total_tokens: 584
+    status:
+      code: 200
+      message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '4153'
+      content-type:
+      - application/json
+      host:
+      - 127.0.0.1:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a helpful assistant with access to specialized skills.
+
+          ## Available skills
+
+          - **greeting-maker-filesystem**: Produce personalized greetings for employees. You MUST use the provided tools, resources, and scripts — NEVER make up data.
+
+          ## Instructions
+
+          - For general conversation or questions that don't need skills, respond directly
+          - Use query_skill to discover a skill's instructions, tools, scripts, and resources before calling its tools
+          - Use execute_skill_tool to call a specific tool from a skill
+          - Use run_skill_script to execute scripts from a skill's scripts/ directory
+          - Use read_skill_resource to read resource files from a skill's directory
+          - The user cannot see tool responses directly. You must synthesize the information returned by tools into your own reply
+        role: system
+      - content: Use the greeting maker skill to produce a greeting for employee 42.
+        role: user
+      - content: null
+        reasoning: We need to use greeting-maker-filesystem skill. First query its details to know tools.
+        role: assistant
+        tool_calls:
+        - function:
+            arguments: '{"skill_name":"greeting-maker-filesystem"}'
+            name: query_skill
+          id: call_6vvr9n56
+          type: function
+      - content: |-
+          ## Instructions
+
+          # Greeting Maker
+
+          You produce personalized greetings for employees. You MUST use the tools provided — never make up or guess data.
+
+          ## Mandatory workflow
+
+          You MUST follow ALL steps in order. Do NOT skip any step.
+
+          1. **Get employee data**: Run `scripts/lookup.py --employee-id <id>` to get the employee's name and department. NEVER guess employee data.
+          2. **Read template**: Read `templates/greeting.txt` to get the template string. NEVER guess the template.
+          3. **Render**: Run `scripts/render.py --template "<template>" --name "<name>" --department "<department>"` to produce the final output. NEVER render manually.
+
+          Return ONLY the output of the render script as your final answer.
+
+          ## Scripts
+
+          - scripts/lookup.py
+          - scripts/render.py
+
+          ## Resources
+
+          - templates/greeting.txt
+        role: tool
+        tool_call_id: call_6vvr9n56
+      model: gpt-oss
+      stream: false
+      tool_choice: auto
+      tools:
+      - function:
+          description: 'Get details about a skill: instructions, available tools, and resources.'
+          name: query_skill
+          parameters:
+            additionalProperties: false
+            properties:
+              skill_name:
+                description: The exact name of the skill to query.
+                type: string
+            required:
+            - skill_name
+            type: object
+          strict: true
+        type: function
+      - function:
+          description: |-
+            Call a specific tool from a skill.
+
+            Use query_skill first to discover available tools and their schemas.
+          name: execute_skill_tool
+          parameters:
+            additionalProperties: false
+            properties:
+              arguments:
+                additionalProperties: true
+                description: Tool arguments matching the tool's parameter schema.
+                properties: {}
+                type: object
+              skill_name:
+                description: The exact name of the skill.
+                type: string
+              tool_name:
+                description: The exact name of the tool to call.
+                type: string
+            required:
+            - skill_name
+            - tool_name
+            - arguments
+            type: object
+        type: function
+      - function:
+          description: |-
+            Read a resource file from a skill's directory.
+
+            Use query_skill first to discover available resources.
+          name: read_skill_resource
+          parameters:
+            additionalProperties: false
+            properties:
+              path:
+                description: Relative path to the resource file.
+                type: string
+              skill_name:
+                description: The exact name of the skill.
+                type: string
+            required:
+            - skill_name
+            - path
+            type: object
+          strict: true
+        type: function
+      - function:
+          description: |-
+            Execute a script from a skill's scripts/ directory.
+
+            Use query_skill first to discover available scripts.
+          name: run_skill_script
+          parameters:
+            additionalProperties: false
+            properties:
+              arguments:
+                default: ''
+                description: Command-line arguments for the script.
+                type: string
+              script:
+                description: Relative path to the script (e.g. 'scripts/extract.py').
+                type: string
+              skill_name:
+                description: The exact name of the skill.
+                type: string
+            required:
+            - skill_name
+            - script
+            type: object
+        type: function
+    uri: http://127.0.0.1:11434/v1/chat/completions
+  response:
+    headers:
+      content-length:
+      - '647'
+      content-type:
+      - application/json
+    parsed_body:
+      choices:
+      - finish_reason: tool_calls
+        index: 0
+        message:
+          content: ''
+          reasoning: 'Follow mandatory workflow: 1) run lookup script with ID 42. 2) read template. 3) run render. Use tool
+            calls.'
+          role: assistant
+          tool_calls:
+          - function:
+              arguments: '{"skill_name":"greeting-maker-filesystem","script":"scripts/lookup.py","arguments":"--employee-id
+                42"}'
+              name: run_skill_script
+            id: call_9ldsu06a
+            index: 0
+            type: function
+      created: 1774349995
+      id: chatcmpl-199
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 76
+        prompt_tokens: 772
+        total_tokens: 848
+    status:
+      code: 200
+      message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '4652'
+      content-type:
+      - application/json
+      host:
+      - 127.0.0.1:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a helpful assistant with access to specialized skills.
+
+          ## Available skills
+
+          - **greeting-maker-filesystem**: Produce personalized greetings for employees. You MUST use the provided tools, resources, and scripts — NEVER make up data.
+
+          ## Instructions
+
+          - For general conversation or questions that don't need skills, respond directly
+          - Use query_skill to discover a skill's instructions, tools, scripts, and resources before calling its tools
+          - Use execute_skill_tool to call a specific tool from a skill
+          - Use run_skill_script to execute scripts from a skill's scripts/ directory
+          - Use read_skill_resource to read resource files from a skill's directory
+          - The user cannot see tool responses directly. You must synthesize the information returned by tools into your own reply
+        role: system
+      - content: Use the greeting maker skill to produce a greeting for employee 42.
+        role: user
+      - content: null
+        reasoning: We need to use greeting-maker-filesystem skill. First query its details to know tools.
+        role: assistant
+        tool_calls:
+        - function:
+            arguments: '{"skill_name":"greeting-maker-filesystem"}'
+            name: query_skill
+          id: call_6vvr9n56
+          type: function
+      - content: |-
+          ## Instructions
+
+          # Greeting Maker
+
+          You produce personalized greetings for employees. You MUST use the tools provided — never make up or guess data.
+
+          ## Mandatory workflow
+
+          You MUST follow ALL steps in order. Do NOT skip any step.
+
+          1. **Get employee data**: Run `scripts/lookup.py --employee-id <id>` to get the employee's name and department. NEVER guess employee data.
+          2. **Read template**: Read `templates/greeting.txt` to get the template string. NEVER guess the template.
+          3. **Render**: Run `scripts/render.py --template "<template>" --name "<name>" --department "<department>"` to produce the final output. NEVER render manually.
+
+          Return ONLY the output of the render script as your final answer.
+
+          ## Scripts
+
+          - scripts/lookup.py
+          - scripts/render.py
+
+          ## Resources
+
+          - templates/greeting.txt
+        role: tool
+        tool_call_id: call_6vvr9n56
+      - content: null
+        reasoning: 'Follow mandatory workflow: 1) run lookup script with ID 42. 2) read template. 3) run render. Use tool
+          calls.'
+        role: assistant
+        tool_calls:
+        - function:
+            arguments: '{"skill_name":"greeting-maker-filesystem","script":"scripts/lookup.py","arguments":"--employee-id
+              42"}'
+            name: run_skill_script
+          id: call_9ldsu06a
+          type: function
+      - content: |
+          {"name": "Alice", "department": "Engineering"}
+        role: tool
+        tool_call_id: call_9ldsu06a
+      model: gpt-oss
+      stream: false
+      tool_choice: auto
+      tools:
+      - function:
+          description: 'Get details about a skill: instructions, available tools, and resources.'
+          name: query_skill
+          parameters:
+            additionalProperties: false
+            properties:
+              skill_name:
+                description: The exact name of the skill to query.
+                type: string
+            required:
+            - skill_name
+            type: object
+          strict: true
+        type: function
+      - function:
+          description: |-
+            Call a specific tool from a skill.
+
+            Use query_skill first to discover available tools and their schemas.
+          name: execute_skill_tool
+          parameters:
+            additionalProperties: false
+            properties:
+              arguments:
+                additionalProperties: true
+                description: Tool arguments matching the tool's parameter schema.
+                properties: {}
+                type: object
+              skill_name:
+                description: The exact name of the skill.
+                type: string
+              tool_name:
+                description: The exact name of the tool to call.
+                type: string
+            required:
+            - skill_name
+            - tool_name
+            - arguments
+            type: object
+        type: function
+      - function:
+          description: |-
+            Read a resource file from a skill's directory.
+
+            Use query_skill first to discover available resources.
+          name: read_skill_resource
+          parameters:
+            additionalProperties: false
+            properties:
+              path:
+                description: Relative path to the resource file.
+                type: string
+              skill_name:
+                description: The exact name of the skill.
+                type: string
+            required:
+            - skill_name
+            - path
+            type: object
+          strict: true
+        type: function
+      - function:
+          description: |-
+            Execute a script from a skill's scripts/ directory.
+
+            Use query_skill first to discover available scripts.
+          name: run_skill_script
+          parameters:
+            additionalProperties: false
+            properties:
+              arguments:
+                default: ''
+                description: Command-line arguments for the script.
+                type: string
+              script:
+                description: Relative path to the script (e.g. 'scripts/extract.py').
+                type: string
+              skill_name:
+                description: The exact name of the skill.
+                type: string
+            required:
+            - skill_name
+            - script
+            type: object
+        type: function
+    uri: http://127.0.0.1:11434/v1/chat/completions
+  response:
+    headers:
+      content-length:
+      - '589'
+      content-type:
+      - application/json
+    parsed_body:
+      choices:
+      - finish_reason: tool_calls
+        index: 0
+        message:
+          content: ''
+          reasoning: 'Employee data returned: name Alice, department Engineering. Next read resource.'
+          role: assistant
+          tool_calls:
+          - function:
+              arguments: '{"path":"templates/greeting.txt","skill_name":"greeting-maker-filesystem"}'
+              name: read_skill_resource
+            id: call_1uwg80uq
+            index: 0
+            type: function
+      created: 1774349996
+      id: chatcmpl-242
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 51
+        prompt_tokens: 872
+        total_tokens: 923
+    status:
+      code: 200
+      message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '5076'
+      content-type:
+      - application/json
+      host:
+      - 127.0.0.1:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a helpful assistant with access to specialized skills.
+
+          ## Available skills
+
+          - **greeting-maker-filesystem**: Produce personalized greetings for employees. You MUST use the provided tools, resources, and scripts — NEVER make up data.
+
+          ## Instructions
+
+          - For general conversation or questions that don't need skills, respond directly
+          - Use query_skill to discover a skill's instructions, tools, scripts, and resources before calling its tools
+          - Use execute_skill_tool to call a specific tool from a skill
+          - Use run_skill_script to execute scripts from a skill's scripts/ directory
+          - Use read_skill_resource to read resource files from a skill's directory
+          - The user cannot see tool responses directly. You must synthesize the information returned by tools into your own reply
+        role: system
+      - content: Use the greeting maker skill to produce a greeting for employee 42.
+        role: user
+      - content: null
+        reasoning: We need to use greeting-maker-filesystem skill. First query its details to know tools.
+        role: assistant
+        tool_calls:
+        - function:
+            arguments: '{"skill_name":"greeting-maker-filesystem"}'
+            name: query_skill
+          id: call_6vvr9n56
+          type: function
+      - content: |-
+          ## Instructions
+
+          # Greeting Maker
+
+          You produce personalized greetings for employees. You MUST use the tools provided — never make up or guess data.
+
+          ## Mandatory workflow
+
+          You MUST follow ALL steps in order. Do NOT skip any step.
+
+          1. **Get employee data**: Run `scripts/lookup.py --employee-id <id>` to get the employee's name and department. NEVER guess employee data.
+          2. **Read template**: Read `templates/greeting.txt` to get the template string. NEVER guess the template.
+          3. **Render**: Run `scripts/render.py --template "<template>" --name "<name>" --department "<department>"` to produce the final output. NEVER render manually.
+
+          Return ONLY the output of the render script as your final answer.
+
+          ## Scripts
+
+          - scripts/lookup.py
+          - scripts/render.py
+
+          ## Resources
+
+          - templates/greeting.txt
+        role: tool
+        tool_call_id: call_6vvr9n56
+      - content: null
+        reasoning: 'Follow mandatory workflow: 1) run lookup script with ID 42. 2) read template. 3) run render. Use tool
+          calls.'
+        role: assistant
+        tool_calls:
+        - function:
+            arguments: '{"skill_name":"greeting-maker-filesystem","script":"scripts/lookup.py","arguments":"--employee-id
+              42"}'
+            name: run_skill_script
+          id: call_9ldsu06a
+          type: function
+      - content: |
+          {"name": "Alice", "department": "Engineering"}
+        role: tool
+        tool_call_id: call_9ldsu06a
+      - content: null
+        reasoning: 'Employee data returned: name Alice, department Engineering. Next read resource.'
+        role: assistant
+        tool_calls:
+        - function:
+            arguments: '{"path":"templates/greeting.txt","skill_name":"greeting-maker-filesystem"}'
+            name: read_skill_resource
+          id: call_1uwg80uq
+          type: function
+      - content: |
+          Dear {name}, welcome to {department}.
+        role: tool
+        tool_call_id: call_1uwg80uq
+      model: gpt-oss
+      stream: false
+      tool_choice: auto
+      tools:
+      - function:
+          description: 'Get details about a skill: instructions, available tools, and resources.'
+          name: query_skill
+          parameters:
+            additionalProperties: false
+            properties:
+              skill_name:
+                description: The exact name of the skill to query.
+                type: string
+            required:
+            - skill_name
+            type: object
+          strict: true
+        type: function
+      - function:
+          description: |-
+            Call a specific tool from a skill.
+
+            Use query_skill first to discover available tools and their schemas.
+          name: execute_skill_tool
+          parameters:
+            additionalProperties: false
+            properties:
+              arguments:
+                additionalProperties: true
+                description: Tool arguments matching the tool's parameter schema.
+                properties: {}
+                type: object
+              skill_name:
+                description: The exact name of the skill.
+                type: string
+              tool_name:
+                description: The exact name of the tool to call.
+                type: string
+            required:
+            - skill_name
+            - tool_name
+            - arguments
+            type: object
+        type: function
+      - function:
+          description: |-
+            Read a resource file from a skill's directory.
+
+            Use query_skill first to discover available resources.
+          name: read_skill_resource
+          parameters:
+            additionalProperties: false
+            properties:
+              path:
+                description: Relative path to the resource file.
+                type: string
+              skill_name:
+                description: The exact name of the skill.
+                type: string
+            required:
+            - skill_name
+            - path
+            type: object
+          strict: true
+        type: function
+      - function:
+          description: |-
+            Execute a script from a skill's scripts/ directory.
+
+            Use query_skill first to discover available scripts.
+          name: run_skill_script
+          parameters:
+            additionalProperties: false
+            properties:
+              arguments:
+                default: ''
+                description: Command-line arguments for the script.
+                type: string
+              script:
+                description: Relative path to the script (e.g. 'scripts/extract.py').
+                type: string
+              skill_name:
+                description: The exact name of the skill.
+                type: string
+            required:
+            - skill_name
+            - script
+            type: object
+        type: function
+    uri: http://127.0.0.1:11434/v1/chat/completions
+  response:
+    headers:
+      content-length:
+      - '652'
+      content-type:
+      - application/json
+    parsed_body:
+      choices:
+      - finish_reason: tool_calls
+        index: 0
+        message:
+          content: ''
+          reasoning: Now render script.
+          role: assistant
+          tool_calls:
+          - function:
+              arguments: '{"arguments":"--template \"Dear {name}, welcome to {department}.\" --name \"Alice\" --department
+                \"Engineering\"","script":"scripts/render.py","skill_name":"greeting-maker-filesystem"}'
+              name: run_skill_script
+            id: call_ha9hm8zm
+            index: 0
+            type: function
+      created: 1774349997
+      id: chatcmpl-429
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 66
+        prompt_tokens: 944
+        total_tokens: 1010
+    status:
+      code: 200
+      message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '5560'
+      content-type:
+      - application/json
+      host:
+      - 127.0.0.1:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a helpful assistant with access to specialized skills.
+
+          ## Available skills
+
+          - **greeting-maker-filesystem**: Produce personalized greetings for employees. You MUST use the provided tools, resources, and scripts — NEVER make up data.
+
+          ## Instructions
+
+          - For general conversation or questions that don't need skills, respond directly
+          - Use query_skill to discover a skill's instructions, tools, scripts, and resources before calling its tools
+          - Use execute_skill_tool to call a specific tool from a skill
+          - Use run_skill_script to execute scripts from a skill's scripts/ directory
+          - Use read_skill_resource to read resource files from a skill's directory
+          - The user cannot see tool responses directly. You must synthesize the information returned by tools into your own reply
+        role: system
+      - content: Use the greeting maker skill to produce a greeting for employee 42.
+        role: user
+      - content: null
+        reasoning: We need to use greeting-maker-filesystem skill. First query its details to know tools.
+        role: assistant
+        tool_calls:
+        - function:
+            arguments: '{"skill_name":"greeting-maker-filesystem"}'
+            name: query_skill
+          id: call_6vvr9n56
+          type: function
+      - content: |-
+          ## Instructions
+
+          # Greeting Maker
+
+          You produce personalized greetings for employees. You MUST use the tools provided — never make up or guess data.
+
+          ## Mandatory workflow
+
+          You MUST follow ALL steps in order. Do NOT skip any step.
+
+          1. **Get employee data**: Run `scripts/lookup.py --employee-id <id>` to get the employee's name and department. NEVER guess employee data.
+          2. **Read template**: Read `templates/greeting.txt` to get the template string. NEVER guess the template.
+          3. **Render**: Run `scripts/render.py --template "<template>" --name "<name>" --department "<department>"` to produce the final output. NEVER render manually.
+
+          Return ONLY the output of the render script as your final answer.
+
+          ## Scripts
+
+          - scripts/lookup.py
+          - scripts/render.py
+
+          ## Resources
+
+          - templates/greeting.txt
+        role: tool
+        tool_call_id: call_6vvr9n56
+      - content: null
+        reasoning: 'Follow mandatory workflow: 1) run lookup script with ID 42. 2) read template. 3) run render. Use tool
+          calls.'
+        role: assistant
+        tool_calls:
+        - function:
+            arguments: '{"skill_name":"greeting-maker-filesystem","script":"scripts/lookup.py","arguments":"--employee-id
+              42"}'
+            name: run_skill_script
+          id: call_9ldsu06a
+          type: function
+      - content: |
+          {"name": "Alice", "department": "Engineering"}
+        role: tool
+        tool_call_id: call_9ldsu06a
+      - content: null
+        reasoning: 'Employee data returned: name Alice, department Engineering. Next read resource.'
+        role: assistant
+        tool_calls:
+        - function:
+            arguments: '{"path":"templates/greeting.txt","skill_name":"greeting-maker-filesystem"}'
+            name: read_skill_resource
+          id: call_1uwg80uq
+          type: function
+      - content: |
+          Dear {name}, welcome to {department}.
+        role: tool
+        tool_call_id: call_1uwg80uq
+      - content: null
+        reasoning: Now render script.
+        role: assistant
+        tool_calls:
+        - function:
+            arguments: '{"arguments":"--template \"Dear {name}, welcome to {department}.\" --name \"Alice\" --department \"Engineering\"","script":"scripts/render.py","skill_name":"greeting-maker-filesystem"}'
+            name: run_skill_script
+          id: call_ha9hm8zm
+          type: function
+      - content: |
+          Dear Alice, welcome to Engineering.
+        role: tool
+        tool_call_id: call_ha9hm8zm
+      model: gpt-oss
+      stream: false
+      tool_choice: auto
+      tools:
+      - function:
+          description: 'Get details about a skill: instructions, available tools, and resources.'
+          name: query_skill
+          parameters:
+            additionalProperties: false
+            properties:
+              skill_name:
+                description: The exact name of the skill to query.
+                type: string
+            required:
+            - skill_name
+            type: object
+          strict: true
+        type: function
+      - function:
+          description: |-
+            Call a specific tool from a skill.
+
+            Use query_skill first to discover available tools and their schemas.
+          name: execute_skill_tool
+          parameters:
+            additionalProperties: false
+            properties:
+              arguments:
+                additionalProperties: true
+                description: Tool arguments matching the tool's parameter schema.
+                properties: {}
+                type: object
+              skill_name:
+                description: The exact name of the skill.
+                type: string
+              tool_name:
+                description: The exact name of the tool to call.
+                type: string
+            required:
+            - skill_name
+            - tool_name
+            - arguments
+            type: object
+        type: function
+      - function:
+          description: |-
+            Read a resource file from a skill's directory.
+
+            Use query_skill first to discover available resources.
+          name: read_skill_resource
+          parameters:
+            additionalProperties: false
+            properties:
+              path:
+                description: Relative path to the resource file.
+                type: string
+              skill_name:
+                description: The exact name of the skill.
+                type: string
+            required:
+            - skill_name
+            - path
+            type: object
+          strict: true
+        type: function
+      - function:
+          description: |-
+            Execute a script from a skill's scripts/ directory.
+
+            Use query_skill first to discover available scripts.
+          name: run_skill_script
+          parameters:
+            additionalProperties: false
+            properties:
+              arguments:
+                default: ''
+                description: Command-line arguments for the script.
+                type: string
+              script:
+                description: Relative path to the script (e.g. 'scripts/extract.py').
+                type: string
+              skill_name:
+                description: The exact name of the skill.
+                type: string
+            required:
+            - skill_name
+            - script
+            type: object
+        type: function
+    uri: http://127.0.0.1:11434/v1/chat/completions
+  response:
+    headers:
+      content-length:
+      - '321'
+      content-type:
+      - application/json
+    parsed_body:
+      choices:
+      - finish_reason: stop
+        index: 0
+        message:
+          content: Dear Alice, welcome to Engineering.
+          role: assistant
+      created: 1774349998
+      id: chatcmpl-388
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 11
+        prompt_tokens: 1029
+        total_tokens: 1040
+    status:
+      code: 200
+      message: OK
+version: 1

@@ -97,6 +97,12 @@ Set the model to use for skill sub-agents (overrides `HAIKU_SKILL_MODEL` env var
 haiku-skills chat -s ./skills -m openai:gpt-4o --skill-model ollama:llama3
 ```
 
+Use direct mode (no sub-agents — skill tools are exposed directly to the main agent):
+
+```bash
+haiku-skills chat --use-entrypoints --no-subagents -m openai:gpt-4o
+```
+
 The chat TUI uses the AG-UI protocol adapter for event streaming, making it useful for debugging skills with [per-skill state](skills.md#per-skill-state):
 
 - **State deltas** are displayed inline as JSON Patch operations whenever a skill modifies state
@@ -107,6 +113,6 @@ The chat TUI uses the AG-UI protocol adapter for event streaming, making it usef
 | Variable | Description |
 |---|---|
 | `HAIKU_SKILLS_MODEL` | Default main agent model for `chat` (fallback when `-m` is not provided, defaults to `ollama:gpt-oss`) |
-| `HAIKU_SKILL_MODEL` | Model to use for skill sub-agents (overridden by `--skill-model` or per-skill `model` in SKILL.md) |
+| `HAIKU_SKILL_MODEL` | Model to use for skill sub-agents in sub-agent mode (overridden by `--skill-model` or per-skill `model` in SKILL.md) |
 | `HAIKU_SKILLS_PATHS` | Colon-separated skill directory paths (fallback when `-s` is not provided) |
 | `HAIKU_SKILLS_USE_ENTRYPOINTS` | Set to `1`, `true`, or `yes` to enable entrypoint discovery by default |

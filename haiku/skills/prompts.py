@@ -1,6 +1,6 @@
 DEFAULT_PREAMBLE = "You are a helpful assistant with access to specialized skills."
 
-_MAIN_AGENT_PROMPT = """\
+_SUBAGENT_PROMPT = """\
 {preamble}
 
 ## Available skills
@@ -21,14 +21,35 @@ paste the concrete information into the request text
 information returned by skills into your own reply\
 """
 
+_DIRECT_PROMPT = """\
+{preamble}
+
+## Available skills
+
+{skill_catalog}
+
+## Instructions
+
+- For general conversation or questions that don't need skills, respond directly
+- Use query_skill to discover a skill's instructions, tools, scripts, and \
+resources before calling its tools
+- Use execute_skill_tool to call a specific tool from a skill
+- Use run_skill_script to execute scripts from a skill's scripts/ directory
+- Use read_skill_resource to read resource files from a skill's directory
+- The user cannot see tool responses directly. You must synthesize the \
+information returned by tools into your own reply\
+"""
+
 
 def build_system_prompt(
     skill_catalog: str,
     *,
     preamble: str = DEFAULT_PREAMBLE,
+    use_subagents: bool = True,
 ) -> str:
     """Build the main agent system prompt from a skill catalog."""
-    return _MAIN_AGENT_PROMPT.format(preamble=preamble, skill_catalog=skill_catalog)
+    template = _SUBAGENT_PROMPT if use_subagents else _DIRECT_PROMPT
+    return template.format(preamble=preamble, skill_catalog=skill_catalog)
 
 
 SKILL_PROMPT = """\

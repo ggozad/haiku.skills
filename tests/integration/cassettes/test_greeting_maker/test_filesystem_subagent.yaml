@@ -1,0 +1,940 @@
+interactions:
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '1767'
+      content-type:
+      - application/json
+      host:
+      - 127.0.0.1:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a helpful assistant with access to specialized skills.
+
+          ## Available skills
+
+          - **greeting-maker-filesystem**: Produce personalized greetings for employees. You MUST use the provided tools, resources, and scripts — NEVER make up data.
+
+          ## Instructions
+
+          - For general conversation or questions that don't need skills, respond directly
+          - Use execute_skill to delegate work to a skill
+          - Each skill runs as an isolated agent with NO shared memory or context. A skill can only see what you put in its request — it has no access to the conversation, previous skill results, or any other context
+          - When chaining skills, you MUST include the actual data in the request. Never say "store what was found" or "use the previous results" — paste the concrete information into the request text
+          - The user cannot see skill responses directly. You must synthesize the information returned by skills into your own reply
+        role: system
+      - content: Use the greeting maker skill to produce a greeting for employee 42.
+        role: user
+      model: gpt-oss
+      stream: false
+      tool_choice: auto
+      tools:
+      - function:
+          description: |-
+            Execute a skill by name.
+
+            Skills are isolated agents — they cannot see the conversation or
+            prior skill results. The request MUST contain all information the
+            skill needs to complete its task.
+          name: execute_skill
+          parameters:
+            additionalProperties: false
+            properties:
+              request:
+                description: |-
+                  Self-contained description including all data and
+                  context the skill needs. Never reference external context.
+                type: string
+              skill_name:
+                description: The exact name of the skill to use.
+                type: string
+            required:
+            - skill_name
+            - request
+            type: object
+          strict: true
+        type: function
+    uri: http://127.0.0.1:11434/v1/chat/completions
+  response:
+    headers:
+      content-length:
+      - '949'
+      content-type:
+      - application/json
+    parsed_body:
+      choices:
+      - finish_reason: tool_calls
+        index: 0
+        message:
+          content: ''
+          reasoning: |+
+            We have to call skill "greeting-maker-filesystem" with request presumably containing the employee ID. The skill will produce greeting. We need to pass "42" as part of request. The skill: "Produce personalized greetings for employees. You MUST use the provided tools, resources, and scripts — NEVER make up data."
+
+            So we need to create request: maybe "Generate greeting for employee 42". Let's call execute_skill.
+
+          role: assistant
+          tool_calls:
+          - function:
+              arguments: '{"request":"Generate a greeting for employee 42","skill_name":"greeting-maker-filesystem"}'
+              name: execute_skill
+            id: call_3l8osv79
+            index: 0
+            type: function
+      created: 1774349990
+      id: chatcmpl-153
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 125
+        prompt_tokens: 387
+        total_tokens: 512
+    status:
+      code: 200
+      message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '2262'
+      content-type:
+      - application/json
+      host:
+      - 127.0.0.1:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a focused execution agent. Complete the following task using the skills and instructions provided.
+
+          ## Task
+
+          Generate a greeting for employee 42
+
+          ## Skill instructions
+
+          # Greeting Maker
+
+          You produce personalized greetings for employees. You MUST use the tools provided — never make up or guess data.
+
+          ## Mandatory workflow
+
+          You MUST follow ALL steps in order. Do NOT skip any step.
+
+          1. **Get employee data**: Run `scripts/lookup.py --employee-id <id>` to get the employee's name and department. NEVER guess employee data.
+          2. **Read template**: Read `templates/greeting.txt` to get the template string. NEVER guess the template.
+          3. **Render**: Run `scripts/render.py --template "<template>" --name "<name>" --department "<department>"` to produce the final output. NEVER render manually.
+
+          Return ONLY the output of the render script as your final answer.
+
+          ## Available resources
+
+          - templates/greeting.txt
+
+          Use the `read_resource` tool to read any of these files.
+
+          ## Available scripts
+
+          - scripts/lookup.py
+          - scripts/render.py
+
+          Execute scripts with the `run_script` tool (not `read_resource` — that is only for resource files).
+
+          ## Guidelines
+
+          - Follow the skill instructions carefully
+          - Stay focused on the specific task described above
+          - Provide a clear, complete result
+        role: system
+      - content: Generate a greeting for employee 42
+        role: user
+      model: gpt-oss
+      stream: true
+      stream_options:
+        include_usage: true
+      tool_choice: auto
+      tools:
+      - function:
+          description: Read a resource file from the skill directory.
+          name: read_resource
+          parameters:
+            additionalProperties: false
+            properties:
+              path:
+                description: Relative path to the resource file.
+                type: string
+            required:
+            - path
+            type: object
+          strict: true
+        type: function
+      - function:
+          description: Execute a script from the skill's scripts/ directory.
+          name: run_script
+          parameters:
+            additionalProperties: false
+            properties:
+              arguments:
+                default: ''
+                description: Command-line arguments for the script.
+                type: string
+              script:
+                description: Relative path to the script (e.g. 'scripts/extract.py').
+                type: string
+            required:
+            - script
+            type: object
+        type: function
+    uri: http://127.0.0.1:11434/v1/chat/completions
+  response:
+    body:
+      string: |+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"We"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" need"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" to"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" run"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" lookup"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" script"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" with"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" employee"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"-id"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" "},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"42"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" Then"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" read"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" template"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" greeting"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":".txt"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" Then"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" run"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" render"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" script"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" with"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" template"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":","},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" name"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" and"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" department"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" Must"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" return"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" only"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" the"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" output"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" of"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" render"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" script"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" Must"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" use"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" tools"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" We'll"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" call"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" functions"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":".\n\n"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"Step"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"1"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":":"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" run"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"_script"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" lookup"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":".py"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" with"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" arguments"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":".\n\n"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"Let's"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" call"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" function"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","tool_calls":[{"id":"call_kgj2nk2y","index":0,"type":"function","function":{"name":"run_script","arguments":"{\"script\":\"scripts/lookup.py\",\"arguments\":\"--employee-id 42\"}"}}]},"finish_reason":"tool_calls"}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[],"usage":{"prompt_tokens":475,"completion_tokens":95,"total_tokens":570}}
+
+        data: [DONE]
+
+    headers:
+      content-type:
+      - text/event-stream
+      transfer-encoding:
+      - chunked
+    status:
+      code: 200
+      message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '2898'
+      content-type:
+      - application/json
+      host:
+      - 127.0.0.1:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a focused execution agent. Complete the following task using the skills and instructions provided.
+
+          ## Task
+
+          Generate a greeting for employee 42
+
+          ## Skill instructions
+
+          # Greeting Maker
+
+          You produce personalized greetings for employees. You MUST use the tools provided — never make up or guess data.
+
+          ## Mandatory workflow
+
+          You MUST follow ALL steps in order. Do NOT skip any step.
+
+          1. **Get employee data**: Run `scripts/lookup.py --employee-id <id>` to get the employee's name and department. NEVER guess employee data.
+          2. **Read template**: Read `templates/greeting.txt` to get the template string. NEVER guess the template.
+          3. **Render**: Run `scripts/render.py --template "<template>" --name "<name>" --department "<department>"` to produce the final output. NEVER render manually.
+
+          Return ONLY the output of the render script as your final answer.
+
+          ## Available resources
+
+          - templates/greeting.txt
+
+          Use the `read_resource` tool to read any of these files.
+
+          ## Available scripts
+
+          - scripts/lookup.py
+          - scripts/render.py
+
+          Execute scripts with the `run_script` tool (not `read_resource` — that is only for resource files).
+
+          ## Guidelines
+
+          - Follow the skill instructions carefully
+          - Stay focused on the specific task described above
+          - Provide a clear, complete result
+        role: system
+      - content: Generate a greeting for employee 42
+        role: user
+      - content: null
+        reasoning: |-
+          We need to run lookup script with employee-id 42. Then read template greeting.txt. Then run render script with template, name and department. Must return only the output of render script. Must use tools. We'll call functions.
+
+          Step1: run_script lookup.py with arguments.
+
+          Let's call function.
+        role: assistant
+        tool_calls:
+        - function:
+            arguments: '{"script":"scripts/lookup.py","arguments":"--employee-id 42"}'
+            name: run_script
+          id: call_kgj2nk2y
+          type: function
+      - content: |
+          {"name": "Alice", "department": "Engineering"}
+        role: tool
+        tool_call_id: call_kgj2nk2y
+      model: gpt-oss
+      stream: true
+      stream_options:
+        include_usage: true
+      tool_choice: auto
+      tools:
+      - function:
+          description: Read a resource file from the skill directory.
+          name: read_resource
+          parameters:
+            additionalProperties: false
+            properties:
+              path:
+                description: Relative path to the resource file.
+                type: string
+            required:
+            - path
+            type: object
+          strict: true
+        type: function
+      - function:
+          description: Execute a script from the skill's scripts/ directory.
+          name: run_script
+          parameters:
+            additionalProperties: false
+            properties:
+              arguments:
+                default: ''
+                description: Command-line arguments for the script.
+                type: string
+              script:
+                description: Relative path to the script (e.g. 'scripts/extract.py').
+                type: string
+            required:
+            - script
+            type: object
+        type: function
+    uri: http://127.0.0.1:11434/v1/chat/completions
+  response:
+    body:
+      string: |+
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"So"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" name"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" Alice"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":","},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" department"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" Engineering"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":".\n\n"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"Step"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"2"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":":"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" read"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" template"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","tool_calls":[{"id":"call_aspnwutd","index":0,"type":"function","function":{"name":"read_resource","arguments":"{\"path\":\"templates/greeting.txt\"}"}}]},"finish_reason":"tool_calls"}]}
+
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[],"usage":{"prompt_tokens":593,"completion_tokens":40,"total_tokens":633}}
+
+        data: [DONE]
+
+    headers:
+      content-type:
+      - text/event-stream
+      transfer-encoding:
+      - chunked
+    status:
+      code: 200
+      message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '3255'
+      content-type:
+      - application/json
+      host:
+      - 127.0.0.1:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a focused execution agent. Complete the following task using the skills and instructions provided.
+
+          ## Task
+
+          Generate a greeting for employee 42
+
+          ## Skill instructions
+
+          # Greeting Maker
+
+          You produce personalized greetings for employees. You MUST use the tools provided — never make up or guess data.
+
+          ## Mandatory workflow
+
+          You MUST follow ALL steps in order. Do NOT skip any step.
+
+          1. **Get employee data**: Run `scripts/lookup.py --employee-id <id>` to get the employee's name and department. NEVER guess employee data.
+          2. **Read template**: Read `templates/greeting.txt` to get the template string. NEVER guess the template.
+          3. **Render**: Run `scripts/render.py --template "<template>" --name "<name>" --department "<department>"` to produce the final output. NEVER render manually.
+
+          Return ONLY the output of the render script as your final answer.
+
+          ## Available resources
+
+          - templates/greeting.txt
+
+          Use the `read_resource` tool to read any of these files.
+
+          ## Available scripts
+
+          - scripts/lookup.py
+          - scripts/render.py
+
+          Execute scripts with the `run_script` tool (not `read_resource` — that is only for resource files).
+
+          ## Guidelines
+
+          - Follow the skill instructions carefully
+          - Stay focused on the specific task described above
+          - Provide a clear, complete result
+        role: system
+      - content: Generate a greeting for employee 42
+        role: user
+      - content: null
+        reasoning: |-
+          We need to run lookup script with employee-id 42. Then read template greeting.txt. Then run render script with template, name and department. Must return only the output of render script. Must use tools. We'll call functions.
+
+          Step1: run_script lookup.py with arguments.
+
+          Let's call function.
+        role: assistant
+        tool_calls:
+        - function:
+            arguments: '{"script":"scripts/lookup.py","arguments":"--employee-id 42"}'
+            name: run_script
+          id: call_kgj2nk2y
+          type: function
+      - content: |
+          {"name": "Alice", "department": "Engineering"}
+        role: tool
+        tool_call_id: call_kgj2nk2y
+      - content: null
+        reasoning: |-
+          So name Alice, department Engineering.
+
+          Step2: read template.
+        role: assistant
+        tool_calls:
+        - function:
+            arguments: '{"path":"templates/greeting.txt"}'
+            name: read_resource
+          id: call_aspnwutd
+          type: function
+      - content: |
+          Dear {name}, welcome to {department}.
+        role: tool
+        tool_call_id: call_aspnwutd
+      model: gpt-oss
+      stream: true
+      stream_options:
+        include_usage: true
+      tool_choice: auto
+      tools:
+      - function:
+          description: Read a resource file from the skill directory.
+          name: read_resource
+          parameters:
+            additionalProperties: false
+            properties:
+              path:
+                description: Relative path to the resource file.
+                type: string
+            required:
+            - path
+            type: object
+          strict: true
+        type: function
+      - function:
+          description: Execute a script from the skill's scripts/ directory.
+          name: run_script
+          parameters:
+            additionalProperties: false
+            properties:
+              arguments:
+                default: ''
+                description: Command-line arguments for the script.
+                type: string
+              script:
+                description: Relative path to the script (e.g. 'scripts/extract.py').
+                type: string
+            required:
+            - script
+            type: object
+        type: function
+    uri: http://127.0.0.1:11434/v1/chat/completions
+  response:
+    body:
+      string: |+
+        data: {"id":"chatcmpl-879","object":"chat.completion.chunk","created":1774349992,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"Now"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-879","object":"chat.completion.chunk","created":1774349992,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" render"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-879","object":"chat.completion.chunk","created":1774349992,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-879","object":"chat.completion.chunk","created":1774349992,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","tool_calls":[{"id":"call_a7bt1jwl","index":0,"type":"function","function":{"name":"run_script","arguments":"{\"arguments\":\"--template \\\"Dear {name}, welcome to {department}.\\\" --name \\\"Alice\\\" --department \\\"Engineering\\\"\",\"script\":\"scripts/render.py\"}"}}]},"finish_reason":"tool_calls"}]}
+
+        data: {"id":"chatcmpl-879","object":"chat.completion.chunk","created":1774349992,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[],"usage":{"prompt_tokens":653,"completion_tokens":55,"total_tokens":708}}
+
+        data: [DONE]
+
+    headers:
+      content-type:
+      - text/event-stream
+      transfer-encoding:
+      - chunked
+    status:
+      code: 200
+      message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '3681'
+      content-type:
+      - application/json
+      host:
+      - 127.0.0.1:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a focused execution agent. Complete the following task using the skills and instructions provided.
+
+          ## Task
+
+          Generate a greeting for employee 42
+
+          ## Skill instructions
+
+          # Greeting Maker
+
+          You produce personalized greetings for employees. You MUST use the tools provided — never make up or guess data.
+
+          ## Mandatory workflow
+
+          You MUST follow ALL steps in order. Do NOT skip any step.
+
+          1. **Get employee data**: Run `scripts/lookup.py --employee-id <id>` to get the employee's name and department. NEVER guess employee data.
+          2. **Read template**: Read `templates/greeting.txt` to get the template string. NEVER guess the template.
+          3. **Render**: Run `scripts/render.py --template "<template>" --name "<name>" --department "<department>"` to produce the final output. NEVER render manually.
+
+          Return ONLY the output of the render script as your final answer.
+
+          ## Available resources
+
+          - templates/greeting.txt
+
+          Use the `read_resource` tool to read any of these files.
+
+          ## Available scripts
+
+          - scripts/lookup.py
+          - scripts/render.py
+
+          Execute scripts with the `run_script` tool (not `read_resource` — that is only for resource files).
+
+          ## Guidelines
+
+          - Follow the skill instructions carefully
+          - Stay focused on the specific task described above
+          - Provide a clear, complete result
+        role: system
+      - content: Generate a greeting for employee 42
+        role: user
+      - content: null
+        reasoning: |-
+          We need to run lookup script with employee-id 42. Then read template greeting.txt. Then run render script with template, name and department. Must return only the output of render script. Must use tools. We'll call functions.
+
+          Step1: run_script lookup.py with arguments.
+
+          Let's call function.
+        role: assistant
+        tool_calls:
+        - function:
+            arguments: '{"script":"scripts/lookup.py","arguments":"--employee-id 42"}'
+            name: run_script
+          id: call_kgj2nk2y
+          type: function
+      - content: |
+          {"name": "Alice", "department": "Engineering"}
+        role: tool
+        tool_call_id: call_kgj2nk2y
+      - content: null
+        reasoning: |-
+          So name Alice, department Engineering.
+
+          Step2: read template.
+        role: assistant
+        tool_calls:
+        - function:
+            arguments: '{"path":"templates/greeting.txt"}'
+            name: read_resource
+          id: call_aspnwutd
+          type: function
+      - content: |
+          Dear {name}, welcome to {department}.
+        role: tool
+        tool_call_id: call_aspnwutd
+      - content: null
+        reasoning: Now render.
+        role: assistant
+        tool_calls:
+        - function:
+            arguments: '{"arguments":"--template \"Dear {name}, welcome to {department}.\" --name \"Alice\" --department \"Engineering\"","script":"scripts/render.py"}'
+            name: run_script
+          id: call_a7bt1jwl
+          type: function
+      - content: |
+          Dear Alice, welcome to Engineering.
+        role: tool
+        tool_call_id: call_a7bt1jwl
+      model: gpt-oss
+      stream: true
+      stream_options:
+        include_usage: true
+      tool_choice: auto
+      tools:
+      - function:
+          description: Read a resource file from the skill directory.
+          name: read_resource
+          parameters:
+            additionalProperties: false
+            properties:
+              path:
+                description: Relative path to the resource file.
+                type: string
+            required:
+            - path
+            type: object
+          strict: true
+        type: function
+      - function:
+          description: Execute a script from the skill's scripts/ directory.
+          name: run_script
+          parameters:
+            additionalProperties: false
+            properties:
+              arguments:
+                default: ''
+                description: Command-line arguments for the script.
+                type: string
+              script:
+                description: Relative path to the script (e.g. 'scripts/extract.py').
+                type: string
+            required:
+            - script
+            type: object
+        type: function
+    uri: http://127.0.0.1:11434/v1/chat/completions
+  response:
+    body:
+      string: |+
+        data: {"id":"chatcmpl-368","object":"chat.completion.chunk","created":1774349993,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"Dear"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-368","object":"chat.completion.chunk","created":1774349993,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" Alice"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-368","object":"chat.completion.chunk","created":1774349993,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":","},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-368","object":"chat.completion.chunk","created":1774349993,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" welcome"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-368","object":"chat.completion.chunk","created":1774349993,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" to"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-368","object":"chat.completion.chunk","created":1774349993,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" Engineering"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-368","object":"chat.completion.chunk","created":1774349993,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-368","object":"chat.completion.chunk","created":1774349993,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":""},"finish_reason":"stop"}]}
+
+        data: {"id":"chatcmpl-368","object":"chat.completion.chunk","created":1774349993,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[],"usage":{"prompt_tokens":726,"completion_tokens":11,"total_tokens":737}}
+
+        data: [DONE]
+
+    headers:
+      content-type:
+      - text/event-stream
+      transfer-encoding:
+      - chunked
+    status:
+      code: 200
+      message: OK
+- request:
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '2546'
+      content-type:
+      - application/json
+      host:
+      - 127.0.0.1:11434
+    method: POST
+    parsed_body:
+      messages:
+      - content: |-
+          You are a helpful assistant with access to specialized skills.
+
+          ## Available skills
+
+          - **greeting-maker-filesystem**: Produce personalized greetings for employees. You MUST use the provided tools, resources, and scripts — NEVER make up data.
+
+          ## Instructions
+
+          - For general conversation or questions that don't need skills, respond directly
+          - Use execute_skill to delegate work to a skill
+          - Each skill runs as an isolated agent with NO shared memory or context. A skill can only see what you put in its request — it has no access to the conversation, previous skill results, or any other context
+          - When chaining skills, you MUST include the actual data in the request. Never say "store what was found" or "use the previous results" — paste the concrete information into the request text
+          - The user cannot see skill responses directly. You must synthesize the information returned by skills into your own reply
+        role: system
+      - content: Use the greeting maker skill to produce a greeting for employee 42.
+        role: user
+      - content: null
+        reasoning: |+
+          We have to call skill "greeting-maker-filesystem" with request presumably containing the employee ID. The skill will produce greeting. We need to pass "42" as part of request. The skill: "Produce personalized greetings for employees. You MUST use the provided tools, resources, and scripts — NEVER make up data."
+
+          So we need to create request: maybe "Generate greeting for employee 42". Let's call execute_skill.
+
+        role: assistant
+        tool_calls:
+        - function:
+            arguments: '{"request":"Generate a greeting for employee 42","skill_name":"greeting-maker-filesystem"}'
+            name: execute_skill
+          id: call_3l8osv79
+          type: function
+      - content: Dear Alice, welcome to Engineering.
+        role: tool
+        tool_call_id: call_3l8osv79
+      model: gpt-oss
+      stream: false
+      tool_choice: auto
+      tools:
+      - function:
+          description: |-
+            Execute a skill by name.
+
+            Skills are isolated agents — they cannot see the conversation or
+            prior skill results. The request MUST contain all information the
+            skill needs to complete its task.
+          name: execute_skill
+          parameters:
+            additionalProperties: false
+            properties:
+              request:
+                description: |-
+                  Self-contained description including all data and
+                  context the skill needs. Never reference external context.
+                type: string
+              skill_name:
+                description: The exact name of the skill to use.
+                type: string
+            required:
+            - skill_name
+            - request
+            type: object
+          strict: true
+        type: function
+    uri: http://127.0.0.1:11434/v1/chat/completions
+  response:
+    headers:
+      content-length:
+      - '357'
+      content-type:
+      - application/json
+    parsed_body:
+      choices:
+      - finish_reason: stop
+        index: 0
+        message:
+          content: |-
+            Here’s your greeting:
+
+            > **Dear Alice, welcome to Engineering.**
+          role: assistant
+      created: 1774349994
+      id: chatcmpl-604
+      model: gpt-oss
+      object: chat.completion
+      system_fingerprint: fp_ollama
+      usage:
+        completion_tokens: 19
+        prompt_tokens: 530
+        total_tokens: 549
+    status:
+      code: 200
+      message: OK
+version: 1

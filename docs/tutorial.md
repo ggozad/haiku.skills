@@ -49,7 +49,7 @@ result = await agent.run("Analyze this dataset.")
 print(result.output)
 ```
 
-`SkillToolset` exposes a single `execute_skill` tool. When the agent calls it, a focused sub-agent spins up with that skill's instructions and tools — then returns the result. The main agent never sees the skill's internal tools.
+By default, `SkillToolset` exposes a single `execute_skill` tool. When the agent calls it, a focused sub-agent spins up with that skill's instructions and tools — then returns the result. The main agent never sees the skill's internal tools. For an alternative approach where the main agent calls skill tools directly, see [Direct mode](#direct-mode).
 
 !!! note
     When a skill directory has validation errors (bad frontmatter, name mismatch, etc.), the error is collected and discovery continues. The CLI prints these as warnings to stderr.
@@ -321,6 +321,58 @@ agent = Agent(
     instructions=build_system_prompt(toolset.skill_catalog),
     toolsets=[toolset],
 )
+```
+
+## Direct mode
+
+By default, `SkillToolset` delegates skill execution to sub-agents: the main agent calls `execute_skill`, a focused sub-agent runs, and the result comes back as text. This provides isolation but adds latency (an extra LLM call per skill invocation) and the main agent loses access to raw tool results.
+
+**Direct mode** (`use_subagents=False`) exposes skill tools directly to the main agent:
+
+```python
+from pydantic_ai import Agent
+from haiku.skills import SkillToolset, build_system_prompt
+
+toolset = SkillToolset(
+    use_entrypoints=True,
+    use_subagents=False,
+)
+agent = Agent(
+    "anthropic:claude-sonnet-4-5-20250929",
+    instructions=build_system_prompt(toolset.skill_catalog, use_subagents=False),
+    toolsets=[toolset],
+)
+```
+
+Instead of `execute_skill`, the agent gets four tools:
+
+| Tool | Purpose |
+|------|---------|
+| `query_skill` | Discover a skill's instructions, tools, scripts, and resources |
+| `execute_skill_tool` | Call a specific in-process tool from a skill |
+| `run_skill_script` | Execute a script from a skill's `scripts/` directory |
+| `read_skill_resource` | Read a resource file from a skill's directory |
+
+The typical workflow: the agent calls `query_skill` to discover what's available, then calls the appropriate tool directly.
+
+### When to use direct mode
+
+- **Lower latency and cost** — No sub-agent LLM loops; one model call can invoke multiple tools
+- **Context retention** — The main agent sees raw tool results and remembers them across turns
+- **Multi-skill workflows** — The agent can chain tools from different skills in a single reasoning step
+
+### When to use sub-agent mode (default)
+
+- **Isolation** — Each skill runs with its own system prompt and token budget
+- **Tool space management** — The main agent only sees `execute_skill`, regardless of how many skill tools exist
+- **Complex skills** — Skills that need focused multi-step reasoning benefit from a dedicated agent
+
+### CLI
+
+The chat TUI supports direct mode via `--no-subagents`:
+
+```bash
+haiku-skills chat --use-entrypoints --no-subagents -m openai:gpt-4o
 ```
 
 ## Next steps
