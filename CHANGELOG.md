@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-03-24
+
 ### Added
 
 - **Optional sub-agent delegation**: `SkillToolset(use_subagents=False)` exposes skill tools directly to the main agent via `query_skill`, `execute_skill_tool`, `run_skill_script`, and `read_skill_resource` — bypassing sub-agent LLM loops for lower latency and cost. Default (`use_subagents=True`) preserves existing behavior.
@@ -253,7 +255,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.9.1...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.10.0...HEAD
+[0.10.0]: https://github.com/ggozad/haiku.skills/compare/0.9.1...0.10.0
 [0.9.1]: https://github.com/ggozad/haiku.skills/compare/0.9.0...0.9.1
 [0.9.0]: https://github.com/ggozad/haiku.skills/compare/0.8.1...0.9.0
 [0.8.1]: https://github.com/ggozad/haiku.skills/compare/0.8.0...0.8.1
