@@ -8,7 +8,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '1735'
+      - '1767'
       content-type:
       - application/json
       host:
@@ -31,7 +31,7 @@ interactions:
           - When chaining skills, you MUST include the actual data in the request. Never say "store what was found" or "use the previous results" — paste the concrete information into the request text
           - The user cannot see skill responses directly. You must synthesize the information returned by skills into your own reply
         role: system
-      - content: Produce a greeting for employee 42.
+      - content: Use the greeting maker skill to produce a greeting for employee 42.
         role: user
       model: gpt-oss
       stream: false
@@ -66,7 +66,7 @@ interactions:
   response:
     headers:
       content-length:
-      - '1010'
+      - '949'
       content-type:
       - application/json
     parsed_body:
@@ -75,27 +75,28 @@ interactions:
         index: 0
         message:
           content: ''
-          reasoning: |-
-            User: "Produce a greeting for employee 42." We have skill greeting-maker-filesystem. Need to execute it with request. Provide employee ID 42. But we need to check if we need to fetch data? The skill likely knows to fetch employee data. We just call with request including employee ID. Possibly also need the script file? The skill probably expects request like "employee_id: 42" maybe with context. According to guidelines, we must provide all data needed.
+          reasoning: |+
+            We have to call skill "greeting-maker-filesystem" with request presumably containing the employee ID. The skill will produce greeting. We need to pass "42" as part of request. The skill: "Produce personalized greetings for employees. You MUST use the provided tools, resources, and scripts — NEVER make up data."
 
-            Thus call skill.
+            So we need to create request: maybe "Generate greeting for employee 42". Let's call execute_skill.
+
           role: assistant
           tool_calls:
           - function:
-              arguments: '{"request":"Generate a greeting for employee with ID 42.","skill_name":"greeting-maker-filesystem"}'
+              arguments: '{"request":"Generate a greeting for employee 42","skill_name":"greeting-maker-filesystem"}'
               name: execute_skill
-            id: call_9eqkzeks
+            id: call_3l8osv79
             index: 0
             type: function
-      created: 1774348470
-      id: chatcmpl-678
+      created: 1774349990
+      id: chatcmpl-153
       model: gpt-oss
       object: chat.completion
       system_fingerprint: fp_ollama
       usage:
-        completion_tokens: 142
-        prompt_tokens: 381
-        total_tokens: 523
+        completion_tokens: 125
+        prompt_tokens: 387
+        total_tokens: 512
     status:
       code: 200
       message: OK
@@ -108,7 +109,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '2280'
+      - '2262'
       content-type:
       - application/json
       host:
@@ -121,7 +122,7 @@ interactions:
 
           ## Task
 
-          Generate a greeting for employee with ID 42.
+          Generate a greeting for employee 42
 
           ## Skill instructions
 
@@ -158,7 +159,7 @@ interactions:
           - Stay focused on the specific task described above
           - Provide a clear, complete result
         role: system
-      - content: Generate a greeting for employee with ID 42.
+      - content: Generate a greeting for employee 42
         role: user
       model: gpt-oss
       stream: true
@@ -201,93 +202,129 @@ interactions:
   response:
     body:
       string: |+
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"We"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"We"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" need"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" need"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" to"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" to"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" run"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" run"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" scripts"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" lookup"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" script"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" Step"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" with"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" "},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" employee"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"1"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"-id"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":":"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" "},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" run"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"42"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" scripts"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"/"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" Then"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"lookup"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" read"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":".py"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" template"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" with"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" greeting"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" employee"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":".txt"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"-id"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" "},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" Then"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"42"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" run"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" render"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" Then"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" script"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" read"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" with"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" template"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" template"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":","},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" Then"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" name"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" run"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" and"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" scripts"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" department"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"/render"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":".py"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" Must"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":".\n\n"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" return"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"We"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" only"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" need"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" the"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" to"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" output"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" invoke"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" of"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" tools"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" render"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" script"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" Let's"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" get"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" Must"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" employee"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" use"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" data"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" tools"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","tool_calls":[{"id":"call_uuli2yn9","index":0,"type":"function","function":{"name":"run_script","arguments":"{\"arguments\":\"--employee-id 42\",\"script\":\"scripts/lookup.py\"}"}}]},"finish_reason":"tool_calls"}]}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" We'll"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-453","object":"chat.completion.chunk","created":1774348471,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[],"usage":{"prompt_tokens":480,"completion_tokens":77,"total_tokens":557}}
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" call"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" functions"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":".\n\n"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"Step"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"1"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":":"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" run"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"_script"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" lookup"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":".py"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" with"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" arguments"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":".\n\n"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"Let's"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" call"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" function"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349990,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","tool_calls":[{"id":"call_kgj2nk2y","index":0,"type":"function","function":{"name":"run_script","arguments":"{\"script\":\"scripts/lookup.py\",\"arguments\":\"--employee-id 42\"}"}}]},"finish_reason":"tool_calls"}]}
+
+        data: {"id":"chatcmpl-548","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[],"usage":{"prompt_tokens":475,"completion_tokens":95,"total_tokens":570}}
 
         data: [DONE]
 
@@ -308,7 +345,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '2795'
+      - '2898'
       content-type:
       - application/json
       host:
@@ -321,7 +358,7 @@ interactions:
 
           ## Task
 
-          Generate a greeting for employee with ID 42.
+          Generate a greeting for employee 42
 
           ## Skill instructions
 
@@ -358,24 +395,26 @@ interactions:
           - Stay focused on the specific task described above
           - Provide a clear, complete result
         role: system
-      - content: Generate a greeting for employee with ID 42.
+      - content: Generate a greeting for employee 42
         role: user
       - content: null
         reasoning: |-
-          We need to run scripts. Step 1: run scripts/lookup.py with employee-id 42. Then read template. Then run scripts/render.py.
+          We need to run lookup script with employee-id 42. Then read template greeting.txt. Then run render script with template, name and department. Must return only the output of render script. Must use tools. We'll call functions.
 
-          We need to invoke tools. Let's get employee data.
+          Step1: run_script lookup.py with arguments.
+
+          Let's call function.
         role: assistant
         tool_calls:
         - function:
-            arguments: '{"arguments":"--employee-id 42","script":"scripts/lookup.py"}'
+            arguments: '{"script":"scripts/lookup.py","arguments":"--employee-id 42"}'
             name: run_script
-          id: call_uuli2yn9
+          id: call_kgj2nk2y
           type: function
       - content: |
           {"name": "Alice", "department": "Engineering"}
         role: tool
-        tool_call_id: call_uuli2yn9
+        tool_call_id: call_kgj2nk2y
       model: gpt-oss
       stream: true
       stream_options:
@@ -417,17 +456,35 @@ interactions:
   response:
     body:
       string: |+
-        data: {"id":"chatcmpl-996","object":"chat.completion.chunk","created":1774348472,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"Now"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"So"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-996","object":"chat.completion.chunk","created":1774348472,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" read"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" name"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-996","object":"chat.completion.chunk","created":1774348472,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" template"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" Alice"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-996","object":"chat.completion.chunk","created":1774348472,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":","},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-996","object":"chat.completion.chunk","created":1774348472,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","tool_calls":[{"id":"call_hnawfile","index":0,"type":"function","function":{"name":"read_resource","arguments":"{\"path\":\"templates/greeting.txt\"}"}}]},"finish_reason":"tool_calls"}]}
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" department"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-996","object":"chat.completion.chunk","created":1774348472,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[],"usage":{"prompt_tokens":580,"completion_tokens":31,"total_tokens":611}}
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" Engineering"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":".\n\n"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"Step"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"2"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":":"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" read"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" template"},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","tool_calls":[{"id":"call_aspnwutd","index":0,"type":"function","function":{"name":"read_resource","arguments":"{\"path\":\"templates/greeting.txt\"}"}}]},"finish_reason":"tool_calls"}]}
+
+        data: {"id":"chatcmpl-655","object":"chat.completion.chunk","created":1774349991,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[],"usage":{"prompt_tokens":593,"completion_tokens":40,"total_tokens":633}}
 
         data: [DONE]
 
@@ -448,7 +505,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '3107'
+      - '3255'
       content-type:
       - application/json
       host:
@@ -461,7 +518,7 @@ interactions:
 
           ## Task
 
-          Generate a greeting for employee with ID 42.
+          Generate a greeting for employee 42
 
           ## Skill instructions
 
@@ -498,37 +555,42 @@ interactions:
           - Stay focused on the specific task described above
           - Provide a clear, complete result
         role: system
-      - content: Generate a greeting for employee with ID 42.
+      - content: Generate a greeting for employee 42
         role: user
       - content: null
         reasoning: |-
-          We need to run scripts. Step 1: run scripts/lookup.py with employee-id 42. Then read template. Then run scripts/render.py.
+          We need to run lookup script with employee-id 42. Then read template greeting.txt. Then run render script with template, name and department. Must return only the output of render script. Must use tools. We'll call functions.
 
-          We need to invoke tools. Let's get employee data.
+          Step1: run_script lookup.py with arguments.
+
+          Let's call function.
         role: assistant
         tool_calls:
         - function:
-            arguments: '{"arguments":"--employee-id 42","script":"scripts/lookup.py"}'
+            arguments: '{"script":"scripts/lookup.py","arguments":"--employee-id 42"}'
             name: run_script
-          id: call_uuli2yn9
+          id: call_kgj2nk2y
           type: function
       - content: |
           {"name": "Alice", "department": "Engineering"}
         role: tool
-        tool_call_id: call_uuli2yn9
+        tool_call_id: call_kgj2nk2y
       - content: null
-        reasoning: Now read template.
+        reasoning: |-
+          So name Alice, department Engineering.
+
+          Step2: read template.
         role: assistant
         tool_calls:
         - function:
             arguments: '{"path":"templates/greeting.txt"}'
             name: read_resource
-          id: call_hnawfile
+          id: call_aspnwutd
           type: function
       - content: |
           Dear {name}, welcome to {department}.
         role: tool
-        tool_call_id: call_hnawfile
+        tool_call_id: call_aspnwutd
       model: gpt-oss
       stream: true
       stream_options:
@@ -570,35 +632,15 @@ interactions:
   response:
     body:
       string: |+
-        data: {"id":"chatcmpl-80","object":"chat.completion.chunk","created":1774348472,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"Now"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-879","object":"chat.completion.chunk","created":1774349992,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"Now"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-80","object":"chat.completion.chunk","created":1774348472,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" render"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-879","object":"chat.completion.chunk","created":1774349992,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" render"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-80","object":"chat.completion.chunk","created":1774348472,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
+        data: {"id":"chatcmpl-879","object":"chat.completion.chunk","created":1774349992,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-80","object":"chat.completion.chunk","created":1774348472,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" Use"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-879","object":"chat.completion.chunk","created":1774349992,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","tool_calls":[{"id":"call_a7bt1jwl","index":0,"type":"function","function":{"name":"run_script","arguments":"{\"arguments\":\"--template \\\"Dear {name}, welcome to {department}.\\\" --name \\\"Alice\\\" --department \\\"Engineering\\\"\",\"script\":\"scripts/render.py\"}"}}]},"finish_reason":"tool_calls"}]}
 
-        data: {"id":"chatcmpl-80","object":"chat.completion.chunk","created":1774348472,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" render"},"finish_reason":null}]}
-
-        data: {"id":"chatcmpl-80","object":"chat.completion.chunk","created":1774348472,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":".py"},"finish_reason":null}]}
-
-        data: {"id":"chatcmpl-80","object":"chat.completion.chunk","created":1774348472,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" with"},"finish_reason":null}]}
-
-        data: {"id":"chatcmpl-80","object":"chat.completion.chunk","created":1774348472,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" template"},"finish_reason":null}]}
-
-        data: {"id":"chatcmpl-80","object":"chat.completion.chunk","created":1774348472,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":","},"finish_reason":null}]}
-
-        data: {"id":"chatcmpl-80","object":"chat.completion.chunk","created":1774348472,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" name"},"finish_reason":null}]}
-
-        data: {"id":"chatcmpl-80","object":"chat.completion.chunk","created":1774348472,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":","},"finish_reason":null}]}
-
-        data: {"id":"chatcmpl-80","object":"chat.completion.chunk","created":1774348472,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":" department"},"finish_reason":null}]}
-
-        data: {"id":"chatcmpl-80","object":"chat.completion.chunk","created":1774348472,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"."},"finish_reason":null}]}
-
-        data: {"id":"chatcmpl-80","object":"chat.completion.chunk","created":1774348473,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"","tool_calls":[{"id":"call_5jwsq839","index":0,"type":"function","function":{"name":"run_script","arguments":"{\"arguments\":\"--template \\\"Dear {name}, welcome to {department}.\\\" --name \\\"Alice\\\" --department \\\"Engineering\\\"\",\"script\":\"scripts/render.py\"}"}}]},"finish_reason":"tool_calls"}]}
-
-        data: {"id":"chatcmpl-80","object":"chat.completion.chunk","created":1774348473,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[],"usage":{"prompt_tokens":631,"completion_tokens":65,"total_tokens":696}}
+        data: {"id":"chatcmpl-879","object":"chat.completion.chunk","created":1774349992,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[],"usage":{"prompt_tokens":653,"completion_tokens":55,"total_tokens":708}}
 
         data: [DONE]
 
@@ -619,7 +661,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '3580'
+      - '3681'
       content-type:
       - application/json
       host:
@@ -632,7 +674,7 @@ interactions:
 
           ## Task
 
-          Generate a greeting for employee with ID 42.
+          Generate a greeting for employee 42
 
           ## Skill instructions
 
@@ -669,50 +711,55 @@ interactions:
           - Stay focused on the specific task described above
           - Provide a clear, complete result
         role: system
-      - content: Generate a greeting for employee with ID 42.
+      - content: Generate a greeting for employee 42
         role: user
       - content: null
         reasoning: |-
-          We need to run scripts. Step 1: run scripts/lookup.py with employee-id 42. Then read template. Then run scripts/render.py.
+          We need to run lookup script with employee-id 42. Then read template greeting.txt. Then run render script with template, name and department. Must return only the output of render script. Must use tools. We'll call functions.
 
-          We need to invoke tools. Let's get employee data.
+          Step1: run_script lookup.py with arguments.
+
+          Let's call function.
         role: assistant
         tool_calls:
         - function:
-            arguments: '{"arguments":"--employee-id 42","script":"scripts/lookup.py"}'
+            arguments: '{"script":"scripts/lookup.py","arguments":"--employee-id 42"}'
             name: run_script
-          id: call_uuli2yn9
+          id: call_kgj2nk2y
           type: function
       - content: |
           {"name": "Alice", "department": "Engineering"}
         role: tool
-        tool_call_id: call_uuli2yn9
+        tool_call_id: call_kgj2nk2y
       - content: null
-        reasoning: Now read template.
+        reasoning: |-
+          So name Alice, department Engineering.
+
+          Step2: read template.
         role: assistant
         tool_calls:
         - function:
             arguments: '{"path":"templates/greeting.txt"}'
             name: read_resource
-          id: call_hnawfile
+          id: call_aspnwutd
           type: function
       - content: |
           Dear {name}, welcome to {department}.
         role: tool
-        tool_call_id: call_hnawfile
+        tool_call_id: call_aspnwutd
       - content: null
-        reasoning: Now render. Use render.py with template, name, department.
+        reasoning: Now render.
         role: assistant
         tool_calls:
         - function:
             arguments: '{"arguments":"--template \"Dear {name}, welcome to {department}.\" --name \"Alice\" --department \"Engineering\"","script":"scripts/render.py"}'
             name: run_script
-          id: call_5jwsq839
+          id: call_a7bt1jwl
           type: function
       - content: |
           Dear Alice, welcome to Engineering.
         role: tool
-        tool_call_id: call_5jwsq839
+        tool_call_id: call_a7bt1jwl
       model: gpt-oss
       stream: true
       stream_options:
@@ -754,23 +801,23 @@ interactions:
   response:
     body:
       string: |+
-        data: {"id":"chatcmpl-980","object":"chat.completion.chunk","created":1774348473,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"Dear"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-368","object":"chat.completion.chunk","created":1774349993,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"Dear"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-980","object":"chat.completion.chunk","created":1774348473,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" Alice"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-368","object":"chat.completion.chunk","created":1774349993,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" Alice"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-980","object":"chat.completion.chunk","created":1774348473,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":","},"finish_reason":null}]}
+        data: {"id":"chatcmpl-368","object":"chat.completion.chunk","created":1774349993,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":","},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-980","object":"chat.completion.chunk","created":1774348473,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" welcome"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-368","object":"chat.completion.chunk","created":1774349993,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" welcome"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-980","object":"chat.completion.chunk","created":1774348473,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" to"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-368","object":"chat.completion.chunk","created":1774349993,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" to"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-980","object":"chat.completion.chunk","created":1774348473,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" Engineering"},"finish_reason":null}]}
+        data: {"id":"chatcmpl-368","object":"chat.completion.chunk","created":1774349993,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" Engineering"},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-980","object":"chat.completion.chunk","created":1774348473,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"."},"finish_reason":null}]}
+        data: {"id":"chatcmpl-368","object":"chat.completion.chunk","created":1774349993,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"."},"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-980","object":"chat.completion.chunk","created":1774348473,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":""},"finish_reason":"stop"}]}
+        data: {"id":"chatcmpl-368","object":"chat.completion.chunk","created":1774349993,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":""},"finish_reason":"stop"}]}
 
-        data: {"id":"chatcmpl-980","object":"chat.completion.chunk","created":1774348473,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[],"usage":{"prompt_tokens":714,"completion_tokens":11,"total_tokens":725}}
+        data: {"id":"chatcmpl-368","object":"chat.completion.chunk","created":1774349993,"model":"gpt-oss","system_fingerprint":"fp_ollama","choices":[],"usage":{"prompt_tokens":726,"completion_tokens":11,"total_tokens":737}}
 
         data: [DONE]
 
@@ -791,7 +838,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '2575'
+      - '2546'
       content-type:
       - application/json
       host:
@@ -814,23 +861,24 @@ interactions:
           - When chaining skills, you MUST include the actual data in the request. Never say "store what was found" or "use the previous results" — paste the concrete information into the request text
           - The user cannot see skill responses directly. You must synthesize the information returned by skills into your own reply
         role: system
-      - content: Produce a greeting for employee 42.
+      - content: Use the greeting maker skill to produce a greeting for employee 42.
         role: user
       - content: null
-        reasoning: |-
-          User: "Produce a greeting for employee 42." We have skill greeting-maker-filesystem. Need to execute it with request. Provide employee ID 42. But we need to check if we need to fetch data? The skill likely knows to fetch employee data. We just call with request including employee ID. Possibly also need the script file? The skill probably expects request like "employee_id: 42" maybe with context. According to guidelines, we must provide all data needed.
+        reasoning: |+
+          We have to call skill "greeting-maker-filesystem" with request presumably containing the employee ID. The skill will produce greeting. We need to pass "42" as part of request. The skill: "Produce personalized greetings for employees. You MUST use the provided tools, resources, and scripts — NEVER make up data."
 
-          Thus call skill.
+          So we need to create request: maybe "Generate greeting for employee 42". Let's call execute_skill.
+
         role: assistant
         tool_calls:
         - function:
-            arguments: '{"request":"Generate a greeting for employee with ID 42.","skill_name":"greeting-maker-filesystem"}'
+            arguments: '{"request":"Generate a greeting for employee 42","skill_name":"greeting-maker-filesystem"}'
             name: execute_skill
-          id: call_9eqkzeks
+          id: call_3l8osv79
           type: function
       - content: Dear Alice, welcome to Engineering.
         role: tool
-        tool_call_id: call_9eqkzeks
+        tool_call_id: call_3l8osv79
       model: gpt-oss
       stream: false
       tool_choice: auto
@@ -864,7 +912,7 @@ interactions:
   response:
     headers:
       content-length:
-      - '372'
+      - '357'
       content-type:
       - application/json
     parsed_body:
@@ -873,19 +921,19 @@ interactions:
         index: 0
         message:
           content: |-
-            Here’s the greeting for employee 42:
+            Here’s your greeting:
 
             > **Dear Alice, welcome to Engineering.**
           role: assistant
-      created: 1774348474
-      id: chatcmpl-468
+      created: 1774349994
+      id: chatcmpl-604
       model: gpt-oss
       object: chat.completion
       system_fingerprint: fp_ollama
       usage:
-        completion_tokens: 23
-        prompt_tokens: 541
-        total_tokens: 564
+        completion_tokens: 19
+        prompt_tokens: 530
+        total_tokens: 549
     status:
       code: 200
       message: OK

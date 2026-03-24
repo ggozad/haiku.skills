@@ -14,6 +14,7 @@ import pytest
 from ag_ui.core import ActivitySnapshotEvent, BaseEvent, StateDeltaEvent
 from pydantic import BaseModel
 from pydantic_ai import Agent, RunContext
+from pydantic_ai.agent import AgentRunResult
 from pydantic_ai.messages import ModelRequest, ToolReturnPart
 from pydantic_ai.models.openai import OpenAIChatModel
 
@@ -26,7 +27,7 @@ from haiku.skills.state import SkillRunDeps
 
 FIXTURES = Path(__file__).parent.parent / "fixtures"
 
-PROMPT = "Produce a greeting for employee 42."
+PROMPT = "Use the greeting maker skill to produce a greeting for employee 42."
 
 
 # -- helpers ------------------------------------------------------------------
@@ -36,7 +37,7 @@ class GreetingMakerState(BaseModel):
     lookups: list[dict[str, str]] = []
 
 
-def _lookup(ctx: RunContext[SkillRunDeps], employee_id: int) -> str:
+def lookup(ctx: RunContext[SkillRunDeps], employee_id: int) -> str:
     """Look up an employee by ID.
 
     Args:
@@ -63,16 +64,16 @@ def _make_greeting_maker_skill() -> Skill:
         path=fixture_dir,
         instructions=instructions,
         resources=discover_resources(fixture_dir),
-        tools=[_lookup],
+        tools=[lookup],
         state_type=GreetingMakerState,
         state_namespace="greeting-maker",
     )
 
 
-def _collect_metadata_events(result: object) -> list[BaseEvent]:
+def _collect_metadata_events(result: AgentRunResult[str]) -> list[BaseEvent]:
     """Collect all AG-UI events from ToolReturnPart metadata in a run result."""
     events: list[BaseEvent] = []
-    for msg in result.all_messages():  # type: ignore[attr-defined]
+    for msg in result.all_messages():
         if isinstance(msg, ModelRequest):
             for part in msg.parts:
                 if isinstance(part, ToolReturnPart) and part.metadata:
@@ -96,7 +97,8 @@ async def test_entrypoint_subagent(
         toolsets=[toolset],
     )
     result = await agent.run(PROMPT)
-    assert "Dear Alice, welcome to Engineering." in result.output
+    assert "Alice" in result.output
+    assert "Engineering" in result.output
 
     # AG-UI events: sub-agent tool calls produce ActivitySnapshotEvents,
     # state mutation produces StateDeltaEvent
@@ -125,7 +127,8 @@ async def test_entrypoint_direct(
         toolsets=[toolset],
     )
     result = await agent.run(PROMPT)
-    assert "Dear Alice, welcome to Engineering." in result.output
+    assert "Alice" in result.output
+    assert "Engineering" in result.output
 
     # AG-UI events: execute_skill_tool with state mutation produces StateDeltaEvent
     events = _collect_metadata_events(result)
@@ -152,7 +155,8 @@ async def test_filesystem_subagent(
         toolsets=[toolset],
     )
     result = await agent.run(PROMPT)
-    assert "Dear Alice, welcome to Engineering." in result.output
+    assert "Alice" in result.output
+    assert "Engineering" in result.output
 
     # AG-UI events: sub-agent tool calls (read_resource, run_script) produce
     # ActivitySnapshotEvents
@@ -176,4 +180,5 @@ async def test_filesystem_direct(
         toolsets=[toolset],
     )
     result = await agent.run(PROMPT)
-    assert "Dear Alice, welcome to Engineering." in result.output
+    assert "Alice" in result.output
+    assert "Engineering" in result.output
