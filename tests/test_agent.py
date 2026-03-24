@@ -1409,6 +1409,7 @@ class TestEventsToActivity:
         assert isinstance(result[0], ActivitySnapshotEvent)
         assert result[0].activity_type == "skill_tool_call"
         assert result[0].message_id == "web:call-1"
+        assert result[0].replace is False
         assert result[0].content["skill"] == "web"
         assert result[0].content["tool_name"] == "search"
         assert result[0].content["tool_call_id"] == "call-1"
@@ -1425,6 +1426,8 @@ class TestEventsToActivity:
 
         assert isinstance(result[0], ActivitySnapshotEvent)
         assert result[0].activity_type == "skill_tool_result"
+        assert result[0].message_id == "web:call-1"
+        assert result[0].replace is True
         assert result[0].content["skill"] == "web"
         assert result[0].content["tool_name"] == "search"
         assert result[0].content["tool_call_id"] == "call-1"
