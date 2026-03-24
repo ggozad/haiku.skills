@@ -3,7 +3,6 @@ import json
 import os
 import shlex
 import sys
-import uuid
 from collections.abc import AsyncIterable, Awaitable, Callable
 from pathlib import Path
 from typing import Any
@@ -74,6 +73,7 @@ def _events_to_activity(skill_name: str, events: list[Any]) -> list[BaseEvent]:
                     type=EventType.ACTIVITY_SNAPSHOT,
                     activity_type="skill_tool_call",
                     message_id=f"{skill_name}:{event.tool_call_id}",
+                    replace=False,
                     content={
                         "skill": skill_name,
                         "tool_name": event.part.tool_name,
@@ -87,7 +87,8 @@ def _events_to_activity(skill_name: str, events: list[Any]) -> list[BaseEvent]:
                 ActivitySnapshotEvent(
                     type=EventType.ACTIVITY_SNAPSHOT,
                     activity_type="skill_tool_result",
-                    message_id=str(uuid.uuid4()),
+                    message_id=f"{skill_name}:{event.tool_call_id}",
+                    replace=True,
                     content={
                         "skill": skill_name,
                         "tool_name": event.result.tool_name,

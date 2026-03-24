@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **Activity snapshot `message_id` now stable**: Result snapshots share the same `message_id` as their corresponding call snapshot, so AG-UI frontends update activities in place instead of showing duplicates. Call snapshots use `replace=False` (create), result snapshots use `replace=True` (update).
+
 ### Changed
 
 - **Clean separation of filesystem and entrypoint skills**: Filesystem skills use a generic `run_script` tool for script execution. Entrypoint skills provide typed in-process tools with no filesystem involvement from the framework.
