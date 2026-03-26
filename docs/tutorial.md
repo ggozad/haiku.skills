@@ -298,6 +298,36 @@ toolset.build_state_snapshot()    # {"calculator": {"history": []}}
 
 When `execute_skill` runs a skill whose tools modify state, the toolset computes a JSON Patch delta and returns it as a `StateDeltaEvent` — compatible with the [AG-UI protocol](ag-ui.md).
 
+### Configuring thinking
+
+Skills can request a thinking/reasoning effort level for their sub-agent:
+
+```python
+def create_skill() -> Skill:
+    metadata, instructions = parse_skill_md(Path(__file__).parent / "SKILL.md")
+
+    return Skill(
+        metadata=metadata,
+        instructions=instructions,
+        tools=[solve],
+        thinking="high",   # enable deep reasoning
+    )
+```
+
+Supported values:
+
+| Value | Meaning |
+|-------|---------|
+| `True` | Enable thinking at the provider's default effort |
+| `False` | Disable thinking (ignored on always-on models) |
+| `'minimal'`, `'low'`, `'medium'`, `'high'`, `'xhigh'` | Specific effort level |
+| `None` (default) | Don't configure thinking — use model defaults |
+
+This uses pydantic-ai's [unified thinking setting](https://ai.pydantic.dev/thinking/) which works across Anthropic, OpenAI, Google, and other providers. Provider-specific thinking settings take precedence when both are set.
+
+!!! note
+    `thinking` only applies in sub-agent mode (the default). In direct mode (`use_subagents=False`), skill tools run inside the main agent — the main agent's model settings control thinking, not the skill's.
+
 ## MCP skills
 
 Any [MCP](https://modelcontextprotocol.io/) server can be wrapped as a skill using `skill_from_mcp`. The MCP server's tools become the sub-agent's tools — the main agent still only sees `execute_skill`.

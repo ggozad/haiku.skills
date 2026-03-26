@@ -8,6 +8,7 @@ from typing import Annotated, Any
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator
 from pydantic_ai import Tool
 from pydantic_ai.models import Model
+from pydantic_ai.settings import ThinkingLevel
 from pydantic_ai.toolsets import AbstractToolset
 
 
@@ -84,6 +85,7 @@ class Skill(BaseModel):
     _toolsets: list[AbstractToolset[Any]] = PrivateAttr(default_factory=list)
     _state_type: type[BaseModel] | None = PrivateAttr(default=None)
     _state_namespace: str | None = PrivateAttr(default=None)
+    _thinking: ThinkingLevel | None = PrivateAttr(default=None)
     _factory: Callable[..., "Skill"] | None = PrivateAttr(default=None)
 
     def __init__(
@@ -93,6 +95,7 @@ class Skill(BaseModel):
         toolsets: Sequence[AbstractToolset[Any]] | None = None,
         state_type: type[BaseModel] | None = None,
         state_namespace: str | None = None,
+        thinking: ThinkingLevel | None = None,
         **data: Any,
     ) -> None:
         super().__init__(**data)
@@ -100,6 +103,7 @@ class Skill(BaseModel):
         self._toolsets = list(toolsets) if toolsets else []
         self._state_type = state_type
         self._state_namespace = state_namespace
+        self._thinking = thinking
 
     @property
     def tools(self) -> list[Tool | Callable[..., Any]]:
@@ -133,6 +137,14 @@ class Skill(BaseModel):
     def state_namespace(self, value: str | None) -> None:
         self._state_namespace = value
 
+    @property
+    def thinking(self) -> ThinkingLevel | None:
+        return self._thinking
+
+    @thinking.setter
+    def thinking(self, value: ThinkingLevel | None) -> None:
+        self._thinking = value
+
     def reconfigure(self, **kwargs: Any) -> None:
         """Re-create this skill with new factory arguments.
 
@@ -146,6 +158,7 @@ class Skill(BaseModel):
         self._toolsets = new_skill._toolsets
         self._state_type = new_skill._state_type
         self._state_namespace = new_skill._state_namespace
+        self._thinking = new_skill._thinking
         self.model = new_skill.model
 
     def state_metadata(self) -> StateMetadata | None:

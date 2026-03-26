@@ -22,6 +22,7 @@ from pydantic_ai.messages import (
     RetryPromptPart,
 )
 from pydantic_ai.models import Model
+from pydantic_ai.settings import ModelSettings
 from pydantic_ai.toolsets import FunctionToolset, ToolsetTool
 
 from haiku.skills.models import Skill
@@ -249,11 +250,15 @@ async def _run_skill(
         tools=tools,
         toolsets=skill.toolsets or None,
     )
+    model_settings = (
+        ModelSettings(thinking=skill.thinking) if skill.thinking is not None else None
+    )
     result = await agent.run(
         request,
         deps=deps,
         usage_limits=UsageLimits(request_limit=20),
         event_stream_handler=event_handler,
+        model_settings=model_settings,
     )
     text = result.output
     return text, collected_events, emitted_events

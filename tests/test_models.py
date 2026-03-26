@@ -457,6 +457,31 @@ class TestSkillReconfigure:
         assert skill.source == SkillSource.ENTRYPOINT
         assert skill.instructions == "original instructions"
 
+    def test_thinking(self):
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(metadata=meta, source=SkillSource.FILESYSTEM, thinking="high")
+        assert skill.thinking == "high"
+        skill.thinking = "low"
+        assert skill.thinking == "low"
+
+    def test_reconfigure_replaces_thinking(self):
+        def factory(think: bool = False) -> Skill:
+            return Skill(
+                metadata=SkillMetadata(name="test", description="Test."),
+                source=SkillSource.ENTRYPOINT,
+                thinking="high" if think else None,
+            )
+
+        skill = Skill(
+            metadata=SkillMetadata(name="test", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+        )
+        skill._factory = factory
+        assert skill.thinking is None
+
+        skill.reconfigure(think=True)
+        assert skill.thinking == "high"
+
     def test_reconfigure_without_factory_raises(self):
         meta = SkillMetadata(name="test", description="Test skill.")
         skill = Skill(metadata=meta, source=SkillSource.FILESYSTEM)

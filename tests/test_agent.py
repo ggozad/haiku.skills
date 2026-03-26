@@ -648,6 +648,47 @@ class TestRunSkillWithState:
         assert captured_deps[0] is not None
         assert captured_deps[0].state is None
 
+    async def test_run_skill_forwards_thinking(self, allow_model_requests: None):
+        """When skill has thinking set, model_settings is forwarded to agent.run."""
+        from pydantic_ai.settings import ModelSettings
+
+        captured_settings: list[Any] = []
+        original_run = Agent.run
+
+        async def patched_run(self: Any, *args: Any, **kwargs: Any) -> Any:
+            captured_settings.append(kwargs.get("model_settings"))
+            return await original_run(self, *args, **kwargs)
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do it.",
+            thinking="high",
+        )
+        with patch.object(Agent, "run", patched_run):
+            await _run_skill(TestModel(call_tools=[]), skill, "Do it.")
+        assert len(captured_settings) == 1
+        assert captured_settings[0] == ModelSettings(thinking="high")
+
+    async def test_run_skill_no_thinking_no_settings(self, allow_model_requests: None):
+        """When skill has no thinking, model_settings is not passed."""
+        captured_settings: list[Any] = []
+        original_run = Agent.run
+
+        async def patched_run(self: Any, *args: Any, **kwargs: Any) -> Any:
+            captured_settings.append(kwargs.get("model_settings"))
+            return await original_run(self, *args, **kwargs)
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do it.",
+        )
+        with patch.object(Agent, "run", patched_run):
+            await _run_skill(TestModel(call_tools=[]), skill, "Do it.")
+        assert len(captured_settings) == 1
+        assert captured_settings[0] is None
+
 
 class TestExecuteSkillEmittedEvents:
     async def test_emitted_events_in_metadata(self, allow_model_requests: None):

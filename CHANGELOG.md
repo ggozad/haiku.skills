@@ -5,6 +5,7 @@
 ### Added
 
 - **`SkillsCapability`**: New pydantic-ai capability wrapping `SkillToolset` + system prompt. Provides a single-line integration path via `Agent(capabilities=[SkillsCapability(...)])`. `SkillToolset` remains available for advanced use cases.
+- **Skill thinking configuration**: Skills can specify `thinking` effort level (`True`, `'low'`, `'medium'`, `'high'`, etc.) to configure reasoning on their sub-agents. Supported across providers via pydantic-ai's unified thinking setting.
 
 ### Changed
 
