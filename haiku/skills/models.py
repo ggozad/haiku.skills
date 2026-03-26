@@ -137,7 +137,7 @@ class Skill(BaseModel):
         """Re-create this skill with new factory arguments.
 
         Calls the stored factory with the given kwargs and copies
-        tools, toolsets, state_type, and state_namespace from the result.
+        tools, toolsets, state_type, state_namespace, and model from the result.
         """
         if self._factory is None:
             raise RuntimeError("Skill has no factory — cannot reconfigure")
@@ -146,6 +146,7 @@ class Skill(BaseModel):
         self._toolsets = new_skill._toolsets
         self._state_type = new_skill._state_type
         self._state_namespace = new_skill._state_namespace
+        self.model = new_skill.model
 
     def state_metadata(self) -> StateMetadata | None:
         if self._state_type is None or self._state_namespace is None:

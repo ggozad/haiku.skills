@@ -415,6 +415,26 @@ class TestSkillReconfigure:
         assert skill.state_type is StateB
         assert skill.state_namespace == "b"
 
+    def test_reconfigure_replaces_model(self):
+        def factory(use_custom: bool = False) -> Skill:
+            m = "custom-model" if use_custom else "default-model"
+            return Skill(
+                metadata=SkillMetadata(name="test", description="Test."),
+                source=SkillSource.ENTRYPOINT,
+                model=m,
+            )
+
+        skill = Skill(
+            metadata=SkillMetadata(name="test", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            model="default-model",
+        )
+        skill._factory = factory
+        assert skill.model == "default-model"
+
+        skill.reconfigure(use_custom=True)
+        assert skill.model == "custom-model"
+
     def test_reconfigure_preserves_metadata(self):
         meta = SkillMetadata(name="test", description="Original description.")
 

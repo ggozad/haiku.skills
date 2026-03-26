@@ -100,7 +100,7 @@ agent = Agent(
 
 ## Reconfiguring entrypoint skills
 
-Entrypoint skills discovered via `SkillToolset(use_entrypoints=True)` store their factory function. Call `reconfigure(**kwargs)` to re-invoke the factory with new arguments, replacing tools and state while preserving metadata. This is useful when a skill's factory accepts optional parameters (e.g. config, database path) that the entry point loader doesn't pass:
+Entrypoint skills discovered via `SkillToolset(use_entrypoints=True)` store their factory function. Call `reconfigure(**kwargs)` to re-invoke the factory with new arguments, replacing tools, state, and model while preserving metadata. This is useful when a skill's factory accepts optional parameters (e.g. config, database path) that the entry point loader doesn't pass:
 
 ```python
 from haiku.skills import SkillToolset
@@ -110,7 +110,7 @@ skill = toolset.registry.get("my-rag-skill")
 skill.reconfigure(config=my_config, db_path=my_db_path)
 ```
 
-`reconfigure()` re-invokes the factory with the given keyword arguments and replaces the skill's tools and state in place. Metadata, instructions, and source are preserved — the skill keeps its identity in the registry.
+`reconfigure()` re-invokes the factory with the given keyword arguments and replaces the skill's tools, state, and model in place. Metadata, instructions, and source are preserved — the skill keeps its identity in the registry.
 
 This only works for entrypoint skills — filesystem and MCP skills have no factory and will raise `RuntimeError`.
 
