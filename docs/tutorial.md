@@ -122,6 +122,12 @@ The `run_script` tool resolves the right executor based on file extension:
 
 The skill directory is prepended to `PYTHONPATH`, so Python scripts can import sibling modules.
 
+Scripts are subject to a timeout (default 120 seconds). Override it with the `HAIKU_SKILLS_SCRIPT_TIMEOUT` environment variable:
+
+```bash
+export HAIKU_SKILLS_SCRIPT_TIMEOUT=300  # 5 minutes
+```
+
 ### Resources
 
 Skills can expose files (references, templates, data) as resources. Any non-script, non-Python file in the skill directory is automatically discovered. The sub-agent receives a `read_resource` tool to read these on demand. This works for both filesystem and entrypoint skills (entrypoint skills must set `path` in their factory).

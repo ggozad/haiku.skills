@@ -140,10 +140,22 @@ def _discover_scripts(skill: Skill) -> list[str]:
     )
 
 
-def _create_run_script(skill: Skill) -> Callable[..., Any]:
+SCRIPT_TIMEOUT_DEFAULT = 120.0
+
+
+def _create_run_script(
+    skill: Skill, timeout: float | None = None
+) -> Callable[..., Any]:
     """Create a run_script tool bound to a specific skill."""
     assert skill.path is not None
     scripts_dir = (skill.path / "scripts").resolve()
+    resolved_timeout = (
+        timeout
+        if timeout is not None
+        else float(
+            os.environ.get("HAIKU_SKILLS_SCRIPT_TIMEOUT", SCRIPT_TIMEOUT_DEFAULT)
+        )
+    )
 
     async def run_script(script: str, arguments: str = "") -> str:
         """Execute a script from the skill's scripts/ directory.
@@ -172,7 +184,14 @@ def _create_run_script(skill: Skill) -> Callable[..., Any]:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        stdout, stderr = await proc.communicate()
+        try:
+            stdout, stderr = await asyncio.wait_for(
+                proc.communicate(), timeout=resolved_timeout
+            )
+        except TimeoutError:
+            proc.kill()
+            await proc.wait()
+            raise RuntimeError(f"Script {script} timed out after {resolved_timeout}s")
         if proc.returncode != 0:
             output = stderr.decode().strip() or stdout.decode().strip()
             raise RuntimeError(
@@ -180,6 +199,7 @@ def _create_run_script(skill: Skill) -> Callable[..., Any]:
             )
         return stdout.decode()
 
+    run_script._timeout = resolved_timeout  # type: ignore[attr-defined]
     return run_script
 
 

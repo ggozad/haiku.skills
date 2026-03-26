@@ -1412,6 +1412,50 @@ class TestCreateRunScript:
         assert "Hello, World!" in result
 
 
+class TestScriptTimeout:
+    async def test_hanging_script_times_out(self, tmp_path: Path):
+        scripts_dir = tmp_path / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "hang.py").write_text("import time\ntime.sleep(60)\n")
+        skill = Skill(
+            metadata=SkillMetadata(name="s", description="Test."),
+            source=SkillSource.FILESYSTEM,
+            path=tmp_path,
+            instructions="Use scripts.",
+        )
+        run_script = _create_run_script(skill, timeout=0.1)
+        with pytest.raises(RuntimeError, match="timed out"):
+            await run_script(script="scripts/hang.py")
+
+    async def test_timeout_from_env(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        scripts_dir = tmp_path / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "hang.py").write_text("import time\ntime.sleep(60)\n")
+        monkeypatch.setenv("HAIKU_SKILLS_SCRIPT_TIMEOUT", "0.1")
+        skill = Skill(
+            metadata=SkillMetadata(name="s", description="Test."),
+            source=SkillSource.FILESYSTEM,
+            path=tmp_path,
+            instructions="Use scripts.",
+        )
+        run_script = _create_run_script(skill)
+        with pytest.raises(RuntimeError, match="timed out"):
+            await run_script(script="scripts/hang.py")
+
+    async def test_default_timeout(self):
+        """Default timeout without env var is 120 seconds."""
+        skill = Skill(
+            metadata=SkillMetadata(name="s", description="Test."),
+            source=SkillSource.FILESYSTEM,
+            path=Path("/fake"),
+            instructions="Test.",
+        )
+        run_script = _create_run_script(skill)
+        assert getattr(run_script, "_timeout") == 120.0
+
+
 class TestRunSkillWithScripts:
     async def test_includes_run_script_tool(
         self, tmp_path: Path, allow_model_requests: None
