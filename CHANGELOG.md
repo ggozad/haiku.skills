@@ -14,6 +14,7 @@
 ### Changed
 
 - Bump pydantic-ai dependency from `>=1.63.0` to `>=1.71.0`.
+- AG-UI state restoration now uses pydantic-ai's `for_run()` hook instead of overriding `get_tools()`.
 
 ## [0.11.0] - 2026-03-26
 

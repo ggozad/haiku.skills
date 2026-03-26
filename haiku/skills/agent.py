@@ -23,7 +23,7 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
-from pydantic_ai.toolsets import FunctionToolset, ToolsetTool
+from pydantic_ai.toolsets import FunctionToolset
 
 from haiku.skills.models import Skill
 from haiku.skills.prompts import SKILL_PROMPT
@@ -333,30 +333,23 @@ class SkillToolset(FunctionToolset[Any]):
         else:
             self._namespaces[namespace] = skill.state_type()
 
-    async def get_tools(self, ctx: RunContext[Any]) -> dict[str, ToolsetTool[Any]]:
-        # Overridden to restore AG-UI state from deps before returning tools.
-        # get_tools() is the only per-run hook with RunContext access in the
-        # toolset API — there is no dedicated per-run setup method.
-        self._maybe_restore_state(ctx)
-        return await super().get_tools(ctx)
-
-    def _maybe_restore_state(self, ctx: RunContext[Any]) -> None:
-        """Restore namespace state from deps if it carries AG-UI state.
+    async def for_run(self, ctx: RunContext[Any]) -> "SkillToolset":
+        """Restore AG-UI state from deps before the run starts.
 
         Uses identity check (``is``) so we restore once per AG-UI request
-        (each request creates a new dict) but not on every model step within
-        a single run.
+        (each request creates a new dict) but not redundantly within a run.
         """
         deps = ctx.deps
-        if deps is None or not hasattr(deps, "state"):
-            return
-        state = deps.state
-        if not isinstance(state, dict) or not state:
-            return
-        if state is self._last_restored_state:
-            return
-        self._last_restored_state = state
-        self.restore_state_snapshot(state)
+        if deps is not None and hasattr(deps, "state"):
+            state = deps.state
+            if (
+                isinstance(state, dict)
+                and state
+                and state is not self._last_restored_state
+            ):
+                self._last_restored_state = state
+                self.restore_state_snapshot(state)
+        return self
 
     @property
     def registry(self) -> SkillRegistry:

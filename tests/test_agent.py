@@ -1169,7 +1169,7 @@ class TestGetToolsStateRestoration:
         )
 
     async def test_restores_state_from_deps(self, allow_model_requests: None):
-        """get_tools restores state when deps has a dict state attribute."""
+        """for_run restores state when deps has a dict state attribute."""
         toolset = self._make_toolset()
         state_dict = {"ns.counter": {"count": 42}}
 
@@ -1177,7 +1177,7 @@ class TestGetToolsStateRestoration:
             state = state_dict
 
         ctx = self._make_ctx(Deps())
-        await toolset.get_tools(ctx)
+        await toolset.for_run(ctx)
 
         ns = toolset.get_namespace("ns.counter")
         assert isinstance(ns, CounterState)
@@ -1192,7 +1192,7 @@ class TestGetToolsStateRestoration:
             state = state_dict
 
         ctx = self._make_ctx(Deps())
-        await toolset.get_tools(ctx)
+        await toolset.for_run(ctx)
 
         # Mutate the namespace directly after restore
         ns = toolset.get_namespace("ns.counter")
@@ -1200,7 +1200,7 @@ class TestGetToolsStateRestoration:
         ns.count = 99
 
         # Second call with same dict object should NOT re-restore
-        await toolset.get_tools(ctx)
+        await toolset.for_run(ctx)
         ns = toolset.get_namespace("ns.counter")
         assert isinstance(ns, CounterState)
         assert ns.count == 99
@@ -1214,7 +1214,7 @@ class TestGetToolsStateRestoration:
 
         deps = Deps()
         ctx = self._make_ctx(deps)
-        await toolset.get_tools(ctx)
+        await toolset.for_run(ctx)
 
         ns = toolset.get_namespace("ns.counter")
         assert isinstance(ns, CounterState)
@@ -1223,7 +1223,7 @@ class TestGetToolsStateRestoration:
         # Assign a new dict object
         deps.state = {"ns.counter": {"count": 77}}
         ctx = self._make_ctx(deps)
-        await toolset.get_tools(ctx)
+        await toolset.for_run(ctx)
 
         ns = toolset.get_namespace("ns.counter")
         assert isinstance(ns, CounterState)
@@ -1237,7 +1237,7 @@ class TestGetToolsStateRestoration:
             state = "not a dict"
 
         ctx = self._make_ctx(Deps())
-        await toolset.get_tools(ctx)
+        await toolset.for_run(ctx)
 
         ns = toolset.get_namespace("ns.counter")
         assert isinstance(ns, CounterState)
@@ -1251,7 +1251,7 @@ class TestGetToolsStateRestoration:
             pass
 
         ctx = self._make_ctx(Deps())
-        await toolset.get_tools(ctx)
+        await toolset.for_run(ctx)
 
         ns = toolset.get_namespace("ns.counter")
         assert isinstance(ns, CounterState)
@@ -1261,7 +1261,7 @@ class TestGetToolsStateRestoration:
         """None deps is handled gracefully."""
         toolset = self._make_toolset()
         ctx = self._make_ctx(None)
-        await toolset.get_tools(ctx)
+        await toolset.for_run(ctx)
 
         ns = toolset.get_namespace("ns.counter")
         assert isinstance(ns, CounterState)
@@ -1276,7 +1276,7 @@ class TestGetToolsStateRestoration:
 
         ctx = self._make_ctx(Deps())
         with patch.object(toolset, "restore_state_snapshot") as mock_restore:
-            await toolset.get_tools(ctx)
+            await toolset.for_run(ctx)
             mock_restore.assert_not_called()
 
     async def test_end_to_end_agent_run(self, allow_model_requests: None):
