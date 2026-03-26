@@ -1146,8 +1146,8 @@ class TestResolveModel:
         assert isinstance(model, TestModel)
 
 
-class TestGetToolsStateRestoration:
-    """Tests for SkillToolset.get_tools() restoring state from deps."""
+class TestForRunStateRestoration:
+    """Tests for SkillToolset.for_run() restoring state from deps."""
 
     def _make_toolset(self) -> SkillToolset:
         skill = Skill(
@@ -1443,17 +1443,6 @@ class TestScriptTimeout:
         run_script = _create_run_script(skill)
         with pytest.raises(RuntimeError, match="timed out"):
             await run_script(script="scripts/hang.py")
-
-    async def test_default_timeout(self):
-        """Default timeout without env var is 120 seconds."""
-        skill = Skill(
-            metadata=SkillMetadata(name="s", description="Test."),
-            source=SkillSource.FILESYSTEM,
-            path=Path("/fake"),
-            instructions="Test.",
-        )
-        run_script = _create_run_script(skill)
-        assert getattr(run_script, "_timeout") == 120.0
 
 
 class TestRunSkillWithScripts:

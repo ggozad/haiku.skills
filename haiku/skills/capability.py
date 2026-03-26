@@ -1,5 +1,4 @@
 from collections.abc import Callable
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -12,7 +11,6 @@ from haiku.skills.models import Skill
 from haiku.skills.prompts import DEFAULT_PREAMBLE, build_system_prompt
 
 
-@dataclass
 class SkillsCapability(AbstractCapability[Any]):
     """Expose skills as a pydantic-ai capability.
 
@@ -20,9 +18,6 @@ class SkillsCapability(AbstractCapability[Any]):
     built from the skill catalog.  The underlying toolset is accessible via the
     ``toolset`` attribute for advanced use (state, registry, event sink, etc.).
     """
-
-    toolset: SkillToolset
-    preamble: str = DEFAULT_PREAMBLE
 
     def __init__(
         self,
@@ -51,7 +46,7 @@ class SkillsCapability(AbstractCapability[Any]):
             return build_system_prompt(
                 self.toolset.skill_catalog,
                 preamble=self.preamble,
-                use_subagents=self.toolset._use_subagents,
+                use_subagents=self.toolset.use_subagents,
             )
 
         return _instructions

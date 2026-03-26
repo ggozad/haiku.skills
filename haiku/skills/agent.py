@@ -199,7 +199,6 @@ def _create_run_script(
             )
         return stdout.decode()
 
-    run_script._timeout = resolved_timeout  # type: ignore[attr-defined]
     return run_script
 
 
@@ -350,6 +349,10 @@ class SkillToolset(FunctionToolset[Any]):
                 self._last_restored_state = state
                 self.restore_state_snapshot(state)
         return self
+
+    @property
+    def use_subagents(self) -> bool:
+        return self._use_subagents
 
     @property
     def registry(self) -> SkillRegistry:
