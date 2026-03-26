@@ -1,6 +1,6 @@
 [project]
 name = "haiku-skills-web"
-version = "0.10.0"
+version = "0.11.0"
 description = "Web search and page fetching skill for haiku.skills"
 authors = [{ name = "Yiorgis Gozadinos", email = "ggozadinos@gmail.com" }]
 license = { text = "MIT" }
@@ -15,7 +15,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Typing :: Typed",
 ]
-dependencies = ["haiku.skills>=0.10.0", "trafilatura>=2.0.0", "httpx>=0.28.0"]
+dependencies = ["haiku.skills>=0.11.0", "trafilatura>=2.0.0", "httpx>=0.28.0"]
 
 [project.urls]
 Homepage = "https://github.com/ggozad/haiku.skills"

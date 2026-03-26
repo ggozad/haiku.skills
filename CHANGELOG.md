@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-03-26
+
 ### Added
 
 - **Skill reconfiguration**: Entrypoint skills can be reconfigured after discovery via `skill.reconfigure(**kwargs)`. The stored factory is re-invoked with the given arguments, replacing tools, state, and model while preserving metadata and identity. This allows consuming apps to override factory parameters (e.g. config, database path) without bypassing entry point discovery.
@@ -259,7 +261,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.10.0...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.11.0...HEAD
+[0.11.0]: https://github.com/ggozad/haiku.skills/compare/0.10.0...0.11.0
 [0.10.0]: https://github.com/ggozad/haiku.skills/compare/0.9.1...0.10.0
 [0.9.1]: https://github.com/ggozad/haiku.skills/compare/0.9.0...0.9.1
 [0.9.0]: https://github.com/ggozad/haiku.skills/compare/0.8.1...0.9.0
