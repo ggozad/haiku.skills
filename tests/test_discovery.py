@@ -384,3 +384,49 @@ class TestDiscoverFromEntrypoints:
         )
         skills = discover_from_entrypoints()
         assert skills == []
+
+    def test_entrypoint_skill_has_factory(self, monkeypatch: pytest.MonkeyPatch):
+        def my_factory() -> Skill:
+            return Skill(
+                metadata=SkillMetadata(name="ep-skill", description="From ep."),
+                source=SkillSource.ENTRYPOINT,
+            )
+
+        mock_ep = MagicMock()
+        mock_ep.load.return_value = my_factory
+
+        monkeypatch.setattr(
+            "haiku.skills.discovery.entry_points",
+            lambda group: [mock_ep],
+        )
+        skills = discover_from_entrypoints()
+        assert len(skills) == 1
+        assert skills[0]._factory is my_factory
+
+    def test_entrypoint_skill_reconfigure(self, monkeypatch: pytest.MonkeyPatch):
+        def tool_default(x: int) -> int:
+            return x
+
+        def tool_custom(x: int) -> int:
+            return x * 2
+
+        def my_factory(mode: str = "default") -> Skill:
+            tool = tool_default if mode == "default" else tool_custom
+            return Skill(
+                metadata=SkillMetadata(name="ep-skill", description="From ep."),
+                source=SkillSource.ENTRYPOINT,
+                tools=[tool],
+            )
+
+        mock_ep = MagicMock()
+        mock_ep.load.return_value = my_factory
+
+        monkeypatch.setattr(
+            "haiku.skills.discovery.entry_points",
+            lambda group: [mock_ep],
+        )
+        skills = discover_from_entrypoints()
+        assert skills[0].tools == [tool_default]
+
+        skills[0].reconfigure(mode="custom")
+        assert skills[0].tools == [tool_custom]

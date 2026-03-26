@@ -98,6 +98,7 @@ def discover_from_entrypoints(group: str = "haiku.skills") -> list[Skill]:
         factory = ep.load()
         skill = factory()
         skill.source = SkillSource.ENTRYPOINT
+        skill._factory = factory
         if skill.path and not skill.resources:
             skill.resources = discover_resources(skill.path)
         skills.append(skill)
