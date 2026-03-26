@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Skill reconfiguration**: Entrypoint skills can be reconfigured after discovery via `skill.reconfigure(**kwargs)`. The stored factory is re-invoked with the given arguments, replacing tools and state while preserving metadata and identity. This allows consuming apps to override factory parameters (e.g. config, database path) without bypassing entry point discovery.
+
 ## [0.10.0] - 2026-03-24
 
 ### Added

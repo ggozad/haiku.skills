@@ -84,6 +84,7 @@ class Skill(BaseModel):
     _toolsets: list[AbstractToolset[Any]] = PrivateAttr(default_factory=list)
     _state_type: type[BaseModel] | None = PrivateAttr(default=None)
     _state_namespace: str | None = PrivateAttr(default=None)
+    _factory: Callable[..., "Skill"] | None = PrivateAttr(default=None)
 
     def __init__(
         self,
@@ -131,6 +132,20 @@ class Skill(BaseModel):
     @state_namespace.setter
     def state_namespace(self, value: str | None) -> None:
         self._state_namespace = value
+
+    def reconfigure(self, **kwargs: Any) -> None:
+        """Re-create this skill with new factory arguments.
+
+        Calls the stored factory with the given kwargs and copies
+        tools, toolsets, state_type, and state_namespace from the result.
+        """
+        if self._factory is None:
+            raise RuntimeError("Skill has no factory — cannot reconfigure")
+        new_skill = self._factory(**kwargs)
+        self._tools = new_skill._tools
+        self._toolsets = new_skill._toolsets
+        self._state_type = new_skill._state_type
+        self._state_namespace = new_skill._state_namespace
 
     def state_metadata(self) -> StateMetadata | None:
         if self._state_type is None or self._state_namespace is None:

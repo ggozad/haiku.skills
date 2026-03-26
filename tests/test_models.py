@@ -325,3 +325,120 @@ class TestSkill:
             state_namespace="ns",
         )
         assert skill.state_metadata() is None
+
+
+class TestSkillFactory:
+    def test_factory_default_none(self):
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(metadata=meta, source=SkillSource.FILESYSTEM)
+        assert skill._factory is None
+
+    def test_factory_stored_via_assignment(self):
+        def my_factory() -> Skill:
+            return Skill(
+                metadata=SkillMetadata(name="test", description="Test."),
+                source=SkillSource.ENTRYPOINT,
+            )
+
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(metadata=meta, source=SkillSource.ENTRYPOINT)
+        skill._factory = my_factory
+        assert skill._factory is my_factory
+
+    def test_factory_excluded_from_serialization(self):
+        def my_factory() -> Skill:
+            return Skill(
+                metadata=SkillMetadata(name="test", description="Test."),
+                source=SkillSource.ENTRYPOINT,
+            )
+
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(metadata=meta, source=SkillSource.ENTRYPOINT)
+        skill._factory = my_factory
+        data = skill.model_dump()
+        assert "factory" not in data
+
+
+class TestSkillReconfigure:
+    def test_reconfigure_replaces_tools(self):
+        def tool_a(x: int) -> int:
+            return x
+
+        def tool_b(x: int) -> int:
+            return x * 2
+
+        def factory(mode: str = "a") -> Skill:
+            tool = tool_a if mode == "a" else tool_b
+            return Skill(
+                metadata=SkillMetadata(name="test", description="Test."),
+                source=SkillSource.ENTRYPOINT,
+                tools=[tool],
+            )
+
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(
+            metadata=meta,
+            source=SkillSource.ENTRYPOINT,
+            tools=[tool_a],
+        )
+        skill._factory = factory
+        assert skill.tools == [tool_a]
+
+        skill.reconfigure(mode="b")
+        assert skill.tools == [tool_b]
+
+    def test_reconfigure_replaces_state(self):
+        class StateA(BaseModel):
+            value: int = 0
+
+        class StateB(BaseModel):
+            name: str = ""
+
+        def factory(use_b: bool = False) -> Skill:
+            st = StateB if use_b else StateA
+            ns = "b" if use_b else "a"
+            return Skill(
+                metadata=SkillMetadata(name="test", description="Test."),
+                source=SkillSource.ENTRYPOINT,
+                state_type=st,
+                state_namespace=ns,
+            )
+
+        skill = Skill(
+            metadata=SkillMetadata(name="test", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            state_type=StateA,
+            state_namespace="a",
+        )
+        skill._factory = factory
+        skill.reconfigure(use_b=True)
+        assert skill.state_type is StateB
+        assert skill.state_namespace == "b"
+
+    def test_reconfigure_preserves_metadata(self):
+        meta = SkillMetadata(name="test", description="Original description.")
+
+        def factory() -> Skill:
+            return Skill(
+                metadata=SkillMetadata(name="different", description="Different."),
+                source=SkillSource.FILESYSTEM,
+                instructions="new instructions",
+            )
+
+        skill = Skill(
+            metadata=meta,
+            source=SkillSource.ENTRYPOINT,
+            instructions="original instructions",
+        )
+        skill._factory = factory
+        skill.reconfigure()
+        assert skill.metadata.name == "test"
+        assert skill.metadata.description == "Original description."
+        assert skill.source == SkillSource.ENTRYPOINT
+        assert skill.instructions == "original instructions"
+
+    def test_reconfigure_without_factory_raises(self):
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(metadata=meta, source=SkillSource.FILESYSTEM)
+        with pytest.raises(RuntimeError, match="no factory"):
+            skill.reconfigure()
