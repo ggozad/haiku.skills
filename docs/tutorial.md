@@ -51,6 +51,48 @@ print(result.output)
 
 By default, `SkillToolset` exposes a single `execute_skill` tool. When the agent calls it, a focused sub-agent spins up with that skill's instructions and tools — then returns the result. The main agent never sees the skill's internal tools. For an alternative approach where the main agent calls skill tools directly, see [Direct mode](#direct-mode).
 
+### Using SkillsCapability
+
+`SkillsCapability` bundles the toolset and system prompt into a single pydantic-ai [capability](https://ai.pydantic.dev/capabilities/):
+
+```python
+from pydantic_ai import Agent
+from haiku.skills import SkillsCapability
+
+agent = Agent(
+    "anthropic:claude-sonnet-4-5-20250929",
+    capabilities=[
+        SkillsCapability(
+            skill_paths=[Path("./skills")],
+            skill_model="openai:gpt-4o-mini",
+        ),
+    ],
+)
+```
+
+This is equivalent to the `SkillToolset` + `build_system_prompt` setup above.
+
+`SkillsCapability` accepts the same parameters as `SkillToolset`:
+
+```python
+# Load skills from installed entrypoint packages
+cap = SkillsCapability(use_entrypoints=True)
+
+# Custom preamble for the system prompt
+cap = SkillsCapability(
+    skill_paths=[Path("./skills")],
+    preamble="You are a data science assistant.",
+)
+
+# Direct mode (no sub-agents)
+cap = SkillsCapability(
+    skill_paths=[Path("./skills")],
+    use_subagents=False,
+)
+```
+
+The underlying toolset is accessible via `cap.toolset` for advanced use (registry access, state snapshots, AG-UI event sink).
+
 !!! note
     When a skill directory has validation errors (bad frontmatter, name mismatch, etc.), the error is collected and discovery continues. The CLI prints these as warnings to stderr.
 

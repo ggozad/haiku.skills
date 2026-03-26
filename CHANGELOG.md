@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`SkillsCapability`**: New pydantic-ai capability wrapping `SkillToolset` + system prompt. Provides a single-line integration path via `Agent(capabilities=[SkillsCapability(...)])`. `SkillToolset` remains available for advanced use cases.
+
+### Changed
+
+- Bump pydantic-ai dependency from `>=1.63.0` to `>=1.71.0`.
+
 ## [0.11.0] - 2026-03-26
 
 ### Added

@@ -4,6 +4,7 @@ from haiku.skills.agent import (
     resolve_model,
     run_agui_stream,
 )
+from haiku.skills.capability import SkillsCapability
 from haiku.skills.mcp import skill_from_mcp
 from haiku.skills.models import (
     Skill,
