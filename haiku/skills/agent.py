@@ -22,7 +22,8 @@ from pydantic_ai.messages import (
     RetryPromptPart,
 )
 from pydantic_ai.models import Model
-from pydantic_ai.toolsets import FunctionToolset, ToolsetTool
+from pydantic_ai.settings import ModelSettings
+from pydantic_ai.toolsets import FunctionToolset
 
 from haiku.skills.models import Skill
 from haiku.skills.prompts import SKILL_PROMPT
@@ -139,10 +140,22 @@ def _discover_scripts(skill: Skill) -> list[str]:
     )
 
 
-def _create_run_script(skill: Skill) -> Callable[..., Any]:
+SCRIPT_TIMEOUT_DEFAULT = 120.0
+
+
+def _create_run_script(
+    skill: Skill, timeout: float | None = None
+) -> Callable[..., Any]:
     """Create a run_script tool bound to a specific skill."""
     assert skill.path is not None
     scripts_dir = (skill.path / "scripts").resolve()
+    resolved_timeout = (
+        timeout
+        if timeout is not None
+        else float(
+            os.environ.get("HAIKU_SKILLS_SCRIPT_TIMEOUT", SCRIPT_TIMEOUT_DEFAULT)
+        )
+    )
 
     async def run_script(script: str, arguments: str = "") -> str:
         """Execute a script from the skill's scripts/ directory.
@@ -171,7 +184,14 @@ def _create_run_script(skill: Skill) -> Callable[..., Any]:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        stdout, stderr = await proc.communicate()
+        try:
+            stdout, stderr = await asyncio.wait_for(
+                proc.communicate(), timeout=resolved_timeout
+            )
+        except TimeoutError:
+            proc.kill()
+            await proc.wait()
+            raise RuntimeError(f"Script {script} timed out after {resolved_timeout}s")
         if proc.returncode != 0:
             output = stderr.decode().strip() or stdout.decode().strip()
             raise RuntimeError(
@@ -249,11 +269,15 @@ async def _run_skill(
         tools=tools,
         toolsets=skill.toolsets or None,
     )
+    model_settings = (
+        ModelSettings(thinking=skill.thinking) if skill.thinking is not None else None
+    )
     result = await agent.run(
         request,
         deps=deps,
         usage_limits=UsageLimits(request_limit=20),
         event_stream_handler=event_handler,
+        model_settings=model_settings,
     )
     text = result.output
     return text, collected_events, emitted_events
@@ -308,30 +332,27 @@ class SkillToolset(FunctionToolset[Any]):
         else:
             self._namespaces[namespace] = skill.state_type()
 
-    async def get_tools(self, ctx: RunContext[Any]) -> dict[str, ToolsetTool[Any]]:
-        # Overridden to restore AG-UI state from deps before returning tools.
-        # get_tools() is the only per-run hook with RunContext access in the
-        # toolset API — there is no dedicated per-run setup method.
-        self._maybe_restore_state(ctx)
-        return await super().get_tools(ctx)
-
-    def _maybe_restore_state(self, ctx: RunContext[Any]) -> None:
-        """Restore namespace state from deps if it carries AG-UI state.
+    async def for_run(self, ctx: RunContext[Any]) -> "SkillToolset":
+        """Restore AG-UI state from deps before the run starts.
 
         Uses identity check (``is``) so we restore once per AG-UI request
-        (each request creates a new dict) but not on every model step within
-        a single run.
+        (each request creates a new dict) but not redundantly within a run.
         """
         deps = ctx.deps
-        if deps is None or not hasattr(deps, "state"):
-            return
-        state = deps.state
-        if not isinstance(state, dict) or not state:
-            return
-        if state is self._last_restored_state:
-            return
-        self._last_restored_state = state
-        self.restore_state_snapshot(state)
+        if deps is not None and hasattr(deps, "state"):
+            state = deps.state
+            if (
+                isinstance(state, dict)
+                and state
+                and state is not self._last_restored_state
+            ):
+                self._last_restored_state = state
+                self.restore_state_snapshot(state)
+        return self
+
+    @property
+    def use_subagents(self) -> bool:
+        return self._use_subagents
 
     @property
     def registry(self) -> SkillRegistry:

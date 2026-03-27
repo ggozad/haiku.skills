@@ -51,6 +51,48 @@ print(result.output)
 
 By default, `SkillToolset` exposes a single `execute_skill` tool. When the agent calls it, a focused sub-agent spins up with that skill's instructions and tools — then returns the result. The main agent never sees the skill's internal tools. For an alternative approach where the main agent calls skill tools directly, see [Direct mode](#direct-mode).
 
+### Using SkillsCapability
+
+`SkillsCapability` bundles the toolset and system prompt into a single pydantic-ai [capability](https://ai.pydantic.dev/capabilities/):
+
+```python
+from pydantic_ai import Agent
+from haiku.skills import SkillsCapability
+
+agent = Agent(
+    "anthropic:claude-sonnet-4-5-20250929",
+    capabilities=[
+        SkillsCapability(
+            skill_paths=[Path("./skills")],
+            skill_model="openai:gpt-4o-mini",
+        ),
+    ],
+)
+```
+
+This is equivalent to the `SkillToolset` + `build_system_prompt` setup above.
+
+`SkillsCapability` accepts the same parameters as `SkillToolset`:
+
+```python
+# Load skills from installed entrypoint packages
+cap = SkillsCapability(use_entrypoints=True)
+
+# Custom preamble for the system prompt
+cap = SkillsCapability(
+    skill_paths=[Path("./skills")],
+    preamble="You are a data science assistant.",
+)
+
+# Direct mode (no sub-agents)
+cap = SkillsCapability(
+    skill_paths=[Path("./skills")],
+    use_subagents=False,
+)
+```
+
+The underlying toolset is accessible via `cap.toolset` for advanced use (registry access, state snapshots, AG-UI event sink).
+
 !!! note
     When a skill directory has validation errors (bad frontmatter, name mismatch, etc.), the error is collected and discovery continues. The CLI prints these as warnings to stderr.
 
@@ -79,6 +121,12 @@ The `run_script` tool resolves the right executor based on file extension:
 | Other     | Run as executable directly |
 
 The skill directory is prepended to `PYTHONPATH`, so Python scripts can import sibling modules.
+
+Scripts are subject to a timeout (default 120 seconds). Override it with the `HAIKU_SKILLS_SCRIPT_TIMEOUT` environment variable:
+
+```bash
+export HAIKU_SKILLS_SCRIPT_TIMEOUT=300  # 5 minutes
+```
 
 ### Resources
 
@@ -255,6 +303,36 @@ toolset.build_state_snapshot()    # {"calculator": {"history": []}}
 ```
 
 When `execute_skill` runs a skill whose tools modify state, the toolset computes a JSON Patch delta and returns it as a `StateDeltaEvent` — compatible with the [AG-UI protocol](ag-ui.md).
+
+### Configuring thinking
+
+Skills can request a thinking/reasoning effort level for their sub-agent:
+
+```python
+def create_skill() -> Skill:
+    metadata, instructions = parse_skill_md(Path(__file__).parent / "SKILL.md")
+
+    return Skill(
+        metadata=metadata,
+        instructions=instructions,
+        tools=[solve],
+        thinking="high",   # enable deep reasoning
+    )
+```
+
+Supported values:
+
+| Value | Meaning |
+|-------|---------|
+| `True` | Enable thinking at the provider's default effort |
+| `False` | Disable thinking (ignored on always-on models) |
+| `'minimal'`, `'low'`, `'medium'`, `'high'`, `'xhigh'` | Specific effort level |
+| `None` (default) | Don't configure thinking — use model defaults |
+
+This uses pydantic-ai's [unified thinking setting](https://ai.pydantic.dev/thinking/) which works across Anthropic, OpenAI, Google, and other providers. Provider-specific thinking settings take precedence when both are set.
+
+!!! note
+    `thinking` only applies in sub-agent mode (the default). In direct mode (`use_subagents=False`), skill tools run inside the main agent — the main agent's model settings control thinking, not the skill's.
 
 ## MCP skills
 

@@ -648,6 +648,47 @@ class TestRunSkillWithState:
         assert captured_deps[0] is not None
         assert captured_deps[0].state is None
 
+    async def test_run_skill_forwards_thinking(self, allow_model_requests: None):
+        """When skill has thinking set, model_settings is forwarded to agent.run."""
+        from pydantic_ai.settings import ModelSettings
+
+        captured_settings: list[Any] = []
+        original_run = Agent.run
+
+        async def patched_run(self: Any, *args: Any, **kwargs: Any) -> Any:
+            captured_settings.append(kwargs.get("model_settings"))
+            return await original_run(self, *args, **kwargs)
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do it.",
+            thinking="high",
+        )
+        with patch.object(Agent, "run", patched_run):
+            await _run_skill(TestModel(call_tools=[]), skill, "Do it.")
+        assert len(captured_settings) == 1
+        assert captured_settings[0] == ModelSettings(thinking="high")
+
+    async def test_run_skill_no_thinking_no_settings(self, allow_model_requests: None):
+        """When skill has no thinking, model_settings is not passed."""
+        captured_settings: list[Any] = []
+        original_run = Agent.run
+
+        async def patched_run(self: Any, *args: Any, **kwargs: Any) -> Any:
+            captured_settings.append(kwargs.get("model_settings"))
+            return await original_run(self, *args, **kwargs)
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do it.",
+        )
+        with patch.object(Agent, "run", patched_run):
+            await _run_skill(TestModel(call_tools=[]), skill, "Do it.")
+        assert len(captured_settings) == 1
+        assert captured_settings[0] is None
+
 
 class TestExecuteSkillEmittedEvents:
     async def test_emitted_events_in_metadata(self, allow_model_requests: None):
@@ -1105,8 +1146,8 @@ class TestResolveModel:
         assert isinstance(model, TestModel)
 
 
-class TestGetToolsStateRestoration:
-    """Tests for SkillToolset.get_tools() restoring state from deps."""
+class TestForRunStateRestoration:
+    """Tests for SkillToolset.for_run() restoring state from deps."""
 
     def _make_toolset(self) -> SkillToolset:
         skill = Skill(
@@ -1128,7 +1169,7 @@ class TestGetToolsStateRestoration:
         )
 
     async def test_restores_state_from_deps(self, allow_model_requests: None):
-        """get_tools restores state when deps has a dict state attribute."""
+        """for_run restores state when deps has a dict state attribute."""
         toolset = self._make_toolset()
         state_dict = {"ns.counter": {"count": 42}}
 
@@ -1136,7 +1177,7 @@ class TestGetToolsStateRestoration:
             state = state_dict
 
         ctx = self._make_ctx(Deps())
-        await toolset.get_tools(ctx)
+        await toolset.for_run(ctx)
 
         ns = toolset.get_namespace("ns.counter")
         assert isinstance(ns, CounterState)
@@ -1151,7 +1192,7 @@ class TestGetToolsStateRestoration:
             state = state_dict
 
         ctx = self._make_ctx(Deps())
-        await toolset.get_tools(ctx)
+        await toolset.for_run(ctx)
 
         # Mutate the namespace directly after restore
         ns = toolset.get_namespace("ns.counter")
@@ -1159,7 +1200,7 @@ class TestGetToolsStateRestoration:
         ns.count = 99
 
         # Second call with same dict object should NOT re-restore
-        await toolset.get_tools(ctx)
+        await toolset.for_run(ctx)
         ns = toolset.get_namespace("ns.counter")
         assert isinstance(ns, CounterState)
         assert ns.count == 99
@@ -1173,7 +1214,7 @@ class TestGetToolsStateRestoration:
 
         deps = Deps()
         ctx = self._make_ctx(deps)
-        await toolset.get_tools(ctx)
+        await toolset.for_run(ctx)
 
         ns = toolset.get_namespace("ns.counter")
         assert isinstance(ns, CounterState)
@@ -1182,7 +1223,7 @@ class TestGetToolsStateRestoration:
         # Assign a new dict object
         deps.state = {"ns.counter": {"count": 77}}
         ctx = self._make_ctx(deps)
-        await toolset.get_tools(ctx)
+        await toolset.for_run(ctx)
 
         ns = toolset.get_namespace("ns.counter")
         assert isinstance(ns, CounterState)
@@ -1196,7 +1237,7 @@ class TestGetToolsStateRestoration:
             state = "not a dict"
 
         ctx = self._make_ctx(Deps())
-        await toolset.get_tools(ctx)
+        await toolset.for_run(ctx)
 
         ns = toolset.get_namespace("ns.counter")
         assert isinstance(ns, CounterState)
@@ -1210,7 +1251,7 @@ class TestGetToolsStateRestoration:
             pass
 
         ctx = self._make_ctx(Deps())
-        await toolset.get_tools(ctx)
+        await toolset.for_run(ctx)
 
         ns = toolset.get_namespace("ns.counter")
         assert isinstance(ns, CounterState)
@@ -1220,7 +1261,7 @@ class TestGetToolsStateRestoration:
         """None deps is handled gracefully."""
         toolset = self._make_toolset()
         ctx = self._make_ctx(None)
-        await toolset.get_tools(ctx)
+        await toolset.for_run(ctx)
 
         ns = toolset.get_namespace("ns.counter")
         assert isinstance(ns, CounterState)
@@ -1235,7 +1276,7 @@ class TestGetToolsStateRestoration:
 
         ctx = self._make_ctx(Deps())
         with patch.object(toolset, "restore_state_snapshot") as mock_restore:
-            await toolset.get_tools(ctx)
+            await toolset.for_run(ctx)
             mock_restore.assert_not_called()
 
     async def test_end_to_end_agent_run(self, allow_model_requests: None):
@@ -1369,6 +1410,39 @@ class TestCreateRunScript:
         run_script = _create_run_script(skill)
         result = await run_script(script="scripts/greet.rb", arguments="World")
         assert "Hello, World!" in result
+
+
+class TestScriptTimeout:
+    async def test_hanging_script_times_out(self, tmp_path: Path):
+        scripts_dir = tmp_path / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "hang.py").write_text("import time\ntime.sleep(60)\n")
+        skill = Skill(
+            metadata=SkillMetadata(name="s", description="Test."),
+            source=SkillSource.FILESYSTEM,
+            path=tmp_path,
+            instructions="Use scripts.",
+        )
+        run_script = _create_run_script(skill, timeout=0.1)
+        with pytest.raises(RuntimeError, match="timed out"):
+            await run_script(script="scripts/hang.py")
+
+    async def test_timeout_from_env(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        scripts_dir = tmp_path / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "hang.py").write_text("import time\ntime.sleep(60)\n")
+        monkeypatch.setenv("HAIKU_SKILLS_SCRIPT_TIMEOUT", "0.1")
+        skill = Skill(
+            metadata=SkillMetadata(name="s", description="Test."),
+            source=SkillSource.FILESYSTEM,
+            path=tmp_path,
+            instructions="Use scripts.",
+        )
+        run_script = _create_run_script(skill)
+        with pytest.raises(RuntimeError, match="timed out"):
+            await run_script(script="scripts/hang.py")
 
 
 class TestRunSkillWithScripts:

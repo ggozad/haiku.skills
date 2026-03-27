@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`SkillsCapability`**: New pydantic-ai capability wrapping `SkillToolset` + system prompt. Provides a single-line integration path via `Agent(capabilities=[SkillsCapability(...)])`. `SkillToolset` remains available for advanced use cases.
+- **Skill thinking configuration**: Skills can specify `thinking` effort level (`True`, `'low'`, `'medium'`, `'high'`, etc.) to configure reasoning on their sub-agents. Supported across providers via pydantic-ai's unified thinking setting.
+
+### Fixed
+
+- **Script timeout**: `run_script` now enforces a timeout (default 120s, configurable via `HAIKU_SKILLS_SCRIPT_TIMEOUT` env var). Previously a hanging script would block the agent forever.
+
+### Changed
+
+- Bump pydantic-ai dependency from `>=1.63.0` to `>=1.71.0`.
+- AG-UI state restoration now uses pydantic-ai's `for_run()` hook instead of overriding `get_tools()`.
+
 ## [0.11.0] - 2026-03-26
 
 ### Added
