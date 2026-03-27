@@ -1,5 +1,6 @@
 import atexit
 import os
+import time
 from pathlib import Path
 from uuid import uuid4
 
@@ -11,7 +12,32 @@ from haiku.skills.models import Skill
 from haiku.skills.parser import parse_skill_md
 from haiku.skills.state import SkillRunDeps
 
+IDLE_TIMEOUT_DEFAULT = 3600
+
 _sandboxes: dict[str, DockerSandbox] = {}
+_last_active: dict[str, float] = {}
+_idle_timeout_override: int | None = None
+
+
+def _idle_timeout() -> int:
+    if _idle_timeout_override is not None:
+        return _idle_timeout_override
+    env = os.environ.get("HAIKU_SKILLS_SANDBOX_IDLE_TIMEOUT")
+    return int(env) if env else IDLE_TIMEOUT_DEFAULT
+
+
+def _cleanup_stale() -> None:
+    timeout = _idle_timeout()
+    now = time.monotonic()
+    stale = [sid for sid, t in _last_active.items() if now - t > timeout]
+    for sid in stale:
+        sandbox = _sandboxes.pop(sid, None)
+        _last_active.pop(sid, None)
+        if sandbox:
+            try:
+                sandbox.stop()
+            except Exception:
+                pass
 
 
 def _cleanup_sandboxes() -> None:
@@ -21,6 +47,7 @@ def _cleanup_sandboxes() -> None:
         except Exception:
             pass
     _sandboxes.clear()
+    _last_active.clear()
 
 
 atexit.register(_cleanup_sandboxes)
@@ -33,8 +60,12 @@ class SandboxState(BaseModel):
 def _get_sandbox(
     state: SandboxState | None, workspace: Path | None = None
 ) -> DockerSandbox:
+    _cleanup_stale()
+
     if state and state.session_id and state.session_id in _sandboxes:
+        _last_active[state.session_id] = time.monotonic()
         return _sandboxes[state.session_id]
+
     session_id = str(uuid4())
     volumes = {str(workspace): "/workspace"} if workspace else None
     sandbox = DockerSandbox(
@@ -43,16 +74,24 @@ def _get_sandbox(
         volumes=volumes,
     )
     _sandboxes[session_id] = sandbox
+    _last_active[session_id] = time.monotonic()
     if state:
         state.session_id = session_id
     return sandbox
 
 
-def create_skill(workspace: Path | None = None) -> Skill:
+def create_skill(
+    workspace: Path | None = None, idle_timeout: int | None = None
+) -> Skill:
+    global _idle_timeout_override
+
     if workspace is None:
-        env = os.environ.get("HAIKU_SANDBOX_WORKSPACE")
+        env = os.environ.get("HAIKU_SKILLS_SANDBOX_WORKSPACE")
         if env:
             workspace = Path(env)
+
+    if idle_timeout is not None:
+        _idle_timeout_override = idle_timeout
 
     from dataclasses import dataclass, field
 
