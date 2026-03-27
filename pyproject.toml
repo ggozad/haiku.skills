@@ -83,6 +83,7 @@ dev = [
     "haiku-skills-code-execution",
     "haiku-skills-gmail",
     "haiku-skills-notifications",
+    "haiku-skills-sandbox",
     "mkdocs>=1.6.1,<2.0.0",
     "mkdocs-material>=9.7.3",
 ]
@@ -111,6 +112,7 @@ haiku-skills-image-generation = { workspace = true }
 haiku-skills-code-execution = { workspace = true }
 haiku-skills-gmail = { workspace = true }
 haiku-skills-notifications = { workspace = true }
+haiku-skills-sandbox = { workspace = true }
 
 
 [tool.uv.workspace]
@@ -135,6 +137,7 @@ source = [
     "skills/code-execution/haiku_skills_code_execution",
     "skills/gmail/haiku_skills_gmail",
     "skills/notifications/haiku_skills_notifications",
+    "skills/sandbox/haiku_skills_sandbox",
 ]
 omit = ["haiku/skills/chat/*", "haiku/skills/cli.py"]
 
