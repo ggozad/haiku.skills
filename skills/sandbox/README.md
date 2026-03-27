@@ -51,4 +51,11 @@ Priority: `create_skill()` argument > environment variable > default.
 
 ## Pre-installed packages
 
-The `haiku-skills-sandbox:latest` image includes: pandas, numpy, scipy, matplotlib. No internet access inside the container.
+The `haiku-skills-sandbox:latest` image includes: pandas, numpy, scipy, matplotlib.
+
+## Security considerations
+
+- **Network access:** Containers have full network access (Docker bridge networking) by default.
+- **Command execution:** `ConsoleToolset` is configured with `require_execute_approval=False` — the LLM can run arbitrary commands inside the container without user confirmation. Docker provides the isolation boundary.
+- **Workspace access:** When a workspace is mounted, the container has full read/write access to that host directory. The LLM can read, modify, or delete any file in the mounted workspace.
+- **Container user:** The container runs as root. Docker container isolation is the security boundary, not OS-level user separation.

@@ -424,7 +424,6 @@ class TestSandboxRunDeps:
         skill = create_skill()
         assert skill.deps_type is not None
 
-        assert skill.deps_type is not None
         with patch("haiku_skills_sandbox.DockerSandbox"):
             deps = skill.deps_type(state=None, emit=lambda _: None)
 

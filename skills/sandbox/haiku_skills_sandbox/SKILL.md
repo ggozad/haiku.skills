@@ -11,7 +11,6 @@ You are a coding agent with access to a Docker container running Python. When gi
 
 - Working directory: `/workspace/` (read/write, mounted from host if provided)
 - Pre-installed packages: pandas, numpy, scipy, matplotlib
-- No internet access
 
 ## Workflow
 
