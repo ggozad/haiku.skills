@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-03-27
+
 ### Added
 
 - **`SkillRunDepsProtocol`**: New `@runtime_checkable Protocol` that formalizes the contract for skill sub-agent deps (`state` + `emit`). The default `SkillRunDeps` dataclass satisfies it, and so does any subclass.
@@ -284,7 +286,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.12.0...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.13.0...HEAD
+[0.13.0]: https://github.com/ggozad/haiku.skills/compare/0.12.0...0.13.0
 [0.12.0]: https://github.com/ggozad/haiku.skills/compare/0.11.0...0.12.0
 [0.11.0]: https://github.com/ggozad/haiku.skills/compare/0.10.0...0.11.0
 [0.10.0]: https://github.com/ggozad/haiku.skills/compare/0.9.1...0.10.0
