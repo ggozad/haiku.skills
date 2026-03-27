@@ -85,6 +85,7 @@ class Skill(BaseModel):
     _toolsets: list[AbstractToolset[Any]] = PrivateAttr(default_factory=list)
     _state_type: type[BaseModel] | None = PrivateAttr(default=None)
     _state_namespace: str | None = PrivateAttr(default=None)
+    _extras: dict[str, Any] = PrivateAttr(default_factory=dict)
     _thinking: ThinkingLevel | None = PrivateAttr(default=None)
     _factory: Callable[..., "Skill"] | None = PrivateAttr(default=None)
 
@@ -95,6 +96,7 @@ class Skill(BaseModel):
         toolsets: Sequence[AbstractToolset[Any]] | None = None,
         state_type: type[BaseModel] | None = None,
         state_namespace: str | None = None,
+        extras: dict[str, Any] | None = None,
         thinking: ThinkingLevel | None = None,
         **data: Any,
     ) -> None:
@@ -103,6 +105,7 @@ class Skill(BaseModel):
         self._toolsets = list(toolsets) if toolsets else []
         self._state_type = state_type
         self._state_namespace = state_namespace
+        self._extras = dict(extras) if extras else {}
         self._thinking = thinking
 
     @property
@@ -138,6 +141,14 @@ class Skill(BaseModel):
         self._state_namespace = value
 
     @property
+    def extras(self) -> dict[str, Any]:
+        return self._extras
+
+    @extras.setter
+    def extras(self, value: dict[str, Any]) -> None:
+        self._extras = value
+
+    @property
     def thinking(self) -> ThinkingLevel | None:
         return self._thinking
 
@@ -148,8 +159,8 @@ class Skill(BaseModel):
     def reconfigure(self, **kwargs: Any) -> None:
         """Re-create this skill with new factory arguments.
 
-        Calls the stored factory with the given kwargs and copies
-        tools, toolsets, state_type, state_namespace, and model from the result.
+        Calls the stored factory with the given kwargs and copies all
+        private attributes and model from the result.
         """
         if self._factory is None:
             raise RuntimeError("Skill has no factory — cannot reconfigure")
@@ -158,6 +169,7 @@ class Skill(BaseModel):
         self._toolsets = new_skill._toolsets
         self._state_type = new_skill._state_type
         self._state_namespace = new_skill._state_namespace
+        self._extras = new_skill._extras
         self._thinking = new_skill._thinking
         self.model = new_skill.model
 

@@ -326,6 +326,40 @@ class TestSkill:
         )
         assert skill.state_metadata() is None
 
+    def test_extras(self):
+        async def visualize(chunk_id: str) -> list:
+            return []
+
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(
+            metadata=meta,
+            source=SkillSource.FILESYSTEM,
+            extras={"visualize_chunk": visualize},
+        )
+        assert skill.extras["visualize_chunk"] is visualize
+
+    def test_extras_default_empty(self):
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(metadata=meta, source=SkillSource.FILESYSTEM)
+        assert skill.extras == {}
+
+    def test_extras_setter(self):
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(metadata=meta, source=SkillSource.FILESYSTEM)
+        new_extras = {"key": 42}
+        skill.extras = new_extras
+        assert skill.extras == {"key": 42}
+
+    def test_extras_excluded_from_serialization(self):
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(
+            metadata=meta,
+            source=SkillSource.FILESYSTEM,
+            extras={"fn": lambda: None},
+        )
+        data = skill.model_dump()
+        assert "extras" not in data
+
 
 class TestSkillFactory:
     def test_factory_default_none(self):
@@ -414,6 +448,28 @@ class TestSkillReconfigure:
         skill.reconfigure(use_b=True)
         assert skill.state_type is StateB
         assert skill.state_namespace == "b"
+
+    def test_reconfigure_replaces_extras(self):
+        extras_a = {"helper": "a"}
+        extras_b = {"helper": "b", "extra": True}
+
+        def factory(use_b: bool = False) -> Skill:
+            return Skill(
+                metadata=SkillMetadata(name="test", description="Test."),
+                source=SkillSource.ENTRYPOINT,
+                extras=extras_b if use_b else extras_a,
+            )
+
+        skill = Skill(
+            metadata=SkillMetadata(name="test", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            extras=extras_a,
+        )
+        skill._factory = factory
+        assert skill.extras == {"helper": "a"}
+
+        skill.reconfigure(use_b=True)
+        assert skill.extras == {"helper": "b", "extra": True}
 
     def test_reconfigure_replaces_model(self):
         def factory(use_custom: bool = False) -> Skill:
