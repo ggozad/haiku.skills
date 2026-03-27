@@ -3,28 +3,30 @@
 [![Tests](https://github.com/ggozad/haiku.skills/actions/workflows/test.yml/badge.svg)](https://github.com/ggozad/haiku.skills/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/ggozad/haiku.skills/graph/badge.svg)](https://codecov.io/gh/ggozad/haiku.skills)
 
-Skill-powered AI agents implementing the [Agent Skills specification](https://agentskills.io/specification) with [pydantic-ai](https://ai.pydantic.dev/).
+A skill system for [pydantic-ai](https://ai.pydantic.dev/) agents, implementing the [Agent Skills specification](https://agentskills.io/specification).
 
-## How it works
-
-`SkillToolset` is a pydantic-ai `FunctionToolset` that you attach to your own agent. By default, it exposes a single `execute_skill` tool. When the agent calls it, a **focused sub-agent** spins up with only that skill's instructions and tools — then returns the result. The main agent never sees the skill's internal tools, so its tool space stays clean no matter how many skills you load.
-
-Alternatively, `SkillToolset(use_subagents=False)` exposes skill tools directly to the main agent — no sub-agent LLM loops, lower latency, and the agent retains tool results in its conversation context.
-
-## Features
-
-- **Two execution modes** — Sub-agent delegation (default) for isolation, or direct tool access for speed and context retention
-- **Filesystem skills** — Load [SKILL.md](https://agentskills.io/specification) directories with scripts in Python, JavaScript, TypeScript, or shell
-- **Entrypoint skills** — Install skill packages with typed in-process tools, per-skill state, and zero-config discovery
-- **Per-skill state** — Pydantic state models tracked per namespace; state changes emit `StateDeltaEvent` (JSON Patch) for the [AG-UI protocol](https://docs.ag-ui.com)
-- **MCP integration** — Wrap any MCP server (stdio, SSE, streamable HTTP) as a skill
-- **Signing and verification** — Identity-based skill signing via [sigstore](https://www.sigstore.dev/)
+Load skills from [SKILL.md](https://agentskills.io/specification) directories, Python entrypoints, or MCP servers and attach them to your agent as a `SkillsCapability` or `SkillToolset`. Skills run as isolated sub-agents by default, keeping your main agent's tool space clean regardless of how many skills you load.
 
 ## Quick start
 
 ```bash
 uv add haiku.skills
 ```
+
+```python
+from pydantic_ai import Agent
+from haiku.skills import SkillsCapability
+
+agent = Agent(
+    "anthropic:claude-sonnet-4-5-20250929",
+    capabilities=[SkillsCapability(use_entrypoints=True)],
+)
+
+result = await agent.run("Analyze this dataset.")
+print(result.output)
+```
+
+Or with explicit control over the toolset:
 
 ```python
 from pathlib import Path
@@ -37,10 +39,43 @@ agent = Agent(
     instructions=build_system_prompt(toolset.skill_catalog),
     toolsets=[toolset],
 )
-
-result = await agent.run("Analyze this dataset.")
-print(result.output)
 ```
+
+## How it works
+
+Two execution modes:
+
+- **Sub-agent mode** (default): exposes a single `execute_skill` tool. Each invocation spins up a focused sub-agent with only that skill's instructions, tools, and token budget. The main agent never sees skill internals.
+- **Direct mode** (`use_subagents=False`): exposes skill tools directly to the main agent. No sub-agent LLM loops, lower latency, and the agent retains tool results in its conversation context.
+
+## Skill sources
+
+Skills are discovered automatically and can come from three sources:
+
+- **Filesystem**: directories containing a [SKILL.md](https://agentskills.io/specification) file with scripts in Python, JavaScript, TypeScript, or shell
+- **Entrypoints**: Python packages that register via the `haiku.skills` entry_points group, with typed in-process tools, per-skill Pydantic state, and zero-config discovery
+- **MCP servers**: wrap any MCP server as a skill with `skill_from_mcp`
+
+## Additional Features
+
+- **Per-skill state**: Pydantic state models tracked per namespace; state deltas emitted as JSON Patch for the [AG-UI protocol](https://docs.ag-ui.com)
+- **AG-UI streaming**: skill tool calls and state changes stream as `ActivitySnapshotEvent` and `StateDeltaEvent` for real-time UIs
+- **Signing and verification**: identity-based skill signing via [sigstore](https://www.sigstore.dev/), verified at discovery time
+- **CLI**: `haiku-skills list`, `validate`, `sign`, `verify`, and an interactive `chat` TUI
+
+## Built-in skills
+
+The repo ships several skill packages as references and for immediate use:
+
+| Skill | Description |
+|-------|-------------|
+| `web` | Search (Brave) and fetch web pages with readability extraction |
+| `code-execution` | Sandboxed Python execution via Monty |
+| `image-generation` | Image generation with `await llm()` support |
+| `gmail` | Gmail integration |
+| `notifications` | System notifications |
+
+Each is a standalone package: `uv add haiku-skills-web`, `uv add haiku-skills-code-execution`, etc. They register via the `haiku.skills` entrypoints group and are discovered automatically.
 
 ## Documentation
 
