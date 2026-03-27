@@ -11,6 +11,8 @@ from pydantic_ai.models import Model
 from pydantic_ai.settings import ThinkingLevel
 from pydantic_ai.toolsets import AbstractToolset
 
+from haiku.skills.state import SkillRunDepsProtocol
+
 
 @dataclass(frozen=True)
 class StateMetadata:
@@ -88,6 +90,7 @@ class Skill(BaseModel):
     _extras: dict[str, Any] = PrivateAttr(default_factory=dict)
     _thinking: ThinkingLevel | None = PrivateAttr(default=None)
     _factory: Callable[..., "Skill"] | None = PrivateAttr(default=None)
+    _deps_type: type[SkillRunDepsProtocol] | None = PrivateAttr(default=None)
 
     def __init__(
         self,
@@ -98,6 +101,7 @@ class Skill(BaseModel):
         state_namespace: str | None = None,
         extras: dict[str, Any] | None = None,
         thinking: ThinkingLevel | None = None,
+        deps_type: type[SkillRunDepsProtocol] | None = None,
         **data: Any,
     ) -> None:
         super().__init__(**data)
@@ -107,6 +111,7 @@ class Skill(BaseModel):
         self._state_namespace = state_namespace
         self._extras = dict(extras) if extras else {}
         self._thinking = thinking
+        self._deps_type = deps_type
 
     @property
     def tools(self) -> list[Tool | Callable[..., Any]]:
@@ -156,6 +161,14 @@ class Skill(BaseModel):
     def thinking(self, value: ThinkingLevel | None) -> None:
         self._thinking = value
 
+    @property
+    def deps_type(self) -> type[SkillRunDepsProtocol] | None:
+        return self._deps_type
+
+    @deps_type.setter
+    def deps_type(self, value: type[SkillRunDepsProtocol] | None) -> None:
+        self._deps_type = value
+
     def reconfigure(self, **kwargs: Any) -> None:
         """Re-create this skill with new factory arguments.
 
@@ -171,6 +184,7 @@ class Skill(BaseModel):
         self._state_namespace = new_skill._state_namespace
         self._extras = new_skill._extras
         self._thinking = new_skill._thinking
+        self._deps_type = new_skill._deps_type
         self.model = new_skill.model
 
     def state_metadata(self) -> StateMetadata | None:

@@ -21,4 +21,9 @@ from haiku.skills.signing import (
     sign_skill,
     verify_skill,
 )
-from haiku.skills.state import SkillDeps, SkillRunDeps, compute_state_delta
+from haiku.skills.state import (
+    SkillDeps,
+    SkillRunDeps,
+    SkillRunDepsProtocol,
+    compute_state_delta,
+)

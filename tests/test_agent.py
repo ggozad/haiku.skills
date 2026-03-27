@@ -690,6 +690,63 @@ class TestRunSkillWithState:
         assert captured_settings[0] is None
 
 
+class TestRunSkillDepsType:
+    async def test_custom_deps_type_used(self, allow_model_requests: None):
+        """When skill has deps_type, that class is instantiated instead of SkillRunDeps."""
+        from dataclasses import dataclass, field
+
+        sentinel = object()
+
+        @dataclass
+        class CustomDeps(SkillRunDeps):
+            extra: object = field(init=False)
+
+            def __post_init__(self):
+                self.extra = sentinel
+
+        captured_deps: list[Any] = []
+
+        def capture_tool(ctx: RunContext[Any]) -> str:
+            """Capture deps."""
+            captured_deps.append(ctx.deps)
+            return "done"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use capture_tool.",
+            tools=[capture_tool],
+            deps_type=CustomDeps,
+        )
+        state = CounterState(count=3)
+        await _run_skill(TestModel(), skill, "Do it.", state=state)
+        assert len(captured_deps) == 1
+        assert isinstance(captured_deps[0], CustomDeps)
+        assert captured_deps[0].state is state
+        assert captured_deps[0].extra is sentinel
+
+    async def test_without_deps_type_uses_skill_run_deps(
+        self, allow_model_requests: None
+    ):
+        """Without deps_type, tools receive the default SkillRunDeps."""
+        captured_deps: list[Any] = []
+
+        def capture_tool(ctx: RunContext[SkillRunDeps]) -> str:
+            """Capture deps."""
+            captured_deps.append(ctx.deps)
+            return "done"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use capture_tool.",
+            tools=[capture_tool],
+        )
+        await _run_skill(TestModel(), skill, "Do it.")
+        assert len(captured_deps) == 1
+        assert isinstance(captured_deps[0], SkillRunDeps)
+
+
 class TestExecuteSkillEmittedEvents:
     async def test_emitted_events_in_metadata(self, allow_model_requests: None):
         """execute_skill puts emitted CustomEvents in ToolReturn metadata."""
@@ -2167,6 +2224,46 @@ class TestExecuteSkillTool:
             tools["execute_skill_tool"],
         )
         assert result == {"a": 1, "b": 2}
+
+    async def test_uses_deps_type_when_set(self, allow_model_requests: None):
+        """execute_skill_tool uses deps_type when present on the skill."""
+        from dataclasses import dataclass, field
+
+        sentinel = object()
+
+        @dataclass
+        class CustomDeps(SkillRunDeps):
+            extra: object = field(init=False)
+
+            def __post_init__(self):
+                self.extra = sentinel
+
+        captured: list[Any] = []
+
+        def stateful(ctx: RunContext[Any]) -> str:
+            """Capture deps."""
+            captured.append(ctx.deps)
+            return "ok"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="custom", description="Custom deps."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use stateful.",
+            tools=[stateful],
+            deps_type=CustomDeps,
+        )
+        toolset = SkillToolset(skills=[skill], use_subagents=False)
+        ctx = _make_ctx()
+        tools = await toolset.get_tools(ctx)
+        await toolset.call_tool(
+            "execute_skill_tool",
+            {"skill_name": "custom", "tool_name": "stateful", "arguments": {}},
+            ctx,
+            tools["execute_skill_tool"],
+        )
+        assert len(captured) == 1
+        assert isinstance(captured[0], CustomDeps)
+        assert captured[0].extra is sentinel
 
 
 class TestReadSkillResource:
