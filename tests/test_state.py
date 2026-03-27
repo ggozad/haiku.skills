@@ -2,7 +2,12 @@ from ag_ui.core import BaseEvent, CustomEvent, EventType, StateDeltaEvent
 from pydantic import BaseModel
 from pydantic_ai.ui import StateHandler
 
-from haiku.skills.state import SkillDeps, SkillRunDeps, compute_state_delta
+from haiku.skills.state import (
+    SkillDeps,
+    SkillRunDeps,
+    SkillRunDepsProtocol,
+    compute_state_delta,
+)
 
 
 class SampleState(BaseModel):
@@ -31,6 +36,49 @@ class TestSkillRunDeps:
         event = CustomEvent(name="progress", value={"step": 1})
         deps.emit(event)
         assert collected == [event]
+
+
+class TestSkillRunDepsProtocol:
+    def test_skill_run_deps_satisfies_protocol(self):
+        deps = SkillRunDeps()
+        assert isinstance(deps, SkillRunDepsProtocol)
+
+    def test_custom_class_with_state_and_emit_satisfies_protocol(self):
+        from collections.abc import Callable
+        from dataclasses import dataclass
+
+        from ag_ui.core import BaseEvent
+        from pydantic import BaseModel
+
+        @dataclass
+        class CustomDeps:
+            state: BaseModel | None = None
+            emit: Callable[[BaseEvent], None] = lambda _: None
+
+        assert isinstance(CustomDeps(), SkillRunDepsProtocol)
+
+    def test_class_missing_emit_does_not_satisfy_protocol(self):
+        from dataclasses import dataclass
+
+        from pydantic import BaseModel
+
+        @dataclass
+        class MissingEmit:
+            state: BaseModel | None = None
+
+        assert not isinstance(MissingEmit(), SkillRunDepsProtocol)
+
+    def test_class_missing_state_does_not_satisfy_protocol(self):
+        from collections.abc import Callable
+        from dataclasses import dataclass
+
+        from ag_ui.core import BaseEvent
+
+        @dataclass
+        class MissingState:
+            emit: Callable[[BaseEvent], None] = lambda _: None
+
+        assert not isinstance(MissingState(), SkillRunDepsProtocol)
 
 
 class TestSkillDeps:

@@ -262,8 +262,9 @@ async def _run_skill(
                 while emitted_events:
                     await event_sink(emitted_events.pop(0))
 
-    deps = SkillRunDeps(state=state, emit=emit)
-    agent = Agent[SkillRunDeps, str](
+    deps_cls = skill._deps_type or SkillRunDeps
+    deps = deps_cls(state=state, emit=emit)
+    agent = Agent[Any, str](
         model,
         system_prompt=system_prompt,
         tools=tools,
@@ -568,7 +569,8 @@ class SkillToolset(FunctionToolset[Any]):
             def emit(event: BaseEvent) -> None:
                 emitted_events.append(event)
 
-            deps = SkillRunDeps(state=state, emit=emit)
+            deps_cls = skill._deps_type or SkillRunDeps
+            deps = deps_cls(state=state, emit=emit)
             skill_ctx = RunContext(
                 deps=deps,
                 model=ctx.model,

@@ -538,8 +538,86 @@ class TestSkillReconfigure:
         skill.reconfigure(think=True)
         assert skill.thinking == "high"
 
+    def test_reconfigure_replaces_deps_type(self):
+        from dataclasses import dataclass
+
+        from haiku.skills.state import SkillRunDeps
+
+        @dataclass
+        class CustomDeps(SkillRunDeps):
+            extra: int = 0
+
+        def factory(custom: bool = False) -> Skill:
+            return Skill(
+                metadata=SkillMetadata(name="test", description="Test."),
+                source=SkillSource.ENTRYPOINT,
+                deps_type=CustomDeps if custom else None,
+            )
+
+        skill = Skill(
+            metadata=SkillMetadata(name="test", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+        )
+        skill._factory = factory
+        assert skill.deps_type is None
+
+        skill.reconfigure(custom=True)
+        assert skill.deps_type is CustomDeps
+
     def test_reconfigure_without_factory_raises(self):
         meta = SkillMetadata(name="test", description="Test skill.")
         skill = Skill(metadata=meta, source=SkillSource.FILESYSTEM)
         with pytest.raises(RuntimeError, match="no factory"):
             skill.reconfigure()
+
+
+class TestSkillDepsType:
+    def test_deps_type_default_none(self):
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(metadata=meta, source=SkillSource.FILESYSTEM)
+        assert skill.deps_type is None
+
+    def test_deps_type_stored_and_returned(self):
+        from dataclasses import dataclass
+
+        from haiku.skills.state import SkillRunDeps
+
+        @dataclass
+        class CustomDeps(SkillRunDeps):
+            extra: int = 0
+
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(
+            metadata=meta, source=SkillSource.FILESYSTEM, deps_type=CustomDeps
+        )
+        assert skill.deps_type is CustomDeps
+
+    def test_deps_type_settable(self):
+        from dataclasses import dataclass
+
+        from haiku.skills.state import SkillRunDeps
+
+        @dataclass
+        class CustomDeps(SkillRunDeps):
+            extra: int = 0
+
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(metadata=meta, source=SkillSource.FILESYSTEM)
+        skill.deps_type = CustomDeps
+        assert skill.deps_type is CustomDeps
+
+    def test_deps_type_excluded_from_serialization(self):
+        from dataclasses import dataclass
+
+        from haiku.skills.state import SkillRunDeps
+
+        @dataclass
+        class CustomDeps(SkillRunDeps):
+            extra: int = 0
+
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(
+            metadata=meta, source=SkillSource.FILESYSTEM, deps_type=CustomDeps
+        )
+        data = skill.model_dump()
+        assert "deps_type" not in data

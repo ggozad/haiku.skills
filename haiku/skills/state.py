@@ -1,10 +1,23 @@
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
 
 import jsonpatch
 from ag_ui.core import BaseEvent, EventType, StateDeltaEvent
 from pydantic import BaseModel
+
+
+@runtime_checkable
+class SkillRunDepsProtocol(Protocol):
+    """Protocol for dependencies passed to skill sub-agent tools.
+
+    Any concrete deps class satisfying this protocol can be used as skill
+    sub-agent deps, enabling skills to extend the default ``SkillRunDeps``
+    with additional attributes (e.g. a backend for external toolsets).
+    """
+
+    state: BaseModel | None
+    emit: Callable[[BaseEvent], None]
 
 
 @dataclass
