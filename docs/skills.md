@@ -142,6 +142,32 @@ Skills automatically discover resource files — any non-script, non-Python file
 - Resolved paths must stay within the skill directory (traversal defense).
 - Files must be text — binary files raise an error.
 
+## Extras
+
+Skills can carry arbitrary non-tool data via `extras`. This is useful for exposing utility functions or other resources that the consuming app needs but that aren't agent tools:
+
+```python
+def calculate_calories(ingredient: str, grams: float) -> float:
+    ...
+
+skill = Skill(
+    metadata=SkillMetadata(name="recipes", description="Recipe search."),
+    instructions="...",
+    tools=[...],
+    extras={"calculate_calories": calculate_calories},
+)
+```
+
+The app discovers skills via [entrypoints](tutorial.md#entrypoint-skills) and accesses extras by name:
+
+```python
+from haiku.skills.discovery import discover_from_entrypoints
+
+skills = {s.metadata.name: s for s in discover_from_entrypoints()}
+skill = skills["recipes"]
+calories = skill.extras["calculate_calories"]("flour", 200)
+```
+
 ## Per-skill state
 
 Entrypoint skills can declare a Pydantic state model. State is passed to tool functions via `RunContext[SkillRunDeps]` and tracked per namespace on the toolset:
