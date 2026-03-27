@@ -33,6 +33,7 @@ jobs:
           - haiku-skills-code-execution
           - haiku-skills-gmail
           - haiku-skills-notifications
+          - haiku-skills-sandbox
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
