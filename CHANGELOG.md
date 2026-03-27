@@ -6,6 +6,7 @@
 
 - **`SkillRunDepsProtocol`**: New `@runtime_checkable Protocol` that formalizes the contract for skill sub-agent deps (`state` + `emit`). The default `SkillRunDeps` dataclass satisfies it, and so does any subclass.
 - **`deps_type` on `Skill`**: Skills can declare a `deps_type` — any class satisfying `SkillRunDepsProtocol`. When set, the sub-agent is created with `deps_type(state=state, emit=emit)` instead of the default `SkillRunDeps`. This enables skills to integrate external toolsets that require additional context on the deps object.
+- **Sandbox skill** (`haiku-skills-sandbox`): New skill package for Docker-based Python execution via `pydantic-ai-backend`. Runs code in an isolated container with pre-installed data science packages (pandas, numpy, scipy, matplotlib) and host filesystem access. Features idle timeout with automatic container cleanup, session-bound containers via AG-UI state, and configurable workspace mounting.
 
 ## [0.12.0] - 2026-03-27
 

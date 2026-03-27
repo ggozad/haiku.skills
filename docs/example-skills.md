@@ -76,6 +76,28 @@ Configure via environment variables:
 
 Tools: `send_notification`, `read_notifications`.
 
+## sandbox
+
+Docker-based Python execution via [pydantic-ai-backend](https://github.com/vstorm-co/pydantic-ai-backend). Runs code in an isolated container with pre-installed data science packages and host filesystem access.
+
+```bash
+uv add haiku-skills-sandbox
+```
+
+Requires Docker and a pre-built image:
+
+```bash
+docker build -t haiku-skills-sandbox:latest skills/sandbox/haiku_skills_sandbox/
+```
+
+Configure via environment variables:
+
+- `HAIKU_SKILLS_SANDBOX_WORKSPACE` — Host directory mounted at `/workspace` in the container
+- `HAIKU_SKILLS_SANDBOX_IDLE_TIMEOUT` — Seconds of inactivity before container is stopped (default: 3600)
+- `HAIKU_SKILLS_SANDBOX_IMAGE` — Docker image to use (default: `haiku-skills-sandbox:latest`)
+
+Tools (via ConsoleToolset): `ls`, `read_file`, `write_file`, `edit_file`, `glob`, `grep`, `execute`.
+
 ## External: RAG
 
 For retrieval-augmented generation, the separate [haiku.rag](https://github.com/ggozad/haiku.rag) project provides a RAG skill. Install independently:
