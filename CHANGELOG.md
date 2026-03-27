@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-03-27
+
 ### Added
 
 - **`SkillsCapability`**: New pydantic-ai capability wrapping `SkillToolset` + system prompt. Provides a single-line integration path via `Agent(capabilities=[SkillsCapability(...)])`. `SkillToolset` remains available for advanced use cases.
@@ -276,7 +278,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.11.0...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.12.0...HEAD
+[0.12.0]: https://github.com/ggozad/haiku.skills/compare/0.11.0...0.12.0
 [0.11.0]: https://github.com/ggozad/haiku.skills/compare/0.10.0...0.11.0
 [0.10.0]: https://github.com/ggozad/haiku.skills/compare/0.9.1...0.10.0
 [0.9.1]: https://github.com/ggozad/haiku.skills/compare/0.9.0...0.9.1
