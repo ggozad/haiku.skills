@@ -13,6 +13,7 @@ from haiku.skills.parser import parse_skill_md
 from haiku.skills.state import SkillRunDeps
 
 IDLE_TIMEOUT_DEFAULT = 3600
+IMAGE_DEFAULT = "haiku-skills-sandbox:latest"
 
 _sandboxes: dict[str, DockerSandbox] = {}
 _last_active: dict[str, float] = {}
@@ -57,8 +58,15 @@ class SandboxState(BaseModel):
     session_id: str | None = None
 
 
+def _resolve_image() -> str:
+    env = os.environ.get("HAIKU_SKILLS_SANDBOX_IMAGE")
+    return env if env else IMAGE_DEFAULT
+
+
 def _get_sandbox(
-    state: SandboxState | None, workspace: Path | None = None
+    state: SandboxState | None,
+    workspace: Path | None = None,
+    image: str | None = None,
 ) -> DockerSandbox:
     _cleanup_stale()
 
@@ -69,7 +77,7 @@ def _get_sandbox(
     session_id = str(uuid4())
     volumes = {str(workspace): "/workspace"} if workspace else None
     sandbox = DockerSandbox(
-        image="haiku-sandbox:latest",
+        image=image or _resolve_image(),
         session_id=session_id,
         volumes=volumes,
     )
@@ -81,7 +89,9 @@ def _get_sandbox(
 
 
 def create_skill(
-    workspace: Path | None = None, idle_timeout: int | None = None
+    workspace: Path | None = None,
+    idle_timeout: int | None = None,
+    image: str | None = None,
 ) -> Skill:
     global _idle_timeout_override
 
@@ -101,7 +111,7 @@ def create_skill(
 
         def __post_init__(self) -> None:
             state = self.state if isinstance(self.state, SandboxState) else None
-            self.backend = _get_sandbox(state, workspace)
+            self.backend = _get_sandbox(state, workspace, image)
 
     metadata, instructions = parse_skill_md(Path(__file__).parent / "SKILL.md")
     return Skill(

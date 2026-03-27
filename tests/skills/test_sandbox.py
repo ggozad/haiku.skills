@@ -294,6 +294,54 @@ class TestIdleCleanup:
             haiku_skills_sandbox._idle_timeout_override = old
 
 
+class TestImage:
+    def test_default_image(self):
+        from haiku_skills_sandbox import IMAGE_DEFAULT, _resolve_image
+
+        assert _resolve_image() == IMAGE_DEFAULT
+
+    def test_image_from_env(self, monkeypatch):
+        from haiku_skills_sandbox import _resolve_image
+
+        monkeypatch.setenv("HAIKU_SKILLS_SANDBOX_IMAGE", "custom:v1")
+        assert _resolve_image() == "custom:v1"
+
+    def test_image_from_create_skill(self):
+        from haiku_skills_sandbox import SandboxState, _sandboxes, create_skill
+
+        _sandboxes.clear()
+        skill = create_skill(image="my-image:latest")
+        assert skill.deps_type is not None
+        state = SandboxState()
+
+        with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
+            mock_instance = MagicMock()
+            MockSandbox.return_value = mock_instance
+
+            skill.deps_type(state=state, emit=lambda _: None)
+
+        call_kwargs = MockSandbox.call_args[1]
+        assert call_kwargs["image"] == "my-image:latest"
+
+    def test_create_skill_image_overrides_env(self, monkeypatch):
+        from haiku_skills_sandbox import SandboxState, _sandboxes, create_skill
+
+        monkeypatch.setenv("HAIKU_SKILLS_SANDBOX_IMAGE", "env-image:v1")
+        _sandboxes.clear()
+        skill = create_skill(image="explicit:v2")
+        assert skill.deps_type is not None
+        state = SandboxState()
+
+        with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
+            mock_instance = MagicMock()
+            MockSandbox.return_value = mock_instance
+
+            skill.deps_type(state=state, emit=lambda _: None)
+
+        call_kwargs = MockSandbox.call_args[1]
+        assert call_kwargs["image"] == "explicit:v2"
+
+
 class TestCleanup:
     def test_cleanup_stops_all_sandboxes(self):
         from haiku_skills_sandbox import _cleanup_sandboxes, _sandboxes

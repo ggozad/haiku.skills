@@ -7,7 +7,7 @@ Docker sandbox skill for [haiku.skills](https://github.com/ggozad/haiku.skills).
 Build the Docker image (once):
 
 ```bash
-docker build -t haiku-sandbox:latest skills/sandbox/haiku_skills_sandbox/
+docker build -t haiku-skills-sandbox:latest skills/sandbox/haiku_skills_sandbox/
 ```
 
 ## Usage
@@ -27,6 +27,7 @@ from haiku_skills_sandbox import create_skill
 skill = create_skill(
     workspace=Path("/path/to/data"),  # mounted at /workspace in the container
     idle_timeout=1800,                # stop container after 30min idle (default: 1h)
+    image="my-custom-image:latest",   # custom Docker image (default: haiku-skills-sandbox:latest)
 )
 ```
 
@@ -36,6 +37,7 @@ skill = create_skill(
 |-----------|---------|---------|-------------|
 | `workspace` | `HAIKU_SKILLS_SANDBOX_WORKSPACE` | None | Host directory mounted at `/workspace` in the container |
 | `idle_timeout` | `HAIKU_SKILLS_SANDBOX_IDLE_TIMEOUT` | 3600 | Seconds of inactivity before the container is stopped |
+| `image` | `HAIKU_SKILLS_SANDBOX_IMAGE` | `haiku-skills-sandbox:latest` | Docker image to use for the container |
 
 Priority: `create_skill()` argument > environment variable > default.
 
@@ -49,4 +51,4 @@ Priority: `create_skill()` argument > environment variable > default.
 
 ## Pre-installed packages
 
-The `haiku-sandbox:latest` image includes: pandas, numpy, scipy, matplotlib. No internet access inside the container.
+The `haiku-skills-sandbox:latest` image includes: pandas, numpy, scipy, matplotlib. No internet access inside the container.

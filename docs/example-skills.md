@@ -87,13 +87,14 @@ uv add haiku-skills-sandbox
 Requires Docker and a pre-built image:
 
 ```bash
-docker build -t haiku-sandbox:latest skills/sandbox/haiku_skills_sandbox/
+docker build -t haiku-skills-sandbox:latest skills/sandbox/haiku_skills_sandbox/
 ```
 
 Configure via environment variables:
 
 - `HAIKU_SKILLS_SANDBOX_WORKSPACE` — Host directory mounted at `/workspace` in the container
 - `HAIKU_SKILLS_SANDBOX_IDLE_TIMEOUT` — Seconds of inactivity before container is stopped (default: 3600)
+- `HAIKU_SKILLS_SANDBOX_IMAGE` — Docker image to use (default: `haiku-skills-sandbox:latest`)
 
 Tools (via ConsoleToolset): `ls`, `read_file`, `write_file`, `edit_file`, `glob`, `grep`, `execute`.
 
