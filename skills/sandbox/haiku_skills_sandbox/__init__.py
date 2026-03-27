@@ -17,23 +17,26 @@ IMAGE_DEFAULT = "haiku-skills-sandbox:latest"
 
 _sandboxes: dict[str, DockerSandbox] = {}
 _last_active: dict[str, float] = {}
-_idle_timeout_override: int | None = None
+_timeouts: dict[str, int] = {}
 
 
-def _idle_timeout() -> int:
-    if _idle_timeout_override is not None:
-        return _idle_timeout_override
+def _default_idle_timeout() -> int:
     env = os.environ.get("HAIKU_SKILLS_SANDBOX_IDLE_TIMEOUT")
     return int(env) if env else IDLE_TIMEOUT_DEFAULT
 
 
 def _cleanup_stale() -> None:
-    timeout = _idle_timeout()
     now = time.monotonic()
-    stale = [sid for sid, t in _last_active.items() if now - t > timeout]
+    default_timeout = _default_idle_timeout()
+    stale = [
+        sid
+        for sid, t in _last_active.items()
+        if now - t > _timeouts.get(sid, default_timeout)
+    ]
     for sid in stale:
         sandbox = _sandboxes.pop(sid, None)
         _last_active.pop(sid, None)
+        _timeouts.pop(sid, None)
         if sandbox:
             try:
                 sandbox.stop()
@@ -49,6 +52,7 @@ def _cleanup_sandboxes() -> None:
             pass
     _sandboxes.clear()
     _last_active.clear()
+    _timeouts.clear()
 
 
 atexit.register(_cleanup_sandboxes)
@@ -67,6 +71,7 @@ def _get_sandbox(
     state: SandboxState | None,
     workspace: Path | None = None,
     image: str | None = None,
+    idle_timeout: int | None = None,
 ) -> DockerSandbox:
     _cleanup_stale()
 
@@ -83,6 +88,8 @@ def _get_sandbox(
     )
     _sandboxes[session_id] = sandbox
     _last_active[session_id] = time.monotonic()
+    if idle_timeout is not None:
+        _timeouts[session_id] = idle_timeout
     if state:
         state.session_id = session_id
     return sandbox
@@ -93,15 +100,10 @@ def create_skill(
     idle_timeout: int | None = None,
     image: str | None = None,
 ) -> Skill:
-    global _idle_timeout_override
-
     if workspace is None:
         env = os.environ.get("HAIKU_SKILLS_SANDBOX_WORKSPACE")
         if env:
             workspace = Path(env)
-
-    if idle_timeout is not None:
-        _idle_timeout_override = idle_timeout
 
     from dataclasses import dataclass, field
 
@@ -111,7 +113,7 @@ def create_skill(
 
         def __post_init__(self) -> None:
             state = self.state if isinstance(self.state, SandboxState) else None
-            self.backend = _get_sandbox(state, workspace, image)
+            self.backend = _get_sandbox(state, workspace, image, idle_timeout)
 
     metadata, instructions = parse_skill_md(Path(__file__).parent / "SKILL.md")
     return Skill(

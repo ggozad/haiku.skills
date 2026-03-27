@@ -258,40 +258,89 @@ class TestIdleCleanup:
 
         assert result is new_sandbox
 
-    def test_timeout_configurable_via_env(self, monkeypatch):
+    def test_default_timeout_from_env(self, monkeypatch):
         import haiku_skills_sandbox
 
-        monkeypatch.setattr(haiku_skills_sandbox, "_idle_timeout_override", None)
         assert (
-            haiku_skills_sandbox._idle_timeout()
+            haiku_skills_sandbox._default_idle_timeout()
             == haiku_skills_sandbox.IDLE_TIMEOUT_DEFAULT
         )
 
         monkeypatch.setenv("HAIKU_SKILLS_SANDBOX_IDLE_TIMEOUT", "120")
-        assert haiku_skills_sandbox._idle_timeout() == 120
+        assert haiku_skills_sandbox._default_idle_timeout() == 120
 
-    def test_timeout_configurable_via_create_skill(self):
-        import haiku_skills_sandbox
-        from haiku_skills_sandbox import create_skill
+    def test_per_sandbox_timeout_via_create_skill(self):
+        import time
 
-        old = haiku_skills_sandbox._idle_timeout_override
-        try:
-            create_skill(idle_timeout=300)
-            assert haiku_skills_sandbox._idle_timeout() == 300
-        finally:
-            haiku_skills_sandbox._idle_timeout_override = old
+        from haiku_skills_sandbox import (
+            SandboxState,
+            _last_active,
+            _sandboxes,
+            _timeouts,
+            create_skill,
+        )
 
-    def test_create_skill_override_takes_precedence_over_env(self, monkeypatch):
-        import haiku_skills_sandbox
-        from haiku_skills_sandbox import create_skill
+        _sandboxes.clear()
+        _last_active.clear()
+        _timeouts.clear()
 
-        monkeypatch.setenv("HAIKU_SKILLS_SANDBOX_IDLE_TIMEOUT", "120")
-        old = haiku_skills_sandbox._idle_timeout_override
-        try:
-            create_skill(idle_timeout=60)
-            assert haiku_skills_sandbox._idle_timeout() == 60
-        finally:
-            haiku_skills_sandbox._idle_timeout_override = old
+        skill = create_skill(idle_timeout=10)
+        assert skill.deps_type is not None
+        state = SandboxState()
+
+        with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
+            old_sandbox = MagicMock()
+            new_sandbox = MagicMock()
+            MockSandbox.side_effect = [old_sandbox, new_sandbox]
+
+            skill.deps_type(state=state, emit=lambda _: None)
+            session_id = state.session_id
+            assert session_id is not None
+            assert _timeouts[session_id] == 10
+
+            # Simulate idle beyond the per-sandbox timeout
+            _last_active[session_id] = time.monotonic() - 20
+
+            skill.deps_type(state=state, emit=lambda _: None)
+
+        old_sandbox.stop.assert_called_once()
+
+    def test_per_sandbox_timeout_overrides_env(self, monkeypatch):
+        import time
+
+        from haiku_skills_sandbox import (
+            SandboxState,
+            _last_active,
+            _sandboxes,
+            _timeouts,
+            create_skill,
+        )
+
+        monkeypatch.setenv("HAIKU_SKILLS_SANDBOX_IDLE_TIMEOUT", "9999")
+        _sandboxes.clear()
+        _last_active.clear()
+        _timeouts.clear()
+
+        skill = create_skill(idle_timeout=10)
+        assert skill.deps_type is not None
+        state = SandboxState()
+
+        with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
+            old_sandbox = MagicMock()
+            new_sandbox = MagicMock()
+            MockSandbox.side_effect = [old_sandbox, new_sandbox]
+
+            skill.deps_type(state=state, emit=lambda _: None)
+            session_id = state.session_id
+            assert session_id is not None
+
+            # Idle beyond per-sandbox timeout (10s) but within env timeout (9999s)
+            _last_active[session_id] = time.monotonic() - 20
+
+            skill.deps_type(state=state, emit=lambda _: None)
+
+        # Per-sandbox timeout wins — sandbox is cleaned up
+        old_sandbox.stop.assert_called_once()
 
 
 class TestImage:
