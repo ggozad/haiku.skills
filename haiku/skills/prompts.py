@@ -14,9 +14,10 @@ _SUBAGENT_PROMPT = """\
 - Each skill runs as an isolated agent with NO shared memory or context. \
 A skill can only see what you put in its request — it has no access to \
 the conversation, previous skill results, or any other context
-- When chaining skills, you MUST include the actual data in the request. \
-Never say "store what was found" or "use the previous results" — \
-paste the concrete information into the request text
+- Each skill request MUST be entirely self-contained. Include all data, \
+parameters, file names, and context the skill needs to complete the task. \
+Never reference the conversation, previous skill results, or assume \
+shared knowledge
 - The user cannot see skill responses directly. You must synthesize the \
 information returned by skills into your own reply\
 """
