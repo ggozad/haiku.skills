@@ -185,6 +185,7 @@ class ChatApp(App):
                 self._toolset.skill_catalog, use_subagents=self._use_subagents
             ),
             toolsets=[self._toolset],
+            retries=3,
         )
         self._state = self._toolset.build_state_snapshot()
         self.query_one(Input).focus()
