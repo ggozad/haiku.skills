@@ -1,7 +1,9 @@
 """Tests for the sandbox skill package."""
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
+
+from pydantic_ai_backends.types import EditResult, ExecuteResponse, WriteResult
 
 from haiku.skills.state import SkillRunDeps, SkillRunDepsProtocol
 
@@ -445,6 +447,7 @@ class TestSandboxRunDeps:
 
     def test_backend_uses_state_for_session_binding(self):
         from haiku_skills_sandbox import (
+            InstrumentedSandbox,
             SandboxState,
             _sandboxes,
             create_skill,
@@ -465,7 +468,10 @@ class TestSandboxRunDeps:
         assert session_id is not None
         deps2 = skill.deps_type(state=state, emit=lambda _: None)
 
-        assert deps1.backend is deps2.backend
+        # Both wrap the same underlying backend
+        assert isinstance(deps1.backend, InstrumentedSandbox)
+        assert isinstance(deps2.backend, InstrumentedSandbox)
+        assert deps1.backend._backend is deps2.backend._backend
 
     def test_workspace_captured_in_closure(self):
         from haiku_skills_sandbox import SandboxState, _sandboxes, create_skill
@@ -483,3 +489,278 @@ class TestSandboxRunDeps:
 
         call_kwargs = MockSandbox.call_args[1]
         assert call_kwargs["volumes"] == {"/my/data": "/workspace"}
+
+
+class TestExecution:
+    def test_defaults(self):
+        from haiku_skills_sandbox import Execution
+
+        e = Execution(command="ls")
+        assert e.command == "ls"
+        assert e.exit_code is None
+        assert e.output == ""
+        assert e.truncated is False
+
+    def test_full_construction(self):
+        from haiku_skills_sandbox import Execution
+
+        e = Execution(command="echo hi", exit_code=0, output="hi\n", truncated=False)
+        assert e.command == "echo hi"
+        assert e.exit_code == 0
+        assert e.output == "hi\n"
+        assert e.truncated is False
+
+
+class TestFileOperation:
+    def test_read(self):
+        from haiku_skills_sandbox import FileOperation
+
+        op = FileOperation(operation="read", path="/tmp/f.txt")
+        assert op.operation == "read"
+        assert op.path == "/tmp/f.txt"
+
+    def test_write(self):
+        from haiku_skills_sandbox import FileOperation
+
+        op = FileOperation(operation="write", path="/tmp/f.txt")
+        assert op.operation == "write"
+
+    def test_edit(self):
+        from haiku_skills_sandbox import FileOperation
+
+        op = FileOperation(operation="edit", path="/tmp/f.txt")
+        assert op.operation == "edit"
+
+
+class TestSandboxStateEnhanced:
+    def test_default_lists_are_empty(self):
+        from haiku_skills_sandbox import SandboxState
+
+        state = SandboxState()
+        assert state.executions == []
+        assert state.file_operations == []
+
+    def test_serialization_round_trip(self):
+        from haiku_skills_sandbox import Execution, FileOperation, SandboxState
+
+        state = SandboxState(
+            session_id="abc",
+            executions=[Execution(command="ls", exit_code=0, output="foo")],
+            file_operations=[FileOperation(operation="write", path="/tmp/x")],
+        )
+        data = state.model_dump(mode="json")
+        restored = SandboxState.model_validate(data)
+        assert restored == state
+
+
+class TestInstrumentedSandbox:
+    def _make(self, state=None):
+        from haiku_skills_sandbox import InstrumentedSandbox, SandboxState
+
+        backend = MagicMock()
+        if state is None:
+            state = SandboxState(session_id="test-session")
+        return InstrumentedSandbox(backend, state), backend, state
+
+    def test_execute_records_to_state(self):
+        wrapper, backend, state = self._make()
+        backend.execute.return_value = ExecuteResponse(
+            output="hello", exit_code=0, truncated=False
+        )
+
+        result = wrapper.execute("echo hello")
+
+        assert result.output == "hello"
+        assert result.exit_code == 0
+        assert len(state.executions) == 1
+        assert state.executions[0].command == "echo hello"
+        assert state.executions[0].exit_code == 0
+        assert state.executions[0].output == "hello"
+        assert state.executions[0].truncated is False
+
+    def test_execute_truncates_output_in_state(self):
+        from haiku_skills_sandbox import MAX_OUTPUT_CHARS
+
+        wrapper, backend, state = self._make()
+        long_output = "x" * (MAX_OUTPUT_CHARS + 100)
+        backend.execute.return_value = ExecuteResponse(
+            output=long_output, exit_code=0, truncated=False
+        )
+
+        result = wrapper.execute("cat bigfile")
+
+        # Original result is untouched
+        assert len(result.output) == MAX_OUTPUT_CHARS + 100
+        # State copy is truncated
+        assert len(state.executions[0].output) == MAX_OUTPUT_CHARS
+
+    def test_execute_caps_list_at_max(self):
+        from haiku_skills_sandbox import MAX_EXECUTIONS, Execution, SandboxState
+
+        state = SandboxState(
+            session_id="s",
+            executions=[Execution(command=f"cmd-{i}") for i in range(MAX_EXECUTIONS)],
+        )
+        wrapper, backend, _ = self._make(state=state)
+        backend.execute.return_value = ExecuteResponse(
+            output="", exit_code=0, truncated=False
+        )
+
+        wrapper.execute("new-cmd")
+
+        assert len(state.executions) == MAX_EXECUTIONS
+        assert state.executions[0].command == "cmd-1"  # oldest dropped
+        assert state.executions[-1].command == "new-cmd"
+
+    def test_read_records_file_operation(self):
+        wrapper, backend, state = self._make()
+        backend.read.return_value = "file content"
+
+        result = wrapper.read("/tmp/f.txt")
+
+        assert result == "file content"
+        assert len(state.file_operations) == 1
+        assert state.file_operations[0].operation == "read"
+        assert state.file_operations[0].path == "/tmp/f.txt"
+
+    def test_read_passes_args(self):
+        wrapper, backend, state = self._make()
+        backend.read.return_value = "line"
+
+        wrapper.read("/f.txt", offset=5, limit=10)
+
+        backend.read.assert_called_once_with("/f.txt", offset=5, limit=10)
+
+    def test_write_records_on_success(self):
+        wrapper, backend, state = self._make()
+        backend.write.return_value = WriteResult(path="/tmp/f.txt", error=None)
+
+        result = wrapper.write("/tmp/f.txt", "content")
+
+        assert result.path == "/tmp/f.txt"
+        assert len(state.file_operations) == 1
+        assert state.file_operations[0].operation == "write"
+        assert state.file_operations[0].path == "/tmp/f.txt"
+
+    def test_write_does_not_record_on_error(self):
+        wrapper, backend, state = self._make()
+        backend.write.return_value = WriteResult(path=None, error="permission denied")
+
+        result = wrapper.write("/tmp/f.txt", "content")
+
+        assert result.error == "permission denied"
+        assert len(state.file_operations) == 0
+
+    def test_edit_records_on_success(self):
+        wrapper, backend, state = self._make()
+        backend.edit.return_value = EditResult(
+            path="/tmp/f.txt", error=None, occurrences=1
+        )
+
+        result = wrapper.edit("/tmp/f.txt", "old", "new")
+
+        assert result.path == "/tmp/f.txt"
+        assert len(state.file_operations) == 1
+        assert state.file_operations[0].operation == "edit"
+        assert state.file_operations[0].path == "/tmp/f.txt"
+
+    def test_edit_does_not_record_on_error(self):
+        wrapper, backend, state = self._make()
+        backend.edit.return_value = EditResult(
+            path=None, error="not found", occurrences=None
+        )
+
+        wrapper.edit("/tmp/f.txt", "old", "new")
+
+        assert len(state.file_operations) == 0
+
+    def test_edit_passes_replace_all(self):
+        wrapper, backend, state = self._make()
+        backend.edit.return_value = EditResult(path="/f.txt", error=None, occurrences=3)
+
+        wrapper.edit("/f.txt", "a", "b", replace_all=True)
+
+        backend.edit.assert_called_once_with("/f.txt", "a", "b", replace_all=True)
+
+    def test_file_operations_caps_at_max(self):
+        from haiku_skills_sandbox import (
+            MAX_FILE_OPERATIONS,
+            FileOperation,
+            SandboxState,
+        )
+
+        state = SandboxState(
+            session_id="s",
+            file_operations=[
+                FileOperation(operation="read", path=f"/f-{i}")
+                for i in range(MAX_FILE_OPERATIONS)
+            ],
+        )
+        wrapper, backend, _ = self._make(state=state)
+        backend.read.return_value = "content"
+
+        wrapper.read("/new-file")
+
+        assert len(state.file_operations) == MAX_FILE_OPERATIONS
+        assert state.file_operations[0].path == "/f-1"  # oldest dropped
+        assert state.file_operations[-1].path == "/new-file"
+
+    def test_getattr_delegates(self):
+        wrapper, backend, _ = self._make()
+        backend.ls_info.return_value = ["file1"]
+
+        result = wrapper.ls_info("/tmp")
+
+        backend.ls_info.assert_called_once_with("/tmp")
+        assert result == ["file1"]
+
+    def test_id_property(self):
+        wrapper, backend, _ = self._make()
+        type(backend).id = PropertyMock(return_value="container-123")
+
+        assert wrapper.id == "container-123"
+
+    def test_session_id_property(self):
+        wrapper, backend, _ = self._make()
+        type(backend).session_id = PropertyMock(return_value="sess-456")
+
+        assert wrapper.session_id == "sess-456"
+
+
+class TestSandboxRunDepsInstrumented:
+    def test_uses_instrumented_backend_with_state(self):
+        from haiku_skills_sandbox import (
+            InstrumentedSandbox,
+            SandboxState,
+            _sandboxes,
+            create_skill,
+        )
+
+        _sandboxes.clear()
+        skill = create_skill()
+        assert skill.deps_type is not None
+        state = SandboxState()
+
+        with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
+            mock_instance = MagicMock()
+            MockSandbox.return_value = mock_instance
+
+            deps = skill.deps_type(state=state, emit=lambda _: None)
+
+        assert isinstance(deps.backend, InstrumentedSandbox)
+
+    def test_uses_raw_backend_without_state(self):
+        from haiku_skills_sandbox import InstrumentedSandbox, _sandboxes, create_skill
+
+        _sandboxes.clear()
+        skill = create_skill()
+        assert skill.deps_type is not None
+
+        with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
+            mock_instance = MagicMock()
+            MockSandbox.return_value = mock_instance
+
+            deps = skill.deps_type(state=None, emit=lambda _: None)
+
+        assert not isinstance(deps.backend, InstrumentedSandbox)
+        assert deps.backend is mock_instance

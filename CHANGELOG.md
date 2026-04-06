@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Sandbox state tracking**: `SandboxState` now tracks `executions` (command, exit code, truncated output) and `file_operations` (read/write/edit with path) via an `InstrumentedSandbox` wrapper that transparently records backend operations. Lists are capped at 50 entries; execution output is truncated to 500 chars in state.
+
 ## [0.13.0] - 2026-03-27
 
 ### Added
