@@ -150,8 +150,18 @@ class TestRunSkill:
         result, events, _ = await _run_skill(TestModel(), skill, "Greet Alice.")
         assert result
         assert len(events) >= 2
-        call_events = [e for e in events if isinstance(e, FunctionToolCallEvent)]
-        result_events = [e for e in events if isinstance(e, FunctionToolResultEvent)]
+        call_events = [
+            e
+            for e in events
+            if isinstance(e, ActivitySnapshotEvent)
+            and e.activity_type == "skill_tool_call"
+        ]
+        result_events = [
+            e
+            for e in events
+            if isinstance(e, ActivitySnapshotEvent)
+            and e.activity_type == "skill_tool_result"
+        ]
         assert len(call_events) >= 1
         assert len(result_events) >= 1
 
@@ -1619,6 +1629,17 @@ class TestEventsToActivity:
         """Non-tool events are skipped."""
         result = _events_to_activity("skill", ["not_an_event", 42])
         assert result == []
+
+    def test_sets_timestamp_on_events(self):
+        """Each ActivitySnapshotEvent gets a millisecond timestamp."""
+        part = ToolCallPart(
+            tool_name="search", args='{"q": "x"}', tool_call_id="call-1"
+        )
+        event = FunctionToolCallEvent(part=part)
+
+        result = _events_to_activity("web", [event])
+        assert result[0].timestamp is not None
+        assert isinstance(result[0].timestamp, int)
 
 
 class TestPromptScriptsSection:
