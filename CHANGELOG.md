@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-04-07
+
 ### Fixed
 
 - **ActivitySnapshotEvent timestamps**: Events now carry a millisecond timestamp set at creation time. Previously, events were emitted with `timestamp=None` and stamped downstream in a batch, causing all events from a skill sub-agent run to share the same timestamp. Events are also now converted eagerly as they arrive rather than batch-converted after the skill finishes.
@@ -290,7 +292,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.13.0...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.13.1...HEAD
+[0.13.1]: https://github.com/ggozad/haiku.skills/compare/0.13.0...0.13.1
 [0.13.0]: https://github.com/ggozad/haiku.skills/compare/0.12.0...0.13.0
 [0.12.0]: https://github.com/ggozad/haiku.skills/compare/0.11.0...0.12.0
 [0.11.0]: https://github.com/ggozad/haiku.skills/compare/0.10.0...0.11.0

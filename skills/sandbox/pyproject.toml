@@ -1,6 +1,6 @@
 [project]
 name = "haiku-skills-sandbox"
-version = "0.13.0"
+version = "0.13.1"
 description = "Docker sandbox skill for haiku.skills"
 authors = [{ name = "Yiorgis Gozadinos", email = "ggozadinos@gmail.com" }]
 license = { text = "MIT" }
@@ -15,7 +15,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Typing :: Typed",
 ]
-dependencies = ["haiku.skills>=0.13.0", "pydantic-ai-backend[docker,console]>=0.1.9"]
+dependencies = ["haiku.skills>=0.13.1", "pydantic-ai-backend[docker,console]>=0.1.9"]
 
 [project.urls]
 Homepage = "https://github.com/ggozad/haiku.skills"
