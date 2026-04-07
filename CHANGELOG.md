@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **ActivitySnapshotEvent timestamps**: Events now carry a millisecond timestamp set at creation time. Previously, events were emitted with `timestamp=None` and stamped downstream in a batch, causing all events from a skill sub-agent run to share the same timestamp. Events are also now converted eagerly as they arrive rather than batch-converted after the skill finishes.
+
 ## [0.13.0] - 2026-03-27
 
 ### Added

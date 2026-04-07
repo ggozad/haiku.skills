@@ -4,6 +4,7 @@ import json
 import os
 import shlex
 import sys
+import time
 from collections.abc import AsyncIterable, Awaitable, Callable
 from pathlib import Path
 from typing import Any
@@ -73,6 +74,7 @@ def _events_to_activity(skill_name: str, events: list[Any]) -> list[BaseEvent]:
             result.append(
                 ActivitySnapshotEvent(
                     type=EventType.ACTIVITY_SNAPSHOT,
+                    timestamp=int(time.time() * 1000),
                     activity_type="skill_tool_call",
                     message_id=f"{skill_name}:{event.tool_call_id}",
                     replace=False,
@@ -88,6 +90,7 @@ def _events_to_activity(skill_name: str, events: list[Any]) -> list[BaseEvent]:
             result.append(
                 ActivitySnapshotEvent(
                     type=EventType.ACTIVITY_SNAPSHOT,
+                    timestamp=int(time.time() * 1000),
                     activity_type="skill_tool_result",
                     message_id=f"{skill_name}:{event.tool_call_id}",
                     replace=True,
@@ -208,7 +211,7 @@ async def _run_skill(
     request: str,
     state: BaseModel | None = None,
     event_sink: Callable[[BaseEvent], Awaitable[None]] | None = None,
-) -> tuple[str, list[Any], list[BaseEvent]]:
+) -> tuple[str, list[BaseEvent], list[BaseEvent]]:
     instructions = skill.instructions or "No specific instructions."
     resource_section = ""
     scripts_section = ""
@@ -239,7 +242,7 @@ async def _run_skill(
         scripts_section=scripts_section,
     )
 
-    collected_events: list[Any] = []
+    collected_events: list[BaseEvent] = []
     emitted_events: list[BaseEvent] = []
     skill_name = skill.metadata.name
 
@@ -252,11 +255,11 @@ async def _run_skill(
     ) -> None:
         async for event in events:
             if isinstance(event, (FunctionToolCallEvent, FunctionToolResultEvent)):
-                if event_sink is not None:
-                    for agui_event in _events_to_activity(skill_name, [event]):
+                for agui_event in _events_to_activity(skill_name, [event]):
+                    if event_sink is not None:
                         await event_sink(agui_event)
-                else:
-                    collected_events.append(event)
+                    else:
+                        collected_events.append(agui_event)
             # Flush emitted events at tool-call boundaries
             if event_sink is not None:
                 while emitted_events:
@@ -483,9 +486,7 @@ class SkillToolset(FunctionToolset[Any]):
 
             metadata: list[BaseEvent] = []
             if not event_sink:
-                metadata.extend(
-                    _events_to_activity(skill.metadata.name, collected_events)
-                )
+                metadata.extend(collected_events)
                 metadata.extend(emitted_events)
 
             return self._wrap_result(result, namespace, state, old_snapshot, metadata)
