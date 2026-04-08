@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **`Skill.reconfigure()` now copies `instructions` and `resources`**: Previously, `reconfigure()` silently dropped `instructions` and `resources` from the factory-produced skill, causing factory-generated instructions (e.g. config-dependent preambles) to be lost after reconfiguration.
+
 ## [0.13.1] - 2026-04-07
 
 ### Fixed

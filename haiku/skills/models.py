@@ -173,7 +173,8 @@ class Skill(BaseModel):
         """Re-create this skill with new factory arguments.
 
         Calls the stored factory with the given kwargs and copies all
-        private attributes and model from the result.
+        private attributes, model, instructions, and resources from
+        the result. Metadata, source, path, and verified are preserved.
         """
         if self._factory is None:
             raise RuntimeError("Skill has no factory — cannot reconfigure")
@@ -186,6 +187,8 @@ class Skill(BaseModel):
         self._thinking = new_skill._thinking
         self._deps_type = new_skill._deps_type
         self.model = new_skill.model
+        self.instructions = new_skill.instructions
+        self.resources = new_skill.resources
 
     def state_metadata(self) -> StateMetadata | None:
         if self._state_type is None or self._state_namespace is None:

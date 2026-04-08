@@ -511,7 +511,45 @@ class TestSkillReconfigure:
         assert skill.metadata.name == "test"
         assert skill.metadata.description == "Original description."
         assert skill.source == SkillSource.ENTRYPOINT
-        assert skill.instructions == "original instructions"
+        assert skill.instructions == "new instructions"
+
+    def test_reconfigure_replaces_instructions(self):
+        def factory(domain: str = "default") -> Skill:
+            return Skill(
+                metadata=SkillMetadata(name="test", description="Test."),
+                source=SkillSource.ENTRYPOINT,
+                instructions=f"You are a {domain} assistant.",
+            )
+
+        skill = Skill(
+            metadata=SkillMetadata(name="test", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="You are a default assistant.",
+        )
+        skill._factory = factory
+        assert skill.instructions == "You are a default assistant."
+
+        skill.reconfigure(domain="finance")
+        assert skill.instructions == "You are a finance assistant."
+
+    def test_reconfigure_replaces_resources(self):
+        def factory(lang: str = "en") -> Skill:
+            return Skill(
+                metadata=SkillMetadata(name="test", description="Test."),
+                source=SkillSource.ENTRYPOINT,
+                resources=[f"references/{lang}/REFERENCE.md"],
+            )
+
+        skill = Skill(
+            metadata=SkillMetadata(name="test", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            resources=["references/en/REFERENCE.md"],
+        )
+        skill._factory = factory
+        assert skill.resources == ["references/en/REFERENCE.md"]
+
+        skill.reconfigure(lang="fr")
+        assert skill.resources == ["references/fr/REFERENCE.md"]
 
     def test_thinking(self):
         meta = SkillMetadata(name="test", description="Test skill.")
