@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.13.2] - 2026-04-08
+
 ### Fixed
 
 - **`Skill.reconfigure()` now copies `instructions` and `resources`**: Previously, `reconfigure()` silently dropped `instructions` and `resources` from the factory-produced skill, causing factory-generated instructions (e.g. config-dependent preambles) to be lost after reconfiguration.
@@ -296,7 +298,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.13.1...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.13.2...HEAD
+[0.13.2]: https://github.com/ggozad/haiku.skills/compare/0.13.1...0.13.2
 [0.13.1]: https://github.com/ggozad/haiku.skills/compare/0.13.0...0.13.1
 [0.13.0]: https://github.com/ggozad/haiku.skills/compare/0.12.0...0.13.0
 [0.12.0]: https://github.com/ggozad/haiku.skills/compare/0.11.0...0.12.0
