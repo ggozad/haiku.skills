@@ -343,9 +343,9 @@ class ChatApp(App):
                         await chat_history.add_message(
                             "assistant", f"Error: {error_msg}"
                         )
-                    elif event.type == EventType.THINKING_START:
+                    elif event.type == EventType.REASONING_START:
                         await chat_history.show_thinking()
-                    elif event.type == EventType.THINKING_END:
+                    elif event.type == EventType.REASONING_END:
                         chat_history.hide_thinking()
 
         except Exception as e:
