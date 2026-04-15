@@ -697,7 +697,7 @@ class AguiEventStream:
         self,
         adapter: Any,
         *,
-        toolset: SkillToolset = None,
+        toolset: SkillToolset | None = None,
         **run_kwargs: Any,
     ) -> None:
         self._adapter = adapter
@@ -750,8 +750,8 @@ class AguiEventStream:
 
 
 def run_agui_stream(
-    toolset: SkillToolset,
     adapter: Any,
+    toolset: SkillToolset | None = None,
     **run_kwargs: Any,
 ) -> AguiEventStream:
     """Stream AG-UI events with real-time sub-agent tool events.
