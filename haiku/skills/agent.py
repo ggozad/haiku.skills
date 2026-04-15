@@ -677,12 +677,15 @@ class SkillToolset(FunctionToolset[Any]):
         )
 
 
+AguiEventQueue = asyncio.Queue[BaseEvent | None]
+
+
 class AguiEventStream:
     """Merges main-agent and sub-agent AG-UI events into a single stream.
 
     Use as an async context manager + async iterator::
 
-        async with run_agui_stream(toolset, adapter) as stream:
+        async with run_agui_stream(adapter, toolset=toolset) as stream:
             async for event in stream:
                 ...
 
@@ -692,36 +695,43 @@ class AguiEventStream:
 
     def __init__(
         self,
-        toolset: SkillToolset,
         adapter: Any,
+        *,
+        toolset: SkillToolset = None,
         **run_kwargs: Any,
     ) -> None:
-        self._toolset = toolset
         self._adapter = adapter
+        self._toolset = toolset
         self._run_kwargs = run_kwargs
-        self._queue: asyncio.Queue[BaseEvent | None] = asyncio.Queue()
+        self._queue: AguiEventQueue = asyncio.Queue()
         self._task: asyncio.Task[None] | None = None
 
-    async def __aenter__(self) -> "AguiEventStream":
-        async def event_sink(event: BaseEvent) -> None:
-            self._queue.put_nowait(event)
+    async def event_sink(self, event: BaseEvent) -> None:
+        self._queue.put_nowait(event)
 
-        self._toolset._event_sink = event_sink
-
-        async def run_adapter() -> None:
-            try:
-                async for event in self._adapter.run_stream(**self._run_kwargs):
-                    if isinstance(event, BaseEvent):
-                        self._queue.put_nowait(event)
-            finally:
+    async def run_adapter(self) -> None:
+        try:
+            async for event in self._adapter.run_stream(**self._run_kwargs):
+                if isinstance(event, BaseEvent):
+                    self._queue.put_nowait(event)
+        finally:
+            if self._toolset is not None:
                 self._toolset._event_sink = None
-                self._queue.put_nowait(None)
 
-        self._task = asyncio.create_task(run_adapter())
+            self._queue.put_nowait(None)
+
+    async def __aenter__(self) -> "AguiEventStream":
+
+        if self._toolset is not None:
+            self._toolset._event_sink = self.event_sink
+
+        self._task = asyncio.create_task(self.run_adapter())
         return self
 
     async def __aexit__(self, *exc_info: Any) -> None:
-        self._toolset._event_sink = None
+        if self._toolset is not None:
+            self._toolset._event_sink = None
+
         if self._task is not None and not self._task.done():
             self._task.cancel()
             try:
@@ -761,4 +771,4 @@ def run_agui_stream(
         adapter: An AGUIAdapter instance.
         **run_kwargs: Forwarded to ``adapter.run_stream()``.
     """
-    return AguiEventStream(toolset, adapter, **run_kwargs)
+    return AguiEventStream(adapter, toolset=toolset, **run_kwargs)
