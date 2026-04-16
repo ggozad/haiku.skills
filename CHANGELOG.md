@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **`run_agui_stream()` signature**: `toolset` is now optional and keyword-only. The `adapter` argument moves to first position. Callers should update from `run_agui_stream(toolset, adapter)` to `run_agui_stream(adapter, toolset=toolset)`. When `toolset` is `None`, the stream yields adapter events without skill event merging.
+
+## [0.14.0] - 2026-04-16
+
 ## [0.13.3] - 2026-04-14
 
 ## [0.13.2] - 2026-04-08
@@ -300,7 +306,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.13.3...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.14.0...HEAD
+[0.14.0]: https://github.com/ggozad/haiku.skills/compare/0.13.3...0.14.0
 [0.13.3]: https://github.com/ggozad/haiku.skills/compare/0.13.2...0.13.3
 [0.13.2]: https://github.com/ggozad/haiku.skills/compare/0.13.1...0.13.2
 [0.13.1]: https://github.com/ggozad/haiku.skills/compare/0.13.0...0.13.1

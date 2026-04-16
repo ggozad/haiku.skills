@@ -73,7 +73,7 @@ toolset = SkillToolset(skills=[skill])
 agent = Agent(model, instructions=..., toolsets=[toolset])
 adapter = AGUIAdapter(agent=agent, run_input=run_input)
 
-async with run_agui_stream(toolset, adapter, deps=SkillDeps()) as stream:
+async with run_agui_stream(adapter, toolset=toolset, deps=SkillDeps()) as stream:
     async for event in stream:
         # Main-agent events (text, tool calls) and
         # sub-agent activity events arrive here in real-time
@@ -110,7 +110,7 @@ async def stream_chat(request):
     adapter = AGUIAdapter(agent=agent, run_input=run_input, accept=accept)
 
     async def event_stream():
-        async with run_agui_stream(toolset, adapter, deps=SkillDeps()) as stream:
+        async with run_agui_stream(adapter, toolset=toolset, deps=SkillDeps()) as stream:
             async for chunk in adapter.encode_stream(stream):
                 yield chunk
 
