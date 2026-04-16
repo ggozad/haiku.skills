@@ -1668,7 +1668,7 @@ class TestRunAguiStream:
 
         toolset = SkillToolset()
         collected = []
-        async with run_agui_stream(toolset, FakeAdapter()) as stream:
+        async with run_agui_stream(adapter=FakeAdapter(), toolset=toolset) as stream:
             async for e in stream:
                 collected.append(e)
         assert collected == [event]
@@ -1697,7 +1697,7 @@ class TestRunAguiStream:
         run_input = _make_run_input("Greet someone.")
         adapter = AGUIAdapter(agent=agent, run_input=run_input)
         events = []
-        async with run_agui_stream(toolset, adapter) as stream:
+        async with run_agui_stream(adapter=adapter, toolset=toolset) as stream:
             async for e in stream:
                 events.append(e)
         sub_tool_events = [
@@ -1717,7 +1717,7 @@ class TestRunAguiStream:
                     yield
 
         toolset = SkillToolset()
-        async with run_agui_stream(toolset, FakeAdapter()) as stream:
+        async with run_agui_stream(adapter=FakeAdapter(), toolset=toolset) as stream:
             async for _ in stream:
                 pass
         assert toolset._event_sink is None
@@ -1754,7 +1754,7 @@ class TestRunAguiStream:
             )
 
         asyncio.create_task(push_after_start())
-        async with run_agui_stream(toolset, FakeAdapter()) as stream:
+        async with run_agui_stream(adapter=FakeAdapter(), toolset=toolset) as stream:
             async for _ in stream:
                 break
         assert toolset._event_sink is None

@@ -249,8 +249,8 @@ class ChatApp(App):
 
         try:
             async with run_agui_stream(
-                self._toolset,
-                adapter,
+                adapter=adapter,
+                toolset=self._toolset,
                 message_history=self._message_history or None,
                 on_complete=on_complete,
             ) as stream:
