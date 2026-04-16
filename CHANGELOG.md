@@ -2,11 +2,12 @@
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-04-16
+
 ### Changed
 
 - **`run_agui_stream()` signature**: `toolset` is now optional and keyword-only. The `adapter` argument moves to first position. Callers should update from `run_agui_stream(toolset, adapter)` to `run_agui_stream(adapter, toolset=toolset)`. When `toolset` is `None`, the stream yields adapter events without skill event merging.
 
-## [0.14.0] - 2026-04-16
 
 ## [0.13.3] - 2026-04-14
 
