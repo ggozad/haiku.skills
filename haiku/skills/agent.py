@@ -6,6 +6,7 @@ import shlex
 import sys
 import time
 from collections.abc import AsyncIterable, Awaitable, Callable
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Any
 
@@ -276,13 +277,15 @@ async def _run_skill(
     model_settings = (
         ModelSettings(thinking=skill.thinking) if skill.thinking is not None else None
     )
-    result = await agent.run(
-        request,
-        deps=deps,
-        usage_limits=UsageLimits(request_limit=20),
-        event_stream_handler=event_handler,
-        model_settings=model_settings,
-    )
+    cm: Any = skill._lifespan(deps) if skill._lifespan is not None else nullcontext()
+    async with cm:
+        result = await agent.run(
+            request,
+            deps=deps,
+            usage_limits=UsageLimits(request_limit=20),
+            event_stream_handler=event_handler,
+            model_settings=model_settings,
+        )
     text = result.output
     return text, collected_events, emitted_events
 

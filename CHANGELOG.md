@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`lifespan` on `Skill`**: Optional async context manager factory called once per skill invocation (one `_run_skill()` call, i.e. one sub-agent run). The factory receives the skill's `deps`; use it to set up and tear down per-invocation resources (e.g. a database client opened once and reused across tool calls, a counter scoped to the invocation). Pair with `deps_type=` to give tools typed access via `ctx.deps.<field>`. Strictly additive and opt-in — skills without a `lifespan` are unaffected. Not wired for direct-tool mode (`SkillToolset` with `use_subagents=False`) — that path has no well-defined invocation boundary.
+
 ## [0.14.0] - 2026-04-16
 
 ### Changed
