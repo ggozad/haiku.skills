@@ -1,9 +1,21 @@
 """Tests for the sandbox skill package."""
 
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, patch
 
+from haiku.skills.models import Skill
 from haiku.skills.state import SkillRunDeps, SkillRunDepsProtocol
+
+
+async def _run_lifespan(skill: Skill, state: Any = None) -> Any:
+    """Construct deps and drive the skill's lifespan, returning populated deps."""
+    assert skill.deps_type is not None
+    assert skill.lifespan is not None
+    deps = skill.deps_type(state=state, emit=lambda _: None)
+    async with skill.lifespan(deps):
+        pass
+    return deps
 
 
 class TestCreateSkill:
@@ -17,6 +29,7 @@ class TestCreateSkill:
         assert skill.state_namespace == "sandbox"
         assert len(skill.toolsets) >= 1
         assert skill.deps_type is not None
+        assert skill.lifespan is not None
         assert skill.path is not None
 
     def test_create_skill_with_workspace(self):
@@ -32,38 +45,36 @@ class TestCreateSkill:
         assert skill.deps_type is not None
         assert issubclass(skill.deps_type, SkillRunDeps)
 
-    def test_workspace_from_env(self, monkeypatch):
+    async def test_workspace_from_env(self, monkeypatch):
         from haiku_skills_sandbox import SandboxState, _sandboxes, create_skill
 
         monkeypatch.setenv("HAIKU_SKILLS_SANDBOX_WORKSPACE", "/env/data")
         _sandboxes.clear()
         skill = create_skill()
-        assert skill.deps_type is not None
         state = SandboxState()
 
         with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
             mock_instance = MagicMock()
             MockSandbox.return_value = mock_instance
 
-            skill.deps_type(state=state, emit=lambda _: None)
+            await _run_lifespan(skill, state=state)
 
         call_kwargs = MockSandbox.call_args[1]
         assert call_kwargs["volumes"] == {"/env/data": "/workspace"}
 
-    def test_explicit_workspace_overrides_env(self, monkeypatch):
+    async def test_explicit_workspace_overrides_env(self, monkeypatch):
         from haiku_skills_sandbox import SandboxState, _sandboxes, create_skill
 
         monkeypatch.setenv("HAIKU_SKILLS_SANDBOX_WORKSPACE", "/env/data")
         _sandboxes.clear()
         skill = create_skill(workspace=Path("/explicit"))
-        assert skill.deps_type is not None
         state = SandboxState()
 
         with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
             mock_instance = MagicMock()
             MockSandbox.return_value = mock_instance
 
-            skill.deps_type(state=state, emit=lambda _: None)
+            await _run_lifespan(skill, state=state)
 
         call_kwargs = MockSandbox.call_args[1]
         assert call_kwargs["volumes"] == {"/explicit": "/workspace"}
@@ -269,7 +280,7 @@ class TestIdleCleanup:
         monkeypatch.setenv("HAIKU_SKILLS_SANDBOX_IDLE_TIMEOUT", "120")
         assert haiku_skills_sandbox._default_idle_timeout() == 120
 
-    def test_per_sandbox_timeout_via_create_skill(self):
+    async def test_per_sandbox_timeout_via_create_skill(self):
         import time
 
         from haiku_skills_sandbox import (
@@ -285,7 +296,6 @@ class TestIdleCleanup:
         _timeouts.clear()
 
         skill = create_skill(idle_timeout=10)
-        assert skill.deps_type is not None
         state = SandboxState()
 
         with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
@@ -293,7 +303,7 @@ class TestIdleCleanup:
             new_sandbox = MagicMock()
             MockSandbox.side_effect = [old_sandbox, new_sandbox]
 
-            skill.deps_type(state=state, emit=lambda _: None)
+            await _run_lifespan(skill, state=state)
             session_id = state.session_id
             assert session_id is not None
             assert _timeouts[session_id] == 10
@@ -301,11 +311,11 @@ class TestIdleCleanup:
             # Simulate idle beyond the per-sandbox timeout
             _last_active[session_id] = time.monotonic() - 20
 
-            skill.deps_type(state=state, emit=lambda _: None)
+            await _run_lifespan(skill, state=state)
 
         old_sandbox.stop.assert_called_once()
 
-    def test_per_sandbox_timeout_overrides_env(self, monkeypatch):
+    async def test_per_sandbox_timeout_overrides_env(self, monkeypatch):
         import time
 
         from haiku_skills_sandbox import (
@@ -322,7 +332,6 @@ class TestIdleCleanup:
         _timeouts.clear()
 
         skill = create_skill(idle_timeout=10)
-        assert skill.deps_type is not None
         state = SandboxState()
 
         with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
@@ -330,14 +339,14 @@ class TestIdleCleanup:
             new_sandbox = MagicMock()
             MockSandbox.side_effect = [old_sandbox, new_sandbox]
 
-            skill.deps_type(state=state, emit=lambda _: None)
+            await _run_lifespan(skill, state=state)
             session_id = state.session_id
             assert session_id is not None
 
             # Idle beyond per-sandbox timeout (10s) but within env timeout (9999s)
             _last_active[session_id] = time.monotonic() - 20
 
-            skill.deps_type(state=state, emit=lambda _: None)
+            await _run_lifespan(skill, state=state)
 
         # Per-sandbox timeout wins — sandbox is cleaned up
         old_sandbox.stop.assert_called_once()
@@ -355,37 +364,35 @@ class TestImage:
         monkeypatch.setenv("HAIKU_SKILLS_SANDBOX_IMAGE", "custom:v1")
         assert _resolve_image() == "custom:v1"
 
-    def test_image_from_create_skill(self):
+    async def test_image_from_create_skill(self):
         from haiku_skills_sandbox import SandboxState, _sandboxes, create_skill
 
         _sandboxes.clear()
         skill = create_skill(image="my-image:latest")
-        assert skill.deps_type is not None
         state = SandboxState()
 
         with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
             mock_instance = MagicMock()
             MockSandbox.return_value = mock_instance
 
-            skill.deps_type(state=state, emit=lambda _: None)
+            await _run_lifespan(skill, state=state)
 
         call_kwargs = MockSandbox.call_args[1]
         assert call_kwargs["image"] == "my-image:latest"
 
-    def test_create_skill_image_overrides_env(self, monkeypatch):
+    async def test_create_skill_image_overrides_env(self, monkeypatch):
         from haiku_skills_sandbox import SandboxState, _sandboxes, create_skill
 
         monkeypatch.setenv("HAIKU_SKILLS_SANDBOX_IMAGE", "env-image:v1")
         _sandboxes.clear()
         skill = create_skill(image="explicit:v2")
-        assert skill.deps_type is not None
         state = SandboxState()
 
         with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
             mock_instance = MagicMock()
             MockSandbox.return_value = mock_instance
 
-            skill.deps_type(state=state, emit=lambda _: None)
+            await _run_lifespan(skill, state=state)
 
         call_kwargs = MockSandbox.call_args[1]
         assert call_kwargs["image"] == "explicit:v2"
@@ -424,26 +431,24 @@ class TestSandboxRunDeps:
         skill = create_skill()
         assert skill.deps_type is not None
 
-        with patch("haiku_skills_sandbox.DockerSandbox"):
-            deps = skill.deps_type(state=None, emit=lambda _: None)
-
+        deps = skill.deps_type(state=None, emit=lambda _: None)
         assert isinstance(deps, SkillRunDepsProtocol)
+        assert deps.backend is None
 
-    def test_has_backend(self):
+    async def test_lifespan_populates_backend(self):
         from haiku_skills_sandbox import create_skill
 
         skill = create_skill()
-        assert skill.deps_type is not None
 
         with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
             mock_instance = MagicMock()
             MockSandbox.return_value = mock_instance
 
-            deps = skill.deps_type(state=None, emit=lambda _: None)
+            deps = await _run_lifespan(skill)
 
         assert deps.backend is mock_instance
 
-    def test_backend_uses_state_for_session_binding(self):
+    async def test_backend_uses_state_for_session_binding(self):
         from haiku_skills_sandbox import (
             SandboxState,
             _sandboxes,
@@ -452,34 +457,32 @@ class TestSandboxRunDeps:
 
         _sandboxes.clear()
         skill = create_skill()
-        assert skill.deps_type is not None
         state = SandboxState()
 
         with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
             mock_instance = MagicMock()
             MockSandbox.return_value = mock_instance
 
-            deps1 = skill.deps_type(state=state, emit=lambda _: None)
+            deps1 = await _run_lifespan(skill, state=state)
             session_id = state.session_id
 
         assert session_id is not None
-        deps2 = skill.deps_type(state=state, emit=lambda _: None)
+        deps2 = await _run_lifespan(skill, state=state)
 
         assert deps1.backend is deps2.backend
 
-    def test_workspace_captured_in_closure(self):
+    async def test_workspace_captured_in_closure(self):
         from haiku_skills_sandbox import SandboxState, _sandboxes, create_skill
 
         _sandboxes.clear()
         skill = create_skill(workspace=Path("/my/data"))
-        assert skill.deps_type is not None
         state = SandboxState()
 
         with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
             mock_instance = MagicMock()
             MockSandbox.return_value = mock_instance
 
-            skill.deps_type(state=state, emit=lambda _: None)
+            await _run_lifespan(skill, state=state)
 
         call_kwargs = MockSandbox.call_args[1]
         assert call_kwargs["volumes"] == {"/my/data": "/workspace"}

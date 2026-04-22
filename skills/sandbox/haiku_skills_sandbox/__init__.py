@@ -1,6 +1,7 @@
 import atexit
 import os
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 from uuid import uuid4
 
@@ -105,15 +106,17 @@ def create_skill(
         if env:
             workspace = Path(env)
 
-    from dataclasses import dataclass, field
+    from dataclasses import dataclass
 
     @dataclass
     class SandboxRunDeps(SkillRunDeps):
-        backend: DockerSandbox = field(init=False)
+        backend: DockerSandbox | None = None
 
-        def __post_init__(self) -> None:
-            state = self.state if isinstance(self.state, SandboxState) else None
-            self.backend = _get_sandbox(state, workspace, image, idle_timeout)
+    @asynccontextmanager
+    async def sandbox_lifespan(deps: SandboxRunDeps):
+        state = deps.state if isinstance(deps.state, SandboxState) else None
+        deps.backend = _get_sandbox(state, workspace, image, idle_timeout)
+        yield
 
     metadata, instructions = parse_skill_md(Path(__file__).parent / "SKILL.md")
     return Skill(
@@ -124,4 +127,5 @@ def create_skill(
         state_type=SandboxState,
         state_namespace="sandbox",
         deps_type=SandboxRunDeps,
+        lifespan=sandbox_lifespan,
     )

@@ -1,5 +1,6 @@
 import unicodedata
 from collections.abc import Callable, Sequence
+from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -12,6 +13,8 @@ from pydantic_ai.settings import ThinkingLevel
 from pydantic_ai.toolsets import AbstractToolset
 
 from haiku.skills.state import SkillRunDepsProtocol
+
+LifespanFactory = Callable[[Any], AbstractAsyncContextManager[None]]
 
 
 @dataclass(frozen=True)
@@ -91,6 +94,7 @@ class Skill(BaseModel):
     _thinking: ThinkingLevel | None = PrivateAttr(default=None)
     _factory: Callable[..., "Skill"] | None = PrivateAttr(default=None)
     _deps_type: type[SkillRunDepsProtocol] | None = PrivateAttr(default=None)
+    _lifespan: LifespanFactory | None = PrivateAttr(default=None)
 
     def __init__(
         self,
@@ -102,6 +106,7 @@ class Skill(BaseModel):
         extras: dict[str, Any] | None = None,
         thinking: ThinkingLevel | None = None,
         deps_type: type[SkillRunDepsProtocol] | None = None,
+        lifespan: LifespanFactory | None = None,
         **data: Any,
     ) -> None:
         super().__init__(**data)
@@ -112,6 +117,7 @@ class Skill(BaseModel):
         self._extras = dict(extras) if extras else {}
         self._thinking = thinking
         self._deps_type = deps_type
+        self._lifespan = lifespan
 
     @property
     def tools(self) -> list[Tool | Callable[..., Any]]:
@@ -169,6 +175,14 @@ class Skill(BaseModel):
     def deps_type(self, value: type[SkillRunDepsProtocol] | None) -> None:
         self._deps_type = value
 
+    @property
+    def lifespan(self) -> LifespanFactory | None:
+        return self._lifespan
+
+    @lifespan.setter
+    def lifespan(self, value: LifespanFactory | None) -> None:
+        self._lifespan = value
+
     def reconfigure(self, **kwargs: Any) -> None:
         """Re-create this skill with new factory arguments.
 
@@ -186,6 +200,7 @@ class Skill(BaseModel):
         self._extras = new_skill._extras
         self._thinking = new_skill._thinking
         self._deps_type = new_skill._deps_type
+        self._lifespan = new_skill._lifespan
         self.model = new_skill.model
         self.instructions = new_skill.instructions
         self.resources = new_skill.resources
