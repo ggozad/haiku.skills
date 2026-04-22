@@ -1191,7 +1191,7 @@ wheels = [
 
 [[package]]
 name = "haiku-skills"
-version = "0.14.0"
+version = "0.15.0"
 source = { editable = "." }
 dependencies = [
     { name = "ag-ui-protocol" },
@@ -1285,7 +1285,7 @@ dev = [
 
 [[package]]
 name = "haiku-skills-code-execution"
-version = "0.14.0"
+version = "0.15.0"
 source = { editable = "skills/code-execution" }
 dependencies = [
     { name = "haiku-skills" },
@@ -1300,7 +1300,7 @@ requires-dist = [
 
 [[package]]
 name = "haiku-skills-gmail"
-version = "0.14.0"
+version = "0.15.0"
 source = { editable = "skills/gmail" }
 dependencies = [
     { name = "google-api-python-client" },
@@ -1319,7 +1319,7 @@ requires-dist = [
 
 [[package]]
 name = "haiku-skills-image-generation"
-version = "0.14.0"
+version = "0.15.0"
 source = { editable = "skills/image-generation" }
 dependencies = [
     { name = "haiku-skills" },
@@ -1334,7 +1334,7 @@ requires-dist = [
 
 [[package]]
 name = "haiku-skills-notifications"
-version = "0.14.0"
+version = "0.15.0"
 source = { editable = "skills/notifications" }
 dependencies = [
     { name = "haiku-skills" },
@@ -1349,7 +1349,7 @@ requires-dist = [
 
 [[package]]
 name = "haiku-skills-sandbox"
-version = "0.14.0"
+version = "0.15.0"
 source = { editable = "skills/sandbox" }
 dependencies = [
     { name = "haiku-skills" },
@@ -1364,7 +1364,7 @@ requires-dist = [
 
 [[package]]
 name = "haiku-skills-web"
-version = "0.14.0"
+version = "0.15.0"
 source = { editable = "skills/web" }
 dependencies = [
     { name = "haiku-skills" },

@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-04-22
+
 ### Added
 
 - **`lifespan` on `Skill`**: Optional async context manager factory called once per skill invocation (one `_run_skill()` call, i.e. one sub-agent run). The factory receives the skill's `deps`; use it to set up and tear down per-invocation resources (e.g. a database client opened once and reused across tool calls, a counter scoped to the invocation). Pair with `deps_type=` to give tools typed access via `ctx.deps.<field>`. Strictly additive and opt-in — skills without a `lifespan` are unaffected. Not wired for direct-tool mode (`SkillToolset` with `use_subagents=False`) — that path has no well-defined invocation boundary.
@@ -315,7 +317,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.14.0...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.15.0...HEAD
+[0.15.0]: https://github.com/ggozad/haiku.skills/compare/0.14.0...0.15.0
 [0.14.0]: https://github.com/ggozad/haiku.skills/compare/0.13.3...0.14.0
 [0.13.3]: https://github.com/ggozad/haiku.skills/compare/0.13.2...0.13.3
 [0.13.2]: https://github.com/ggozad/haiku.skills/compare/0.13.1...0.13.2
