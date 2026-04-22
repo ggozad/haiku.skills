@@ -57,10 +57,13 @@ nav:
       - Installation: installation.md
       - Tutorial: tutorial.md
       - Skills reference: skills.md
-      - Signing: signing.md
-      - CLI: cli.md
       - AG-UI protocol: ag-ui.md
+      - CLI: cli.md
       - Example skills: example-skills.md
+      - Advanced:
+          - Custom dependencies: custom-dependencies.md
+          - Lifespan: lifespan.md
+          - Signing: signing.md
       - Development: development.md
       - Changelog: changelog.md
 markdown_extensions:

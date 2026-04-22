@@ -60,6 +60,7 @@ Skills are discovered automatically and can come from three sources:
 
 - **Per-skill state**: Pydantic state models tracked per namespace; state deltas emitted as JSON Patch for the [AG-UI protocol](https://docs.ag-ui.com)
 - **AG-UI streaming**: skill tool calls and state changes stream as `ActivitySnapshotEvent` and `StateDeltaEvent` for real-time UIs
+- **Custom dependencies and lifespan**: declare a `deps_type` to extend what skill tools see on `ctx.deps`; optionally attach a `lifespan` async context manager to allocate per-invocation resources (DB clients, caches, counters) that are disposed when the skill run ends
 - **Signing and verification**: identity-based skill signing via [sigstore](https://www.sigstore.dev/), verified at discovery time
 - **CLI**: `haiku-skills list`, `validate`, `sign`, `verify`, and an interactive `chat` TUI
 
