@@ -1,6 +1,8 @@
 # pragma: no cover
 import sys
 
+import yaml
+
 
 def cli() -> None:
     try:
@@ -213,10 +215,16 @@ def _build_cli():
             "--no-subagents",
             help="Expose skill tools directly instead of delegating to sub-agents",
         ),
+        initial_state_path: Path = typer.Option(
+            None,
+            "--initial-state-path",
+            help="Path to YAML file containing initial AG-UI state",
+        ),
     ) -> None:
-        model_name = model or os.environ.get("HAIKU_SKILLS_MODEL") or "ollama:gpt-oss"
 
         from haiku.skills.chat import run_chat
+
+        model_name = model or os.environ.get("HAIKU_SKILLS_MODEL") or "ollama:gpt-oss"
 
         registry = _resolve_discovery(skill_path, use_entrypoints)
 
@@ -231,11 +239,16 @@ def _build_cli():
         else:
             selected = [s for n in registry.names if (s := registry.get(n)) is not None]
 
+        if initial_state_path:
+            with initial_state_path.open() as state_file:
+                initial_state = yaml.safe_load(state_file)
+
         run_chat(
             model=model_name,
             skills=selected,
             skill_model=skill_model,
             use_subagents=not no_subagents,
+            initial_state=initial_state,
         )
 
     return app

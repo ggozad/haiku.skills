@@ -141,6 +141,7 @@ class ChatApp(App):
         use_entrypoints: bool = False,
         skill_model: str | None = None,
         use_subagents: bool = True,
+        initial_state: dict[str, Any] | None = None,
     ) -> None:
         super().__init__()
         self._model = model
@@ -158,6 +159,7 @@ class ChatApp(App):
         self._state: dict[str, Any] = {}
         self._is_processing = False
         self._current_worker: Worker[None] | None = None
+        self._initial_state = initial_state
 
     def compose(self) -> "ComposeResult":
         yield Header()
@@ -187,7 +189,10 @@ class ChatApp(App):
             toolsets=[self._toolset],
             retries=3,
         )
-        self._state = self._toolset.build_state_snapshot()
+        state = self._toolset.build_state_snapshot()
+        if self._initial_state is not None:
+            state |= self._initial_state
+        self._state = state
         self.query_one(Input).focus()
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
