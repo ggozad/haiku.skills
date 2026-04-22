@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from typing import Any
 
-from pydantic_monty import Monty, MontyError, run_monty_async
+from pydantic_monty import MontyError, MontyRepl, run_repl_async
 
 
 def _build_external_functions(model: Any) -> dict[str, Callable[..., Any]]:
@@ -23,11 +23,14 @@ def _build_external_functions(model: Any) -> dict[str, Callable[..., Any]]:
 
 
 async def _execute_code(
-    code: str, external_functions: dict[str, Callable[..., Any]] | None = None
+    repl: MontyRepl,
+    code: str,
+    external_functions: dict[str, Callable[..., Any]] | None = None,
 ) -> tuple[str, str | None, bool]:
-    """Execute code in the Monty sandbox.
+    """Execute code in a persistent Monty REPL.
 
     Args:
+        repl: REPL session whose heap and namespace persist across calls.
         code: The Python code to execute.
         external_functions: Functions available inside the sandbox.
 
@@ -40,8 +43,9 @@ async def _execute_code(
         output_lines.append(text)
 
     try:
-        result = await run_monty_async(
-            Monty(code),
+        result = await run_repl_async(
+            repl,
+            code,
             external_functions=external_functions or {},
             print_callback=print_callback,
         )

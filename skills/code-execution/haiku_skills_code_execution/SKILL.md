@@ -12,6 +12,9 @@ accomplish it and execute it using the run_code tool.
 - Use `await llm(prompt)` when the task requires reasoning about text
 - Execute the code and return the result
 - Report any errors clearly and retry with a fix if needed
+- Variables and definitions persist across `run_code` calls in the same
+  task — do expensive work (especially `await llm(...)`) once and reuse the
+  result in later calls rather than re-computing.
 
 ## Sandbox
 
@@ -39,4 +42,22 @@ for item in items:
     sentiment = await llm(f"Classify as positive/negative/neutral: {item}")
     results.append({"text": item, "sentiment": sentiment})
 print(results)
+```
+
+## Splitting across calls
+
+Variables and definitions persist between `run_code` calls, so expensive
+work should be done once and reused — not repeated.
+
+```python
+# Call 1 — classify once
+items = ["The food was great!", "Terrible service.", "Okay experience."]
+sentiments = [await llm(f"positive/negative/neutral: {item}") for item in items]
+print(sentiments)
+```
+
+```python
+# Call 2 — reuse items and sentiments, no re-classification
+positives = [item for item, s in zip(items, sentiments) if "positive" in s.lower()]
+print(positives)
 ```

@@ -6,6 +6,10 @@
 
 - **`lifespan` on `Skill`**: Optional async context manager factory called once per skill invocation (one `_run_skill()` call, i.e. one sub-agent run). The factory receives the skill's `deps`; use it to set up and tear down per-invocation resources (e.g. a database client opened once and reused across tool calls, a counter scoped to the invocation). Pair with `deps_type=` to give tools typed access via `ctx.deps.<field>`. Strictly additive and opt-in — skills without a `lifespan` are unaffected. Not wired for direct-tool mode (`SkillToolset` with `use_subagents=False`) — that path has no well-defined invocation boundary.
 
+### Changed
+
+- **Bundled `code-execution` and `sandbox` skills migrated to `lifespan`**: `haiku-skills-code-execution` now uses a `MontyRepl` populated by a lifespan, so variables and definitions declared in one `run_code` call persist into subsequent `run_code` calls within the same sub-agent invocation. `haiku-skills-sandbox` replaces its `__post_init__` deps setup with a named `sandbox_lifespan`; session-scoped container persistence (via `SandboxState.session_id`) is unchanged.
+
 ## [0.14.0] - 2026-04-16
 
 ### Changed
