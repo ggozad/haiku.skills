@@ -209,6 +209,57 @@ class TestLifespan:
         assert skill.lifespan is lifespan
 
 
+class TestDirectModeWarning:
+    def test_warns_when_direct_mode_skill_has_lifespan(self) -> None:
+        from haiku.skills.agent import SkillToolset
+
+        @asynccontextmanager
+        async def lifespan(deps: SkillRunDepsProtocol):
+            yield
+
+        skill = Skill(
+            metadata=SkillMetadata(name="hooked", description="h."),
+            source=SkillSource.ENTRYPOINT,
+            lifespan=lifespan,
+        )
+
+        with pytest.warns(UserWarning, match="lifespan"):
+            SkillToolset(skills=[skill], use_subagents=False)
+
+    def test_no_warning_in_subagent_mode(self) -> None:
+        import warnings
+
+        from haiku.skills.agent import SkillToolset
+
+        @asynccontextmanager
+        async def lifespan(deps: SkillRunDepsProtocol):
+            yield
+
+        skill = Skill(
+            metadata=SkillMetadata(name="hooked", description="h."),
+            source=SkillSource.ENTRYPOINT,
+            lifespan=lifespan,
+        )
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            SkillToolset(skills=[skill])
+
+    def test_no_warning_in_direct_mode_without_lifespan(self) -> None:
+        import warnings
+
+        from haiku.skills.agent import SkillToolset
+
+        skill = Skill(
+            metadata=SkillMetadata(name="plain", description="p."),
+            source=SkillSource.ENTRYPOINT,
+        )
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            SkillToolset(skills=[skill], use_subagents=False)
+
+
 class TestLifespanProperty:
     def test_lifespan_setter(self) -> None:
         @asynccontextmanager

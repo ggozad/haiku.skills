@@ -103,3 +103,6 @@ Every call to the skill constructs a fresh `deps` instance and enters a fresh CM
 ## Scope
 
 The lifespan fires in **sub-agent mode** (the default for `SkillToolset`), where `execute_skill` delegates each request to the skill's sub-agent. It does **not** fire in direct-tool mode (`SkillToolset(use_subagents=False)`), because that path exposes individual tools on the outer agent and has no well-defined invocation boundary. If you need per-call resources in direct mode, manage them inside the tool function.
+
+!!! note
+    `SkillToolset` emits a `UserWarning` at construction time if you register a skill with a `lifespan` while in direct-tool mode, so the silent no-op doesn't catch you off-guard.

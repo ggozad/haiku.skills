@@ -5,6 +5,7 @@ import os
 import shlex
 import sys
 import time
+import warnings
 from collections.abc import AsyncIterable, Awaitable, Callable
 from contextlib import nullcontext
 from pathlib import Path
@@ -445,6 +446,17 @@ class SkillToolset(FunctionToolset[Any]):
         if self._use_subagents:
             self._register_subagent_tools()
         else:
+            for name in self._registry.names:
+                skill = self._registry.get(name)
+                if skill is not None and skill.lifespan is not None:
+                    warnings.warn(
+                        f"Skill '{skill.metadata.name}' has a lifespan, but "
+                        "SkillToolset is using direct-tool mode "
+                        "(use_subagents=False). Lifespans only fire in "
+                        "sub-agent mode — the hook will not run.",
+                        UserWarning,
+                        stacklevel=3,
+                    )
             self._register_direct_tools()
 
     def _register_subagent_tools(self) -> None:
