@@ -217,7 +217,10 @@ def _build_cli():
         initial_state_path: Path | None = typer.Option(
             None,
             "--initial-state-path",
-            help="Path to YAML file containing initial AG-UI state",
+            help=(
+                "Path to YAML file with initial AG-UI state. "
+                "Values are deep-merged into each namespace's defaults"
+            ),
         ),
     ) -> None:
         model_name = model or os.environ.get("HAIKU_SKILLS_MODEL") or "ollama:gpt-oss"

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`haiku-skills chat --initial-state-path PATH`**: Seed the AG-UI state from a YAML file at launch. Values are deep-merged into each namespace's defaults, so partial overrides are supported. The seeded state is preserved when clearing the chat.
+
 ## [0.15.0] - 2026-04-22
 
 ### Added
