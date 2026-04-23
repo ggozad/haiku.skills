@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.15.1] - 2026-04-23
+
 ### Added
 
 - **`haiku-skills chat --initial-state-path PATH`**: Seed the AG-UI state from a YAML or JSON file at launch. Values are deep-merged into each namespace's defaults, so partial overrides are supported. The seeded state is preserved when clearing the chat.
@@ -322,7 +324,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.15.0...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.15.1...HEAD
+[0.15.1]: https://github.com/ggozad/haiku.skills/compare/0.15.0...0.15.1
 [0.15.0]: https://github.com/ggozad/haiku.skills/compare/0.14.0...0.15.0
 [0.14.0]: https://github.com/ggozad/haiku.skills/compare/0.13.3...0.14.0
 [0.13.3]: https://github.com/ggozad/haiku.skills/compare/0.13.2...0.13.3
