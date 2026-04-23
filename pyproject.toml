@@ -41,6 +41,8 @@ signing = ["pathspec>=0.12.0", "sigstore>=4.0.0"]
 tui = [
     "pydantic-ai-slim[logfire]>=1.81.0",
     "textual>=8.0.0",
+    "tree-sitter>=0.25.2",
+    "tree-sitter-json>=0.24.8",
     "typer>=0.24.1",
     "python-dotenv>=1.2.1",
 ]
@@ -76,6 +78,8 @@ dev = [
     "sigstore>=4.0.0",
     "pydantic-monty>=0.0.7",
     "textual>=8.0.0",
+    "tree-sitter>=0.25.2",
+    "tree-sitter-json>=0.24.8",
     "typer>=0.24.1",
     "python-dotenv>=1.2.1",
     "haiku-skills-web",

@@ -1,9 +1,10 @@
 # pragma: no cover
 import uuid
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from pydantic import ValidationError
 from pydantic_ai import Agent
 from pydantic_ai.models import Model
 
@@ -39,12 +40,11 @@ try:
     )
     from jsonpatch import JsonPatch
     from pydantic_ai.ag_ui import AGUIAdapter
-    from rich.syntax import Syntax
     from textual.app import App, SystemCommand
     from textual.binding import Binding
     from textual.containers import VerticalScroll
     from textual.screen import ModalScreen
-    from textual.widgets import Footer, Header, Input, Static
+    from textual.widgets import Footer, Header, Input, Static, TextArea
     from textual.worker import Worker
 
     from haiku.skills.chat.widgets.chat_history import ChatHistory
@@ -56,7 +56,7 @@ except ImportError:
 
 
 class StateScreen(ModalScreen[None]):
-    """Modal screen showing the full AG-UI state as JSON."""
+    """Modal screen showing and editing the full AG-UI state as JSON."""
 
     CSS = """
     StateScreen {
@@ -80,27 +80,47 @@ class StateScreen(ModalScreen[None]):
     }
 
     #state-body {
-        height: auto;
+        height: 1fr;
     }
     """
 
     BINDINGS = [
         Binding("escape", "dismiss", "Close", show=False),
+        Binding("ctrl+s", "save", "Save"),
     ]
 
-    def __init__(self, state: dict[str, Any], **kwargs: Any) -> None:
+    def __init__(
+        self,
+        state: dict[str, Any],
+        on_save: Callable[[dict[str, Any]], None],
+        **kwargs: Any,
+    ) -> None:
         super().__init__(**kwargs)
         self._state = state
+        self._on_save = on_save
 
     def compose(self) -> "ComposeResult":
         with VerticalScroll(id="state-dialog"):
-            yield Static("State", id="state-title")
-            text = (
-                json.dumps(self._state, indent=2, default=str)
-                if self._state
-                else "(empty)"
+            yield Static(
+                "Edit state (ctrl+s to save, ctrl+c to copy selection, escape to cancel)",
+                id="state-title",
             )
-            yield Static(Syntax(text, "json", word_wrap=True), id="state-body")
+            text = json.dumps(self._state, indent=2, default=str)
+            yield TextArea.code_editor(text, language="json", id="state-body")
+
+    def action_save(self) -> None:
+        text = self.query_one(TextArea).text
+        try:
+            new_state = json.loads(text)
+        except json.JSONDecodeError as exc:
+            self.app.notify(f"Invalid JSON: {exc}", severity="error", timeout=8)
+            return
+        try:
+            self._on_save(new_state)
+        except (ValidationError, ValueError, TypeError) as exc:
+            self.app.notify(f"Invalid state: {exc}", severity="error", timeout=8)
+            return
+        self.dismiss()
 
 
 class ChatApp(App):
@@ -169,11 +189,12 @@ class ChatApp(App):
 
     def get_system_commands(self, screen: Any) -> Iterable["SystemCommand"]:
         yield from super().get_system_commands(screen)
-        yield SystemCommand(
-            "View state",
-            "Show the current AG-UI state",
-            self.action_view_state,
-        )
+        if not self._is_processing:
+            yield SystemCommand(
+                "Edit state",
+                "View or edit the current AG-UI state",
+                self.action_edit_state,
+            )
         yield SystemCommand(
             "Clear chat",
             "Clear the chat history",
@@ -408,8 +429,18 @@ class ChatApp(App):
                 desc = desc[:117] + "…)"
             widget.update_description(desc)
 
-    def action_view_state(self) -> None:
-        self.push_screen(StateScreen(self._state))
+    def action_edit_state(self) -> None:
+        self.push_screen(StateScreen(self._state, on_save=self._apply_state_edit))
+
+    def _apply_state_edit(self, new_state: dict[str, Any]) -> None:
+        if not isinstance(new_state, dict):
+            raise ValueError("state must be a JSON object")
+        for namespace, data in new_state.items():
+            current = self._toolset.get_namespace(namespace)
+            if current is not None:
+                type(current).model_validate(data)
+        self._toolset.restore_state_snapshot(new_state)
+        self._state = self._toolset.build_state_snapshot()
 
     def action_focus_input(self) -> None:
         if self._is_processing and self._current_worker:
