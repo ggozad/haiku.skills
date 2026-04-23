@@ -218,7 +218,7 @@ def _build_cli():
             None,
             "--initial-state-path",
             help=(
-                "Path to YAML file with initial AG-UI state. "
+                "Path to YAML or JSON file with initial AG-UI state. "
                 "Values are deep-merged into each namespace's defaults"
             ),
         ),
