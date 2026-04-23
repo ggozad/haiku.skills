@@ -1,5 +1,6 @@
 # pragma: no cover
 from pathlib import Path
+from typing import Any
 
 from haiku.skills.models import Skill
 
@@ -11,6 +12,7 @@ def run_chat(
     use_entrypoints: bool = False,
     skill_model: str | None = None,
     use_subagents: bool = True,
+    initial_state: dict[str, Any] | None = None,
 ) -> None:
     """Run the chat TUI."""
     try:
@@ -29,5 +31,6 @@ def run_chat(
         use_entrypoints=use_entrypoints,
         skill_model=skill_model,
         use_subagents=use_subagents,
+        initial_state=initial_state,
     )
     app.run()

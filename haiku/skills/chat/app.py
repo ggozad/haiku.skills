@@ -141,6 +141,7 @@ class ChatApp(App):
         use_entrypoints: bool = False,
         skill_model: str | None = None,
         use_subagents: bool = True,
+        initial_state: dict[str, Any] | None = None,
     ) -> None:
         super().__init__()
         self._model = model
@@ -158,6 +159,7 @@ class ChatApp(App):
         self._state: dict[str, Any] = {}
         self._is_processing = False
         self._current_worker: Worker[None] | None = None
+        self._initial_state = initial_state
 
     def compose(self) -> "ComposeResult":
         yield Header()
@@ -178,6 +180,20 @@ class ChatApp(App):
             self.action_clear_chat,
         )
 
+    def _seed_state(self) -> dict[str, Any]:
+        state = self._toolset.build_state_snapshot()
+        if self._initial_state is not None:
+            for namespace, overrides in self._initial_state.items():
+                current = self._toolset.get_namespace(namespace)
+                if current is None:
+                    continue
+                merged = current.model_dump(mode="json") | overrides
+                state[namespace] = (
+                    type(current).model_validate(merged).model_dump(mode="json")
+                )
+            self._toolset.restore_state_snapshot(state)
+        return state
+
     async def on_mount(self) -> None:
         self._agent = Agent(
             self._model,
@@ -187,7 +203,7 @@ class ChatApp(App):
             toolsets=[self._toolset],
             retries=3,
         )
-        self._state = self._toolset.build_state_snapshot()
+        self._state = self._seed_state()
         self.query_one(Input).focus()
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
@@ -403,6 +419,6 @@ class ChatApp(App):
     async def action_clear_chat(self) -> None:
         self._messages = []
         self._message_history = []
-        self._state = self._toolset.build_state_snapshot()
+        self._state = self._seed_state()
         chat_history = self.query_one(ChatHistory)
         await chat_history.clear_messages()

@@ -22,6 +22,7 @@ def cli() -> None:
 def _build_cli():
     import os
     from pathlib import Path
+    from typing import Any
 
     import typer
 
@@ -213,8 +214,18 @@ def _build_cli():
             "--no-subagents",
             help="Expose skill tools directly instead of delegating to sub-agents",
         ),
+        initial_state_path: Path | None = typer.Option(
+            None,
+            "--initial-state-path",
+            help=(
+                "Path to YAML or JSON file with initial AG-UI state. "
+                "Values are deep-merged into each namespace's defaults"
+            ),
+        ),
     ) -> None:
         model_name = model or os.environ.get("HAIKU_SKILLS_MODEL") or "ollama:gpt-oss"
+
+        import yaml
 
         from haiku.skills.chat import run_chat
 
@@ -231,11 +242,17 @@ def _build_cli():
         else:
             selected = [s for n in registry.names if (s := registry.get(n)) is not None]
 
+        initial_state: dict[str, Any] | None = None
+        if initial_state_path:
+            with initial_state_path.open() as state_file:
+                initial_state = yaml.safe_load(state_file)
+
         run_chat(
             model=model_name,
             skills=selected,
             skill_model=skill_model,
             use_subagents=not no_subagents,
+            initial_state=initial_state,
         )
 
     return app
