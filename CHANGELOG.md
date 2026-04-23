@@ -5,6 +5,7 @@
 ### Added
 
 - **`haiku-skills chat --initial-state-path PATH`**: Seed the AG-UI state from a YAML or JSON file at launch. Values are deep-merged into each namespace's defaults, so partial overrides are supported. The seeded state is preserved when clearing the chat.
+- **Editable state modal in the chat TUI**: Open via the system command palette ("Edit state"). JSON is editable in place with syntax highlighting; `ctrl+s` validates the edit through each namespace's Pydantic model and applies it to the next turn, `ctrl+c` copies the current selection to the clipboard (useful for saving a session to reuse with `--initial-state-path`), `escape` cancels. The command is hidden while a turn is in flight.
 
 ## [0.15.0] - 2026-04-22
 
