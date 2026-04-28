@@ -86,6 +86,7 @@ class Skill(BaseModel):
     instructions: str | None = None
     resources: list[str] = Field(default_factory=list)
     model: str | Model | None = None
+    request_limit: int | None = None
     _tools: list[Tool | Callable[..., Any]] = PrivateAttr(default_factory=list)
     _toolsets: list[AbstractToolset[Any]] = PrivateAttr(default_factory=list)
     _state_type: type[BaseModel] | None = PrivateAttr(default=None)

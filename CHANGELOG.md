@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`request_limit` on `Skill`**: Optional integer field that overrides the default 20-request usage limit when running a skill via `run_skill()`. Long-running skills (e.g. analysis skills that interleave search and code execution) can raise their ceiling without monkey-patching.
+- **`run_skill` is now public**: Re-exported from `haiku.skills`. Replaces the previously underscore-prefixed `_run_skill`.
+
+### Changed
+
+- **`_run_skill` renamed to `run_skill`**: Breaking. Update imports from `from haiku.skills.agent import _run_skill` to `from haiku.skills.agent import run_skill` (or `from haiku.skills import run_skill`).
+
 ## [0.15.1] - 2026-04-23
 
 ### Added

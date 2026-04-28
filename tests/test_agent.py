@@ -30,9 +30,9 @@ from haiku.skills.agent import (
     _create_read_resource,
     _create_run_script,
     _events_to_activity,
-    _run_skill,
     resolve_model,
     run_agui_stream,
+    run_skill,
 )
 from haiku.skills.models import (
     Skill,
@@ -129,7 +129,7 @@ class TestRunSkill:
         toolset = SkillToolset(skill_paths=[FIXTURES])
         skill = toolset.registry.get("simple-skill")
         assert skill is not None
-        result, events, _ = await _run_skill(
+        result, events, _ = await run_skill(
             TestModel(call_tools=[]), skill, "Do something."
         )
         assert result
@@ -147,7 +147,7 @@ class TestRunSkill:
             instructions="Use the greet tool.",
             tools=[greet],
         )
-        result, events, _ = await _run_skill(TestModel(), skill, "Greet Alice.")
+        result, events, _ = await run_skill(TestModel(), skill, "Greet Alice.")
         assert result
         assert len(events) >= 2
         call_events = [
@@ -179,7 +179,7 @@ class TestRunSkill:
             instructions="Use the greet toolset.",
             toolsets=[toolset],
         )
-        result, events, _ = await _run_skill(TestModel(), skill, "Greet Alice.")
+        result, events, _ = await run_skill(TestModel(), skill, "Greet Alice.")
         assert result
         assert len(events) >= 2
 
@@ -201,7 +201,7 @@ class TestRunSkill:
             instructions="Use the greet tool.",
             tools=[greet],
         )
-        result, collected, _ = await _run_skill(
+        result, collected, _ = await run_skill(
             TestModel(), skill, "Greet Alice.", event_sink=sink
         )
         assert result
@@ -297,7 +297,7 @@ class TestRunSkillWithResources:
             instructions="Use references.",
             resources=["references/REFERENCE.md", "assets/template.txt"],
         )
-        result, *_ = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
+        result, *_ = await run_skill(TestModel(call_tools=[]), skill, "Do something.")
         assert result
 
     async def test_no_resources_no_section(self, allow_model_requests: None):
@@ -306,7 +306,7 @@ class TestRunSkillWithResources:
             source=SkillSource.ENTRYPOINT,
             instructions="Do things.",
         )
-        result, *_ = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
+        result, *_ = await run_skill(TestModel(call_tools=[]), skill, "Do something.")
         assert result
 
 
@@ -353,7 +353,7 @@ class TestAgent:
     async def test_run_skill_exception_returns_error(
         self, monkeypatch: pytest.MonkeyPatch, allow_model_requests: None
     ):
-        """Exception during _run_skill returns an error string."""
+        """Exception during run_skill returns an error string."""
 
         def exploding_tool() -> str:
             """Always raises."""
@@ -618,7 +618,7 @@ class TestSkillToolsetState:
 
 class TestRunSkillWithState:
     async def test_run_skill_passes_state_as_deps(self, allow_model_requests: None):
-        """Verify _run_skill passes state to the sub-agent as deps."""
+        """Verify run_skill passes state to the sub-agent as deps."""
         captured_deps: list[SkillRunDeps | None] = []
 
         def capture_tool(ctx: RunContext[SkillRunDeps | None]) -> str:
@@ -633,7 +633,7 @@ class TestRunSkillWithState:
             tools=[capture_tool],
         )
         state = CounterState(count=5)
-        await _run_skill(TestModel(), skill, "Do it.", state=state)
+        await run_skill(TestModel(), skill, "Do it.", state=state)
         assert len(captured_deps) == 1
         assert captured_deps[0] is not None
         assert captured_deps[0].state is state
@@ -653,7 +653,7 @@ class TestRunSkillWithState:
             instructions="Use capture_tool.",
             tools=[capture_tool],
         )
-        await _run_skill(TestModel(), skill, "Do it.")
+        await run_skill(TestModel(), skill, "Do it.")
         assert len(captured_deps) == 1
         assert captured_deps[0] is not None
         assert captured_deps[0].state is None
@@ -676,7 +676,7 @@ class TestRunSkillWithState:
             thinking="high",
         )
         with patch.object(Agent, "run", patched_run):
-            await _run_skill(TestModel(call_tools=[]), skill, "Do it.")
+            await run_skill(TestModel(call_tools=[]), skill, "Do it.")
         assert len(captured_settings) == 1
         assert captured_settings[0] == ModelSettings(thinking="high")
 
@@ -695,9 +695,52 @@ class TestRunSkillWithState:
             instructions="Do it.",
         )
         with patch.object(Agent, "run", patched_run):
-            await _run_skill(TestModel(call_tools=[]), skill, "Do it.")
+            await run_skill(TestModel(call_tools=[]), skill, "Do it.")
         assert len(captured_settings) == 1
         assert captured_settings[0] is None
+
+    async def test_run_skill_default_request_limit_is_20(
+        self, allow_model_requests: None
+    ):
+        """Without skill.request_limit set, run_skill uses the legacy default of 20."""
+        captured_limits: list[Any] = []
+        original_run = Agent.run
+
+        async def patched_run(self: Any, *args: Any, **kwargs: Any) -> Any:
+            captured_limits.append(kwargs.get("usage_limits"))
+            return await original_run(self, *args, **kwargs)
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do it.",
+        )
+        with patch.object(Agent, "run", patched_run):
+            await run_skill(TestModel(call_tools=[]), skill, "Do it.")
+        assert len(captured_limits) == 1
+        assert captured_limits[0].request_limit == 20
+
+    async def test_run_skill_honors_skill_request_limit(
+        self, allow_model_requests: None
+    ):
+        """When skill.request_limit is set, run_skill passes it through."""
+        captured_limits: list[Any] = []
+        original_run = Agent.run
+
+        async def patched_run(self: Any, *args: Any, **kwargs: Any) -> Any:
+            captured_limits.append(kwargs.get("usage_limits"))
+            return await original_run(self, *args, **kwargs)
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do it.",
+            request_limit=50,
+        )
+        with patch.object(Agent, "run", patched_run):
+            await run_skill(TestModel(call_tools=[]), skill, "Do it.")
+        assert len(captured_limits) == 1
+        assert captured_limits[0].request_limit == 50
 
 
 class TestRunSkillDepsType:
@@ -729,7 +772,7 @@ class TestRunSkillDepsType:
             deps_type=CustomDeps,
         )
         state = CounterState(count=3)
-        await _run_skill(TestModel(), skill, "Do it.", state=state)
+        await run_skill(TestModel(), skill, "Do it.", state=state)
         assert len(captured_deps) == 1
         assert isinstance(captured_deps[0], CustomDeps)
         assert captured_deps[0].state is state
@@ -752,7 +795,7 @@ class TestRunSkillDepsType:
             instructions="Use capture_tool.",
             tools=[capture_tool],
         )
-        await _run_skill(TestModel(), skill, "Do it.")
+        await run_skill(TestModel(), skill, "Do it.")
         assert len(captured_deps) == 1
         assert isinstance(captured_deps[0], SkillRunDeps)
 
@@ -1527,7 +1570,7 @@ class TestRunSkillWithScripts:
             path=tmp_path,
             instructions="Use scripts.",
         )
-        result, *_ = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
+        result, *_ = await run_skill(TestModel(call_tools=[]), skill, "Do something.")
         assert result
 
     async def test_no_run_script_without_scripts_dir(self, allow_model_requests: None):
@@ -1536,7 +1579,7 @@ class TestRunSkillWithScripts:
             source=SkillSource.ENTRYPOINT,
             instructions="Do things.",
         )
-        result, *_ = await _run_skill(TestModel(call_tools=[]), skill, "Do something.")
+        result, *_ = await run_skill(TestModel(call_tools=[]), skill, "Do something.")
         assert result
 
 
