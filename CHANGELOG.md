@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-04-28
+
 ### Added
 
 - **`request_limit` on `Skill`**: Optional integer field that overrides the default 20-request usage limit when running a skill via `run_skill()`. Long-running skills (e.g. analysis skills that interleave search and code execution) can raise their ceiling without monkey-patching.
@@ -333,7 +335,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.15.1...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.16.0...HEAD
+[0.16.0]: https://github.com/ggozad/haiku.skills/compare/0.15.1...0.16.0
 [0.15.1]: https://github.com/ggozad/haiku.skills/compare/0.15.0...0.15.1
 [0.15.0]: https://github.com/ggozad/haiku.skills/compare/0.14.0...0.15.0
 [0.14.0]: https://github.com/ggozad/haiku.skills/compare/0.13.3...0.14.0
