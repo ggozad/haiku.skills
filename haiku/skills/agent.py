@@ -283,7 +283,7 @@ async def run_skill(
         result = await agent.run(
             request,
             deps=deps,
-            usage_limits=UsageLimits(request_limit=20),
+            usage_limits=UsageLimits(request_limit=skill.request_limit or 20),
             event_stream_handler=event_handler,
             model_settings=model_settings,
         )

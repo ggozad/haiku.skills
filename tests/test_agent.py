@@ -699,6 +699,49 @@ class TestRunSkillWithState:
         assert len(captured_settings) == 1
         assert captured_settings[0] is None
 
+    async def test_run_skill_default_request_limit_is_20(
+        self, allow_model_requests: None
+    ):
+        """Without skill.request_limit set, run_skill uses the legacy default of 20."""
+        captured_limits: list[Any] = []
+        original_run = Agent.run
+
+        async def patched_run(self: Any, *args: Any, **kwargs: Any) -> Any:
+            captured_limits.append(kwargs.get("usage_limits"))
+            return await original_run(self, *args, **kwargs)
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do it.",
+        )
+        with patch.object(Agent, "run", patched_run):
+            await run_skill(TestModel(call_tools=[]), skill, "Do it.")
+        assert len(captured_limits) == 1
+        assert captured_limits[0].request_limit == 20
+
+    async def test_run_skill_honors_skill_request_limit(
+        self, allow_model_requests: None
+    ):
+        """When skill.request_limit is set, run_skill passes it through."""
+        captured_limits: list[Any] = []
+        original_run = Agent.run
+
+        async def patched_run(self: Any, *args: Any, **kwargs: Any) -> Any:
+            captured_limits.append(kwargs.get("usage_limits"))
+            return await original_run(self, *args, **kwargs)
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do it.",
+            request_limit=50,
+        )
+        with patch.object(Agent, "run", patched_run):
+            await run_skill(TestModel(call_tools=[]), skill, "Do it.")
+        assert len(captured_limits) == 1
+        assert captured_limits[0].request_limit == 50
+
 
 class TestRunSkillDepsType:
     async def test_custom_deps_type_used(self, allow_model_requests: None):
