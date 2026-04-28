@@ -207,7 +207,7 @@ def _create_run_script(
     return run_script
 
 
-async def _run_skill(
+async def run_skill(
     model: str | Model,
     skill: Skill,
     request: str,
@@ -493,7 +493,7 @@ class SkillToolset(FunctionToolset[Any]):
             event_sink = self._event_sink
 
             try:
-                result, collected_events, emitted_events = await _run_skill(
+                result, collected_events, emitted_events = await run_skill(
                     skill_model, skill, request, state=state, event_sink=event_sink
                 )
             except Exception as e:

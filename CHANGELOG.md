@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`run_skill` is now public**: Re-exported from `haiku.skills`. Replaces the previously underscore-prefixed `_run_skill`.
+
+### Changed
+
+- **`_run_skill` renamed to `run_skill`**: Breaking. Update imports from `from haiku.skills.agent import _run_skill` to `from haiku.skills.agent import run_skill` (or `from haiku.skills import run_skill`).
+
 ## [0.15.1] - 2026-04-23
 
 ### Added

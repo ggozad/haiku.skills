@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from pydantic_ai import RunContext
 from pydantic_ai.models.test import TestModel
 
-from haiku.skills.agent import _run_skill
+from haiku.skills.agent import run_skill
 from haiku.skills.models import Skill, SkillMetadata, SkillSource
 from haiku.skills.state import SkillRunDeps, SkillRunDepsProtocol
 
@@ -66,7 +66,7 @@ class TestLifespan:
             lifespan=lifespan,
         )
 
-        result, *_ = await _run_skill(TestModel(), skill, "Ping all three.")
+        result, *_ = await run_skill(TestModel(), skill, "Ping all three.")
 
         assert result
         assert events == ["enter", "exit"]
@@ -106,7 +106,7 @@ class TestLifespan:
         )
 
         with pytest.raises(Exception):
-            await _run_skill(TestModel(), skill, "Boom.")
+            await run_skill(TestModel(), skill, "Boom.")
 
         assert exit_info["exc_type"] is not None
         assert exit_info["exc"] is not None
@@ -124,7 +124,7 @@ class TestLifespan:
         )
 
         assert skill.lifespan is None
-        result, *_ = await _run_skill(TestModel(), skill, "Do it.")
+        result, *_ = await run_skill(TestModel(), skill, "Do it.")
         assert result
 
     async def test_per_invocation_isolation(self, allow_model_requests: None) -> None:
@@ -152,8 +152,8 @@ class TestLifespan:
             lifespan=lifespan,
         )
 
-        await _run_skill(TestModel(), skill, "Ping.")
-        await _run_skill(TestModel(), skill, "Ping again.")
+        await run_skill(TestModel(), skill, "Ping.")
+        await run_skill(TestModel(), skill, "Ping again.")
 
         assert len(enters) == 2
         assert enters[0] != enters[1]
@@ -185,7 +185,7 @@ class TestLifespan:
             lifespan=lifespan,
         )
 
-        await _run_skill(TestModel(), skill, "Do it.")
+        await run_skill(TestModel(), skill, "Do it.")
         assert events == ["enter", "exit"]
 
     async def test_reconfigure_preserves_lifespan(self) -> None:
