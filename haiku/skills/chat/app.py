@@ -39,7 +39,7 @@ try:
         UserMessage,
     )
     from jsonpatch import JsonPatch
-    from pydantic_ai.ag_ui import AGUIAdapter
+    from pydantic_ai.ui.ag_ui import AGUIAdapter
     from textual.app import App, SystemCommand
     from textual.binding import Binding
     from textual.containers import VerticalScroll

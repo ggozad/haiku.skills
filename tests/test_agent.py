@@ -1735,7 +1735,7 @@ class TestRunAguiStream:
             instructions=build_system_prompt(toolset.skill_catalog),
             toolsets=[toolset],
         )
-        from pydantic_ai.ag_ui import AGUIAdapter
+        from pydantic_ai.ui.ag_ui import AGUIAdapter
 
         run_input = _make_run_input("Greet someone.")
         adapter = AGUIAdapter(agent=agent, run_input=run_input)

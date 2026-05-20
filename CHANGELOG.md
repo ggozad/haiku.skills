@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Bump `pydantic-ai-slim>=1.96.0`. Add the `ag-ui` extra so the AG-UI dependency is explicit, and migrate `AGUIAdapter` imports from `pydantic_ai.ag_ui` to `pydantic_ai.ui.ag_ui` (the legacy module was deprecated upstream).
+
 ## [0.16.0] - 2026-04-28
 
 ### Added
