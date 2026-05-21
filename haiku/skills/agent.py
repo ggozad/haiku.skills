@@ -99,11 +99,11 @@ def _events_to_activity(skill_name: str, events: list[Any]) -> list[BaseEvent]:
                     replace=True,
                     content={
                         "skill": skill_name,
-                        "tool_name": event.result.tool_name,
+                        "tool_name": event.part.tool_name,
                         "tool_call_id": event.tool_call_id,
-                        "result": event.result.model_response()
-                        if isinstance(event.result, RetryPromptPart)
-                        else event.result.model_response_str(),
+                        "result": event.part.model_response()
+                        if isinstance(event.part, RetryPromptPart)
+                        else event.part.model_response_str(),
                     },
                 )
             )

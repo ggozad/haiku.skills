@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Use `FunctionToolResultEvent.part` instead of the deprecated `.result` alias when forwarding sub-agent tool events through `_events_to_activity`. Removes a `DeprecationWarning` at runtime and survives the 2.0 removal of `.result`.
+
 ## [0.17.0] - 2026-05-21
 
 ### Changed
