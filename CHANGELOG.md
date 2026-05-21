@@ -8,6 +8,7 @@
 - Bump `pydantic-monty>=0.0.17` in the code-execution skill. Migrate off the deprecated module-level `pydantic_monty.run_repl_async(repl, ...)` helper to the `repl.feed_run_async(...)` method.
 - Bump `pydantic-ai-backend[docker,console]>=0.2.7` in the sandbox skill. Picks up async-safe console toolset (0.2.3), `DockerSandbox` lifecycle / `container_name` / `SessionManager` improvements (0.2.4), globstar and path-matching fixes (0.2.5–0.2.6), and async-cancellable shell execution (0.2.7). `ConsoleToolset` and `DockerSandbox` import paths and kwargs are unchanged.
 - Refactor the sandbox skill to use `pydantic_ai_backends.SessionManager` for container lifecycle. Replaces the hand-rolled module-level `_sandboxes` / `_last_active` / `_timeouts` dicts and `_cleanup_stale` / `_get_sandbox` helpers; idle cleanup, dead-container replacement, and at-exit shutdown now go through the upstream manager.
+- Refresh the rest of the lockfile to latest within current constraints (`ag-ui-protocol`, `textual`, `python-dotenv`, `ty`, `pytest-cov`, `ruff`, and transitives). The `ty` bump from 0.0.18 to 0.0.28 surfaces stricter narrowing across closures and recognises only `# ty: ignore[CODE]` (not the mypy-style `# type: ignore[CODE]`); affected sites were rewritten to capture `skill.path` in a local variable after the `assert` so the narrowing reaches the closure, or migrated to the `ty: ignore` syntax where the diagnostic is a known false positive (sigstore `ExtensionType` API, pydantic frozen-model assignment in negative tests).
 
 ## [0.16.0] - 2026-04-28
 

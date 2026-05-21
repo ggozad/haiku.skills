@@ -1775,7 +1775,8 @@ class TestRunAguiStream:
             async def run_stream(self, **kwargs: Any) -> AsyncIterator[BaseEvent]:
                 adapter_started.set()
                 await asyncio.sleep(999)
-                yield
+                if False:
+                    yield  # type: ignore[unreachable]  # noqa: F821
 
         toolset = SkillToolset()
 

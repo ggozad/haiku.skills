@@ -29,7 +29,7 @@ class TestTrustedIdentity:
     def test_frozen(self):
         ti = TrustedIdentity(identity="a", issuer="b")
         with pytest.raises(AttributeError):
-            ti.identity = "c"  # type: ignore[misc]
+            ti.identity = "c"  # ty: ignore[invalid-assignment]
 
 
 class TestImportSigstore:
