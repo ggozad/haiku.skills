@@ -1,11 +1,45 @@
 """Tests for the sandbox skill package."""
 
+import time
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from haiku.skills.models import Skill
 from haiku.skills.state import SkillRunDeps, SkillRunDepsProtocol
+
+
+class StubSandbox:
+    """Stub for DockerSandbox that exposes the SessionManager protocol."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        self.kwargs = kwargs
+        self._alive = True
+        self._last_activity = time.time()
+        self.start_called = 0
+        self.stop_called = 0
+
+    def start(self) -> None:
+        self.start_called += 1
+
+    def stop(self) -> None:
+        self.stop_called += 1
+        self._alive = False
+
+    def is_alive(self) -> bool:
+        return self._alive
+
+
+def _make_factory(*sandboxes: StubSandbox):
+    """Side_effect callable that returns each provided stub once, then raises."""
+    iterator = iter(sandboxes)
+
+    def factory(**kwargs: Any) -> StubSandbox:
+        box = next(iterator)
+        box.kwargs = kwargs
+        return box
+
+    return factory
 
 
 async def _run_lifespan(skill: Skill, state: Any = None) -> Any:
@@ -46,38 +80,34 @@ class TestCreateSkill:
         assert issubclass(skill.deps_type, SkillRunDeps)
 
     async def test_workspace_from_env(self, monkeypatch):
-        from haiku_skills_sandbox import SandboxState, _sandboxes, create_skill
+        from haiku_skills_sandbox import SandboxState, create_skill
 
         monkeypatch.setenv("HAIKU_SKILLS_SANDBOX_WORKSPACE", "/env/data")
-        _sandboxes.clear()
         skill = create_skill()
         state = SandboxState()
+        stub = StubSandbox()
 
-        with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
-            mock_instance = MagicMock()
-            MockSandbox.return_value = mock_instance
-
+        with patch(
+            "haiku_skills_sandbox.DockerSandbox", side_effect=_make_factory(stub)
+        ):
             await _run_lifespan(skill, state=state)
 
-        call_kwargs = MockSandbox.call_args[1]
-        assert call_kwargs["volumes"] == {"/env/data": "/workspace"}
+        assert stub.kwargs["volumes"] == {"/env/data": "/workspace"}
 
     async def test_explicit_workspace_overrides_env(self, monkeypatch):
-        from haiku_skills_sandbox import SandboxState, _sandboxes, create_skill
+        from haiku_skills_sandbox import SandboxState, create_skill
 
         monkeypatch.setenv("HAIKU_SKILLS_SANDBOX_WORKSPACE", "/env/data")
-        _sandboxes.clear()
         skill = create_skill(workspace=Path("/explicit"))
         state = SandboxState()
+        stub = StubSandbox()
 
-        with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
-            mock_instance = MagicMock()
-            MockSandbox.return_value = mock_instance
-
+        with patch(
+            "haiku_skills_sandbox.DockerSandbox", side_effect=_make_factory(stub)
+        ):
             await _run_lifespan(skill, state=state)
 
-        call_kwargs = MockSandbox.call_args[1]
-        assert call_kwargs["volumes"] == {"/explicit": "/workspace"}
+        assert stub.kwargs["volumes"] == {"/explicit": "/workspace"}
 
 
 class TestSandboxState:
@@ -94,180 +124,94 @@ class TestSandboxState:
         assert state.session_id == "abc-123"
 
 
-class TestGetSandbox:
-    def test_creates_new_sandbox_when_no_session(self):
-        from haiku_skills_sandbox import SandboxState, _get_sandbox, _sandboxes
+class TestSessionBinding:
+    async def test_creates_new_sandbox_when_no_session(self):
+        from haiku_skills_sandbox import SandboxState, create_skill
 
-        _sandboxes.clear()
+        skill = create_skill()
         state = SandboxState()
+        stub = StubSandbox()
 
-        with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
-            mock_instance = MagicMock()
-            MockSandbox.return_value = mock_instance
+        with patch(
+            "haiku_skills_sandbox.DockerSandbox", side_effect=_make_factory(stub)
+        ):
+            deps = await _run_lifespan(skill, state=state)
 
-            result = _get_sandbox(state)
-
-        assert result is mock_instance
         assert state.session_id is not None
-        assert state.session_id in _sandboxes
-        assert _sandboxes[state.session_id] is mock_instance
+        assert deps.backend is stub
+        assert stub.start_called == 1
 
-    def test_reuses_existing_sandbox_when_session_in_cache(self):
-        from haiku_skills_sandbox import SandboxState, _get_sandbox, _sandboxes
+    async def test_reuses_existing_sandbox(self):
+        from haiku_skills_sandbox import SandboxState, create_skill
 
-        _sandboxes.clear()
-        mock_sandbox = MagicMock()
-        _sandboxes["existing-id"] = mock_sandbox
-        state = SandboxState(session_id="existing-id")
-
-        result = _get_sandbox(state)
-        assert result is mock_sandbox
-
-    def test_creates_new_sandbox_on_cache_miss(self):
-        from haiku_skills_sandbox import SandboxState, _get_sandbox, _sandboxes
-
-        _sandboxes.clear()
-        state = SandboxState(session_id="stale-id")
-
-        with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
-            mock_instance = MagicMock()
-            MockSandbox.return_value = mock_instance
-
-            result = _get_sandbox(state)
-
-        assert result is mock_instance
-        assert state.session_id != "stale-id"
-        assert state.session_id in _sandboxes
-
-    def test_works_with_none_state(self):
-        from haiku_skills_sandbox import _get_sandbox, _sandboxes
-
-        _sandboxes.clear()
-
-        with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
-            mock_instance = MagicMock()
-            MockSandbox.return_value = mock_instance
-
-            result = _get_sandbox(None)
-
-        assert result is mock_instance
-
-    def test_passes_workspace_as_volume(self):
-        from haiku_skills_sandbox import SandboxState, _get_sandbox, _sandboxes
-
-        _sandboxes.clear()
+        skill = create_skill()
         state = SandboxState()
+        stub = StubSandbox()
 
-        with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
-            mock_instance = MagicMock()
-            MockSandbox.return_value = mock_instance
+        with patch(
+            "haiku_skills_sandbox.DockerSandbox", side_effect=_make_factory(stub)
+        ):
+            deps1 = await _run_lifespan(skill, state=state)
+            deps2 = await _run_lifespan(skill, state=state)
 
-            _get_sandbox(state, workspace=Path("/data/files"))
+        assert deps1.backend is deps2.backend
+        # Only one DockerSandbox should have been constructed.
+        assert stub.start_called == 1
 
-        MockSandbox.assert_called_once()
-        call_kwargs = MockSandbox.call_args[1]
-        assert call_kwargs["volumes"] == {"/data/files": "/workspace"}
+    async def test_dead_sandbox_is_replaced(self):
+        from haiku_skills_sandbox import SandboxState, create_skill
 
-    def test_no_volumes_without_workspace(self):
-        from haiku_skills_sandbox import SandboxState, _get_sandbox, _sandboxes
-
-        _sandboxes.clear()
+        skill = create_skill()
         state = SandboxState()
+        old, new = StubSandbox(), StubSandbox()
 
-        with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
-            mock_instance = MagicMock()
-            MockSandbox.return_value = mock_instance
+        with patch(
+            "haiku_skills_sandbox.DockerSandbox",
+            side_effect=_make_factory(old, new),
+        ):
+            await _run_lifespan(skill, state=state)
+            # Simulate container death.
+            old._alive = False
+            deps = await _run_lifespan(skill, state=state)
 
-            _get_sandbox(state)
-
-        call_kwargs = MockSandbox.call_args[1]
-        assert call_kwargs["volumes"] is None
+        assert deps.backend is new
 
 
 class TestIdleCleanup:
-    def test_stale_sandbox_is_stopped_and_replaced(self):
-        import time
+    async def test_stale_sandbox_is_stopped_and_replaced(self):
+        from haiku_skills_sandbox import SandboxState, create_skill
 
-        from haiku_skills_sandbox import (
-            SandboxState,
-            _get_sandbox,
-            _last_active,
-            _sandboxes,
-        )
-
-        _sandboxes.clear()
-        _last_active.clear()
-
+        skill = create_skill(idle_timeout=10)
         state = SandboxState()
+        old, new = StubSandbox(), StubSandbox()
 
-        with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
-            old_sandbox = MagicMock()
-            new_sandbox = MagicMock()
-            MockSandbox.side_effect = [old_sandbox, new_sandbox]
+        with patch(
+            "haiku_skills_sandbox.DockerSandbox",
+            side_effect=_make_factory(old, new),
+        ):
+            await _run_lifespan(skill, state=state)
+            # Force the old sandbox past its idle window.
+            old._last_activity = time.time() - 9999
+            deps = await _run_lifespan(skill, state=state)
 
-            _get_sandbox(state)
-            session_id = state.session_id
-            assert session_id is not None
+        assert old.stop_called == 1
+        assert deps.backend is new
 
-            # Simulate idle beyond timeout
-            _last_active[session_id] = time.monotonic() - 9999
+    async def test_active_sandbox_is_reused(self):
+        from haiku_skills_sandbox import SandboxState, create_skill
 
-            result = _get_sandbox(state)
-
-        old_sandbox.stop.assert_called_once()
-        assert result is new_sandbox
-
-    def test_active_sandbox_is_reused(self):
-        from haiku_skills_sandbox import (
-            SandboxState,
-            _get_sandbox,
-            _last_active,
-            _sandboxes,
-        )
-
-        _sandboxes.clear()
-        _last_active.clear()
-
+        skill = create_skill()
         state = SandboxState()
+        stub = StubSandbox()
 
-        with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
-            mock_instance = MagicMock()
-            MockSandbox.return_value = mock_instance
+        with patch(
+            "haiku_skills_sandbox.DockerSandbox", side_effect=_make_factory(stub)
+        ):
+            deps1 = await _run_lifespan(skill, state=state)
+            deps2 = await _run_lifespan(skill, state=state)
 
-            first = _get_sandbox(state)
-            second = _get_sandbox(state)
-
-        assert first is second
-        mock_instance.stop.assert_not_called()
-
-    def test_stale_cleanup_ignores_stop_errors(self):
-        import time
-
-        from haiku_skills_sandbox import (
-            SandboxState,
-            _get_sandbox,
-            _last_active,
-            _sandboxes,
-        )
-
-        _sandboxes.clear()
-        _last_active.clear()
-
-        state = SandboxState()
-
-        with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
-            old_sandbox = MagicMock()
-            old_sandbox.stop.side_effect = RuntimeError("already dead")
-            new_sandbox = MagicMock()
-            MockSandbox.side_effect = [old_sandbox, new_sandbox]
-
-            _get_sandbox(state)
-            assert state.session_id is not None
-            _last_active[state.session_id] = time.monotonic() - 9999
-
-            result = _get_sandbox(state)
-
-        assert result is new_sandbox
+        assert deps1.backend is deps2.backend
+        assert stub.stop_called == 0
 
     def test_default_timeout_from_env(self, monkeypatch):
         import haiku_skills_sandbox
@@ -280,76 +224,25 @@ class TestIdleCleanup:
         monkeypatch.setenv("HAIKU_SKILLS_SANDBOX_IDLE_TIMEOUT", "120")
         assert haiku_skills_sandbox._default_idle_timeout() == 120
 
-    async def test_per_sandbox_timeout_via_create_skill(self):
-        import time
-
-        from haiku_skills_sandbox import (
-            SandboxState,
-            _last_active,
-            _sandboxes,
-            _timeouts,
-            create_skill,
-        )
-
-        _sandboxes.clear()
-        _last_active.clear()
-        _timeouts.clear()
-
-        skill = create_skill(idle_timeout=10)
-        state = SandboxState()
-
-        with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
-            old_sandbox = MagicMock()
-            new_sandbox = MagicMock()
-            MockSandbox.side_effect = [old_sandbox, new_sandbox]
-
-            await _run_lifespan(skill, state=state)
-            session_id = state.session_id
-            assert session_id is not None
-            assert _timeouts[session_id] == 10
-
-            # Simulate idle beyond the per-sandbox timeout
-            _last_active[session_id] = time.monotonic() - 20
-
-            await _run_lifespan(skill, state=state)
-
-        old_sandbox.stop.assert_called_once()
-
-    async def test_per_sandbox_timeout_overrides_env(self, monkeypatch):
-        import time
-
-        from haiku_skills_sandbox import (
-            SandboxState,
-            _last_active,
-            _sandboxes,
-            _timeouts,
-            create_skill,
-        )
+    async def test_per_skill_timeout_overrides_env(self, monkeypatch):
+        from haiku_skills_sandbox import SandboxState, create_skill
 
         monkeypatch.setenv("HAIKU_SKILLS_SANDBOX_IDLE_TIMEOUT", "9999")
-        _sandboxes.clear()
-        _last_active.clear()
-        _timeouts.clear()
-
         skill = create_skill(idle_timeout=10)
         state = SandboxState()
+        old, new = StubSandbox(), StubSandbox()
 
-        with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
-            old_sandbox = MagicMock()
-            new_sandbox = MagicMock()
-            MockSandbox.side_effect = [old_sandbox, new_sandbox]
-
+        with patch(
+            "haiku_skills_sandbox.DockerSandbox",
+            side_effect=_make_factory(old, new),
+        ):
             await _run_lifespan(skill, state=state)
-            session_id = state.session_id
-            assert session_id is not None
-
-            # Idle beyond per-sandbox timeout (10s) but within env timeout (9999s)
-            _last_active[session_id] = time.monotonic() - 20
-
+            # Idle beyond per-skill timeout (10s) but within env (9999s).
+            old._last_activity = time.time() - 20
             await _run_lifespan(skill, state=state)
 
-        # Per-sandbox timeout wins — sandbox is cleaned up
-        old_sandbox.stop.assert_called_once()
+        # Per-skill timeout wins.
+        assert old.stop_called == 1
 
 
 class TestImage:
@@ -365,63 +258,70 @@ class TestImage:
         assert _resolve_image() == "custom:v1"
 
     async def test_image_from_create_skill(self):
-        from haiku_skills_sandbox import SandboxState, _sandboxes, create_skill
+        from haiku_skills_sandbox import SandboxState, create_skill
 
-        _sandboxes.clear()
         skill = create_skill(image="my-image:latest")
         state = SandboxState()
+        stub = StubSandbox()
 
-        with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
-            mock_instance = MagicMock()
-            MockSandbox.return_value = mock_instance
-
+        with patch(
+            "haiku_skills_sandbox.DockerSandbox", side_effect=_make_factory(stub)
+        ):
             await _run_lifespan(skill, state=state)
 
-        call_kwargs = MockSandbox.call_args[1]
-        assert call_kwargs["image"] == "my-image:latest"
+        assert stub.kwargs["image"] == "my-image:latest"
 
     async def test_create_skill_image_overrides_env(self, monkeypatch):
-        from haiku_skills_sandbox import SandboxState, _sandboxes, create_skill
+        from haiku_skills_sandbox import SandboxState, create_skill
 
         monkeypatch.setenv("HAIKU_SKILLS_SANDBOX_IMAGE", "env-image:v1")
-        _sandboxes.clear()
         skill = create_skill(image="explicit:v2")
         state = SandboxState()
+        stub = StubSandbox()
 
-        with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
-            mock_instance = MagicMock()
-            MockSandbox.return_value = mock_instance
-
+        with patch(
+            "haiku_skills_sandbox.DockerSandbox", side_effect=_make_factory(stub)
+        ):
             await _run_lifespan(skill, state=state)
 
-        call_kwargs = MockSandbox.call_args[1]
-        assert call_kwargs["image"] == "explicit:v2"
+        assert stub.kwargs["image"] == "explicit:v2"
 
 
-class TestCleanup:
-    def test_cleanup_stops_all_sandboxes(self):
-        from haiku_skills_sandbox import _cleanup_sandboxes, _sandboxes
+class TestShutdown:
+    def test_create_skill_registers_manager(self):
+        from haiku_skills_sandbox import _active_managers, create_skill
 
-        mock1 = MagicMock()
-        mock2 = MagicMock()
-        _sandboxes["a"] = mock1
-        _sandboxes["b"] = mock2
+        before = len(_active_managers)
+        create_skill()
+        assert len(_active_managers) == before + 1
 
-        _cleanup_sandboxes()
+    def test_shutdown_all_releases_sessions(self):
+        from haiku_skills_sandbox import _active_managers, _shutdown_all
+        from pydantic_ai_backends import SessionManager
 
-        mock1.stop.assert_called_once()
-        mock2.stop.assert_called_once()
-        assert _sandboxes == {}
+        stub = StubSandbox()
+        manager = SessionManager(sandbox_factory=lambda _sid: stub)
+        # Seed an active session without driving the lifespan (avoids running
+        # an event loop, which would block _shutdown_all's asyncio.run()).
+        manager._sessions["sid"] = stub
+        _active_managers.append(manager)
 
-    def test_cleanup_ignores_stop_errors(self):
-        from haiku_skills_sandbox import _cleanup_sandboxes, _sandboxes
+        _shutdown_all()
 
-        mock1 = MagicMock()
-        mock1.stop.side_effect = RuntimeError("already dead")
-        _sandboxes["a"] = mock1
+        assert stub.stop_called == 1
+        assert _active_managers == []
 
-        _cleanup_sandboxes()
-        assert _sandboxes == {}
+    def test_shutdown_ignores_errors(self):
+        from haiku_skills_sandbox import _active_managers, _shutdown_all
+        from pydantic_ai_backends import SessionManager
+
+        class BrokenManager(SessionManager):
+            async def shutdown(self) -> int:
+                raise RuntimeError("boom")
+
+        _active_managers.append(BrokenManager())
+        _shutdown_all()  # must not raise
+        assert _active_managers == []
 
 
 class TestSandboxRunDeps:
@@ -439,50 +339,36 @@ class TestSandboxRunDeps:
         from haiku_skills_sandbox import create_skill
 
         skill = create_skill()
+        stub = StubSandbox()
 
-        with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
-            mock_instance = MagicMock()
-            MockSandbox.return_value = mock_instance
-
+        with patch(
+            "haiku_skills_sandbox.DockerSandbox", side_effect=_make_factory(stub)
+        ):
             deps = await _run_lifespan(skill)
 
-        assert deps.backend is mock_instance
-
-    async def test_backend_uses_state_for_session_binding(self):
-        from haiku_skills_sandbox import (
-            SandboxState,
-            _sandboxes,
-            create_skill,
-        )
-
-        _sandboxes.clear()
-        skill = create_skill()
-        state = SandboxState()
-
-        with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
-            mock_instance = MagicMock()
-            MockSandbox.return_value = mock_instance
-
-            deps1 = await _run_lifespan(skill, state=state)
-            session_id = state.session_id
-
-        assert session_id is not None
-        deps2 = await _run_lifespan(skill, state=state)
-
-        assert deps1.backend is deps2.backend
+        assert deps.backend is stub
 
     async def test_workspace_captured_in_closure(self):
-        from haiku_skills_sandbox import SandboxState, _sandboxes, create_skill
+        from haiku_skills_sandbox import SandboxState, create_skill
 
-        _sandboxes.clear()
         skill = create_skill(workspace=Path("/my/data"))
         state = SandboxState()
+        stub = StubSandbox()
 
-        with patch("haiku_skills_sandbox.DockerSandbox") as MockSandbox:
-            mock_instance = MagicMock()
-            MockSandbox.return_value = mock_instance
-
+        with patch(
+            "haiku_skills_sandbox.DockerSandbox", side_effect=_make_factory(stub)
+        ):
             await _run_lifespan(skill, state=state)
 
-        call_kwargs = MockSandbox.call_args[1]
-        assert call_kwargs["volumes"] == {"/my/data": "/workspace"}
+        assert stub.kwargs["volumes"] == {"/my/data": "/workspace"}
+
+    async def test_lifespan_without_state_does_not_raise(self):
+        from haiku_skills_sandbox import create_skill
+
+        skill = create_skill()
+        stub = StubSandbox()
+
+        with patch(
+            "haiku_skills_sandbox.DockerSandbox", side_effect=_make_factory(stub)
+        ):
+            await _run_lifespan(skill)

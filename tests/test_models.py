@@ -99,7 +99,7 @@ class TestSkillMetadata:
         meta = SkillMetadata(
             name="test",
             description="Test.",
-            allowed_tools="Read Write",  # type: ignore[arg-type]
+            allowed_tools="Read Write",  # ty: ignore[invalid-argument-type]
         )
         assert meta.allowed_tools == ["Read", "Write"]
 
@@ -107,7 +107,7 @@ class TestSkillMetadata:
         meta = SkillMetadata(
             name="test",
             description="Test.",
-            allowed_tools="",  # type: ignore[arg-type]
+            allowed_tools="",  # ty: ignore[invalid-argument-type]
         )
         assert meta.allowed_tools == []
 
@@ -115,7 +115,7 @@ class TestSkillMetadata:
         meta = SkillMetadata(
             name="test",
             description="Test.",
-            allowed_tools="  ",  # type: ignore[arg-type]
+            allowed_tools="  ",  # ty: ignore[invalid-argument-type]
         )
         assert meta.allowed_tools == []
 
@@ -128,7 +128,7 @@ class TestSkillMetadata:
     def test_unknown_field_rejected(self):
         with pytest.raises(ValidationError, match="extra_field"):
             SkillMetadata(
-                **{"name": "ok", "description": "Valid.", "extra_field": "unexpected"}  # type: ignore[invalid-argument-type]
+                **{"name": "ok", "description": "Valid.", "extra_field": "unexpected"}  # ty: ignore[invalid-argument-type]
             )
 
 
@@ -197,8 +197,8 @@ class TestSkill:
         toolset = FunctionToolset()
         meta = SkillMetadata(name="test", description="Test skill.")
         skill = Skill(metadata=meta, source=SkillSource.FILESYSTEM)
-        skill.tools = [tool_a, tool_b]
-        skill.toolsets = [toolset]
+        skill.tools = [tool_a, tool_b]  # ty: ignore[invalid-assignment]
+        skill.toolsets = [toolset]  # ty: ignore[invalid-assignment]
         assert len(skill.tools) == 2
         assert len(skill.toolsets) == 1
 

@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from typing import Any
 
-from pydantic_monty import MontyError, MontyRepl, run_repl_async
+from pydantic_monty import MontyError, MontyRepl
 
 
 def _build_external_functions(model: Any) -> dict[str, Callable[..., Any]]:
@@ -39,12 +39,13 @@ async def _execute_code(
     """
     output_lines: list[str] = []
 
-    def print_callback(_stream: str, text: str) -> None:
+    def print_callback(_stream: str, text: str) -> None:  # pragma: no cover
+        # Invoked from a Rust-spawned worker thread (monty's spawn_blocking),
+        # which coverage.py cannot trace.
         output_lines.append(text)
 
     try:
-        result = await run_repl_async(
-            repl,
+        result = await repl.feed_run_async(
             code,
             external_functions=external_functions or {},
             print_callback=print_callback,

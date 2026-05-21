@@ -1,12 +1,13 @@
+import asyncio
 import atexit
 import os
-import time
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from pathlib import Path
 from uuid import uuid4
 
 from pydantic import BaseModel
-from pydantic_ai_backends import ConsoleToolset
+from pydantic_ai_backends import ConsoleToolset, SessionManager
 from pydantic_ai_backends.backends.docker import DockerSandbox
 
 from haiku.skills.models import Skill
@@ -16,51 +17,10 @@ from haiku.skills.state import SkillRunDeps
 IDLE_TIMEOUT_DEFAULT = 3600
 IMAGE_DEFAULT = "haiku-skills-sandbox:latest"
 
-_sandboxes: dict[str, DockerSandbox] = {}
-_last_active: dict[str, float] = {}
-_timeouts: dict[str, int] = {}
-
 
 def _default_idle_timeout() -> int:
     env = os.environ.get("HAIKU_SKILLS_SANDBOX_IDLE_TIMEOUT")
     return int(env) if env else IDLE_TIMEOUT_DEFAULT
-
-
-def _cleanup_stale() -> None:
-    now = time.monotonic()
-    default_timeout = _default_idle_timeout()
-    stale = [
-        sid
-        for sid, t in _last_active.items()
-        if now - t > _timeouts.get(sid, default_timeout)
-    ]
-    for sid in stale:
-        sandbox = _sandboxes.pop(sid, None)
-        _last_active.pop(sid, None)
-        _timeouts.pop(sid, None)
-        if sandbox:
-            try:
-                sandbox.stop()
-            except Exception:
-                pass
-
-
-def _cleanup_sandboxes() -> None:
-    for sandbox in _sandboxes.values():
-        try:
-            sandbox.stop()
-        except Exception:
-            pass
-    _sandboxes.clear()
-    _last_active.clear()
-    _timeouts.clear()
-
-
-atexit.register(_cleanup_sandboxes)
-
-
-class SandboxState(BaseModel):
-    session_id: str | None = None
 
 
 def _resolve_image() -> str:
@@ -68,32 +28,23 @@ def _resolve_image() -> str:
     return env if env else IMAGE_DEFAULT
 
 
-def _get_sandbox(
-    state: SandboxState | None,
-    workspace: Path | None = None,
-    image: str | None = None,
-    idle_timeout: int | None = None,
-) -> DockerSandbox:
-    _cleanup_stale()
+class SandboxState(BaseModel):
+    session_id: str | None = None
 
-    if state and state.session_id and state.session_id in _sandboxes:
-        _last_active[state.session_id] = time.monotonic()
-        return _sandboxes[state.session_id]
 
-    session_id = str(uuid4())
-    volumes = {str(workspace): "/workspace"} if workspace else None
-    sandbox = DockerSandbox(
-        image=image or _resolve_image(),
-        session_id=session_id,
-        volumes=volumes,
-    )
-    _sandboxes[session_id] = sandbox
-    _last_active[session_id] = time.monotonic()
-    if idle_timeout is not None:
-        _timeouts[session_id] = idle_timeout
-    if state:
-        state.session_id = session_id
-    return sandbox
+_active_managers: list[SessionManager] = []
+
+
+def _shutdown_all() -> None:
+    for manager in _active_managers:
+        try:
+            asyncio.run(manager.shutdown())
+        except Exception:
+            pass
+    _active_managers.clear()
+
+
+atexit.register(_shutdown_all)
 
 
 def create_skill(
@@ -106,7 +57,22 @@ def create_skill(
         if env:
             workspace = Path(env)
 
-    from dataclasses import dataclass
+    image_name = image or _resolve_image()
+    timeout = idle_timeout if idle_timeout is not None else _default_idle_timeout()
+    volumes = {str(workspace): "/workspace"} if workspace else None
+
+    def sandbox_factory(session_id: str) -> DockerSandbox:
+        return DockerSandbox(
+            image=image_name,
+            session_id=session_id,
+            volumes=volumes,
+        )
+
+    sessions = SessionManager(
+        sandbox_factory=sandbox_factory,
+        default_idle_timeout=timeout,
+    )
+    _active_managers.append(sessions)
 
     @dataclass
     class SandboxRunDeps(SkillRunDeps):
@@ -115,7 +81,11 @@ def create_skill(
     @asynccontextmanager
     async def sandbox_lifespan(deps: SandboxRunDeps):
         state = deps.state if isinstance(deps.state, SandboxState) else None
-        deps.backend = _get_sandbox(state, workspace, image, idle_timeout)
+        await sessions.cleanup_idle()
+        session_id = state.session_id if state and state.session_id else str(uuid4())
+        deps.backend = await sessions.get_or_create(session_id)
+        if state:
+            state.session_id = session_id
         yield
 
     metadata, instructions = parse_skill_md(Path(__file__).parent / "SKILL.md")

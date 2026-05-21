@@ -18,6 +18,7 @@ from ag_ui.core import (
 )
 from pydantic import BaseModel
 from pydantic_ai import Agent, RunContext, Tool, ToolReturn, UsageLimits
+from pydantic_ai.capabilities.process_event_stream import ProcessEventStream
 from pydantic_ai.messages import (
     AgentStreamEvent,
     FunctionToolCallEvent,
@@ -112,6 +113,7 @@ def _events_to_activity(skill_name: str, events: list[Any]) -> list[BaseEvent]:
 def _create_read_resource(skill: Skill) -> Callable[..., Any]:
     """Create a read_resource tool bound to a specific skill."""
     assert skill.path is not None
+    skill_path = skill.path
 
     async def read_resource(path: str) -> str:
         """Read a resource file from the skill directory.
@@ -121,8 +123,8 @@ def _create_read_resource(skill: Skill) -> Callable[..., Any]:
         """
         if path not in skill.resources:
             raise ValueError(f"'{path}' is not an available resource")
-        resolved = (skill.path / path).resolve()  # type: ignore[operator]
-        if not resolved.is_relative_to(skill.path.resolve()):  # type: ignore[union-attr]
+        resolved = (skill_path / path).resolve()
+        if not resolved.is_relative_to(skill_path.resolve()):
             raise ValueError(f"'{path}' is not an available resource")
         try:
             return resolved.read_text()
@@ -153,7 +155,8 @@ def _create_run_script(
 ) -> Callable[..., Any]:
     """Create a run_script tool bound to a specific skill."""
     assert skill.path is not None
-    scripts_dir = (skill.path / "scripts").resolve()
+    skill_path = skill.path
+    scripts_dir = (skill_path / "scripts").resolve()
     resolved_timeout = (
         timeout
         if timeout is not None
@@ -169,7 +172,7 @@ def _create_run_script(
             script: Relative path to the script (e.g. 'scripts/extract.py').
             arguments: Command-line arguments for the script.
         """
-        resolved = (skill.path / script).resolve()  # type: ignore[operator]
+        resolved = (skill_path / script).resolve()
         if not resolved.is_relative_to(scripts_dir):
             raise ValueError(f"'{script}' is not under scripts/")
         if not resolved.exists():
@@ -213,6 +216,7 @@ async def run_skill(
     request: str,
     state: BaseModel | None = None,
     event_sink: Callable[[BaseEvent], Awaitable[None]] | None = None,
+    conversation_id: str | None = None,
 ) -> tuple[str, list[BaseEvent], list[BaseEvent]]:
     instructions = skill.instructions or "No specific instructions."
     resource_section = ""
@@ -274,6 +278,7 @@ async def run_skill(
         system_prompt=system_prompt,
         tools=tools,
         toolsets=skill.toolsets or None,
+        capabilities=[ProcessEventStream(event_handler)],
     )
     model_settings = (
         ModelSettings(thinking=skill.thinking) if skill.thinking is not None else None
@@ -284,8 +289,8 @@ async def run_skill(
             request,
             deps=deps,
             usage_limits=UsageLimits(request_limit=skill.request_limit or 20),
-            event_stream_handler=event_handler,
             model_settings=model_settings,
+            conversation_id=conversation_id,
         )
     text = result.output
     return text, collected_events, emitted_events
@@ -494,7 +499,12 @@ class SkillToolset(FunctionToolset[Any]):
 
             try:
                 result, collected_events, emitted_events = await run_skill(
-                    skill_model, skill, request, state=state, event_sink=event_sink
+                    skill_model,
+                    skill,
+                    request,
+                    state=state,
+                    event_sink=event_sink,
+                    conversation_id=ctx.conversation_id,
                 )
             except Exception as e:
                 return f"Error: {e}"
@@ -677,7 +687,7 @@ class SkillToolset(FunctionToolset[Any]):
             if tool.takes_ctx:
                 result = func(ctx, **args)
             else:
-                result = func(**args)
+                result = func(**args)  # ty: ignore[missing-argument]
             if inspect.isawaitable(result):
                 result = await result
             return result

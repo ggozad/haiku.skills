@@ -39,7 +39,7 @@ try:
         UserMessage,
     )
     from jsonpatch import JsonPatch
-    from pydantic_ai.ag_ui import AGUIAdapter
+    from pydantic_ai.ui.ag_ui import AGUIAdapter
     from textual.app import App, SystemCommand
     from textual.binding import Binding
     from textual.containers import VerticalScroll
@@ -180,6 +180,7 @@ class ChatApp(App):
         self._is_processing = False
         self._current_worker: Worker[None] | None = None
         self._initial_state = initial_state
+        self._conversation_id = f"hs-{uuid.uuid4()}"
 
     def compose(self) -> "ComposeResult":
         yield Header()
@@ -260,7 +261,7 @@ class ChatApp(App):
 
         latest_message = self._messages[-1:]
         run_input = RunAgentInput(
-            thread_id="tui",
+            thread_id=self._conversation_id,
             run_id=str(uuid.uuid4()),
             messages=latest_message,
             state=self._state,
@@ -290,6 +291,7 @@ class ChatApp(App):
                 toolset=self._toolset,
                 message_history=self._message_history or None,
                 on_complete=on_complete,
+                conversation_id=run_input.thread_id,
             ) as stream:
                 async for event in stream:
                     if event.type == EventType.TEXT_MESSAGE_START:
