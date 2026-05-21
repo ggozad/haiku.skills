@@ -12,6 +12,7 @@
 - Bump `pydantic-ai-slim>=1.100.0` (the last pre-2.0 release) and migrate off the remaining APIs slated for removal in 2.0:
   - `agent.run(event_stream_handler=...)` → `Agent(..., capabilities=[ProcessEventStream(handler)])`. The capability replaces the deprecated kwarg-based event-stream plumbing in `haiku.skills.agent.run_skill`.
   - `pydantic_ai.mcp.MCPServer{Stdio,SSE,StreamableHTTP}` → `pydantic_ai.mcp.MCPToolset` (FastMCP-backed, full MCP protocol). `haiku.skills.mcp.skill_from_mcp` now accepts an `AbstractToolset[Any]` instead of `MCPServer`, so it works with both the new `MCPToolset` and any future MCP toolset implementation.
+- Thread a `conversation_id` through the agent runs so multi-turn chat sessions and their sub-agent dispatches land in one OTel/Logfire trace. The chat TUI passes `run_input.thread_id` to `AGUIAdapter.run_stream(conversation_id=...)`; `run_skill` accepts an optional `conversation_id=` and forwards it to `Agent.run(...)`; the `execute_skill` tool propagates `ctx.conversation_id` so sub-agent traces link to the parent.
 
 ## [0.16.0] - 2026-04-28
 

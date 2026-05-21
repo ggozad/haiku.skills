@@ -216,6 +216,7 @@ async def run_skill(
     request: str,
     state: BaseModel | None = None,
     event_sink: Callable[[BaseEvent], Awaitable[None]] | None = None,
+    conversation_id: str | None = None,
 ) -> tuple[str, list[BaseEvent], list[BaseEvent]]:
     instructions = skill.instructions or "No specific instructions."
     resource_section = ""
@@ -289,6 +290,7 @@ async def run_skill(
             deps=deps,
             usage_limits=UsageLimits(request_limit=skill.request_limit or 20),
             model_settings=model_settings,
+            conversation_id=conversation_id,
         )
     text = result.output
     return text, collected_events, emitted_events
@@ -497,7 +499,12 @@ class SkillToolset(FunctionToolset[Any]):
 
             try:
                 result, collected_events, emitted_events = await run_skill(
-                    skill_model, skill, request, state=state, event_sink=event_sink
+                    skill_model,
+                    skill,
+                    request,
+                    state=state,
+                    event_sink=event_sink,
+                    conversation_id=ctx.conversation_id,
                 )
             except Exception as e:
                 return f"Error: {e}"
