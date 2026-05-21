@@ -15,7 +15,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Typing :: Typed",
 ]
-dependencies = ["haiku.skills>=0.16.0", "pydantic-ai-backend[docker,console]>=0.1.9"]
+dependencies = ["haiku.skills>=0.16.0", "pydantic-ai-backend[docker,console]>=0.2.7"]
 
 [project.urls]
 Homepage = "https://github.com/ggozad/haiku.skills"

@@ -6,6 +6,8 @@
 
 - Bump `pydantic-ai-slim>=1.96.0`. Add the `ag-ui` extra so the AG-UI dependency is explicit, and migrate `AGUIAdapter` imports from `pydantic_ai.ag_ui` to `pydantic_ai.ui.ag_ui` (the legacy module was deprecated upstream).
 - Bump `pydantic-monty>=0.0.17` in the code-execution skill. Migrate off the deprecated module-level `pydantic_monty.run_repl_async(repl, ...)` helper to the `repl.feed_run_async(...)` method.
+- Bump `pydantic-ai-backend[docker,console]>=0.2.7` in the sandbox skill. Picks up async-safe console toolset (0.2.3), `DockerSandbox` lifecycle / `container_name` / `SessionManager` improvements (0.2.4), globstar and path-matching fixes (0.2.5–0.2.6), and async-cancellable shell execution (0.2.7). `ConsoleToolset` and `DockerSandbox` import paths and kwargs are unchanged.
+- Refactor the sandbox skill to use `pydantic_ai_backends.SessionManager` for container lifecycle. Replaces the hand-rolled module-level `_sandboxes` / `_last_active` / `_timeouts` dicts and `_cleanup_stale` / `_get_sandbox` helpers; idle cleanup, dead-container replacement, and at-exit shutdown now go through the upstream manager.
 
 ## [0.16.0] - 2026-04-28
 
