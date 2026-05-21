@@ -18,6 +18,7 @@ from ag_ui.core import (
 )
 from pydantic import BaseModel
 from pydantic_ai import Agent, RunContext, Tool, ToolReturn, UsageLimits
+from pydantic_ai.capabilities.process_event_stream import ProcessEventStream
 from pydantic_ai.messages import (
     AgentStreamEvent,
     FunctionToolCallEvent,
@@ -276,6 +277,7 @@ async def run_skill(
         system_prompt=system_prompt,
         tools=tools,
         toolsets=skill.toolsets or None,
+        capabilities=[ProcessEventStream(event_handler)],
     )
     model_settings = (
         ModelSettings(thinking=skill.thinking) if skill.thinking is not None else None
@@ -286,7 +288,6 @@ async def run_skill(
             request,
             deps=deps,
             usage_limits=UsageLimits(request_limit=skill.request_limit or 20),
-            event_stream_handler=event_handler,
             model_settings=model_settings,
         )
     text = result.output
