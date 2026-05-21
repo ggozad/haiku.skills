@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.17.1] - 2026-05-21
+
 ### Fixed
 
 - Use `FunctionToolResultEvent.part` instead of the deprecated `.result` alias when forwarding sub-agent tool events through `_events_to_activity`. Removes a `DeprecationWarning` at runtime and survives the 2.0 removal of `.result`.
@@ -353,7 +355,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.17.0...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.17.1...HEAD
+[0.17.1]: https://github.com/ggozad/haiku.skills/compare/0.17.0...0.17.1
 [0.17.0]: https://github.com/ggozad/haiku.skills/compare/0.16.0...0.17.0
 [0.16.0]: https://github.com/ggozad/haiku.skills/compare/0.15.1...0.16.0
 [0.15.1]: https://github.com/ggozad/haiku.skills/compare/0.15.0...0.15.1
