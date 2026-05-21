@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-05-21
+
 ### Changed
 
 - Bump `pydantic-ai-slim>=1.96.0`. Add the `ag-ui` extra so the AG-UI dependency is explicit, and migrate `AGUIAdapter` imports from `pydantic_ai.ag_ui` to `pydantic_ai.ui.ag_ui` (the legacy module was deprecated upstream).
@@ -347,7 +349,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.16.0...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.17.0...HEAD
+[0.17.0]: https://github.com/ggozad/haiku.skills/compare/0.16.0...0.17.0
 [0.16.0]: https://github.com/ggozad/haiku.skills/compare/0.15.1...0.16.0
 [0.15.1]: https://github.com/ggozad/haiku.skills/compare/0.15.0...0.15.1
 [0.15.0]: https://github.com/ggozad/haiku.skills/compare/0.14.0...0.15.0
