@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Skill runs use a retry budget of 3 for both tool calls and output validation (`retries=3`, was the pydantic-ai default of 1), so a tool raising `ModelRetry` (or an output failing validation) gets more attempts before the run fails with `UnexpectedModelBehavior`.
+
 ## [0.17.1] - 2026-05-21
 
 ### Fixed
