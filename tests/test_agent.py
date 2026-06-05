@@ -11,7 +11,7 @@ from ag_ui.core import (
     EventType,
 )
 from pydantic import BaseModel
-from pydantic_ai import Agent, RunContext, ToolReturn
+from pydantic_ai import Agent, ModelRetry, RunContext, ToolReturn
 from pydantic_ai.messages import (
     FunctionToolCallEvent,
     FunctionToolResultEvent,
@@ -164,6 +164,29 @@ class TestRunSkill:
         ]
         assert len(call_events) >= 1
         assert len(result_events) >= 1
+
+    async def test_run_skill_tools_allow_three_retries(
+        self, allow_model_requests: None
+    ):
+        attempts = {"n": 0}
+
+        def flaky() -> str:
+            """A tool that succeeds only on the fourth attempt."""
+            attempts["n"] += 1
+            if attempts["n"] < 4:
+                raise ModelRetry("not yet")
+            return "ok"
+
+        meta = SkillMetadata(name="flaky-skill", description="Retries.")
+        skill = Skill(
+            metadata=meta,
+            source=SkillSource.FILESYSTEM,
+            instructions="Use the flaky tool.",
+            tools=[flaky],
+        )
+        result, _, _ = await run_skill(TestModel(), skill, "Run it.")
+        assert result
+        assert attempts["n"] == 4
 
     async def test_run_skill_with_toolsets(self, allow_model_requests: None):
         def greet(name: str) -> str:

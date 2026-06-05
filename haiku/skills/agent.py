@@ -279,6 +279,7 @@ async def run_skill(
         tools=tools,
         toolsets=skill.toolsets or None,
         capabilities=[ProcessEventStream(event_handler)],
+        retries=3,
     )
     model_settings = (
         ModelSettings(thinking=skill.thinking) if skill.thinking is not None else None
