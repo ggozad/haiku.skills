@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.17.2] - 2026-06-05
+
 ### Changed
 
 - Skill runs use a retry budget of 3 for both tool calls and output validation (`retries=3`, was the pydantic-ai default of 1), so a tool raising `ModelRetry` (or an output failing validation) gets more attempts before the run fails with `UnexpectedModelBehavior`.
@@ -359,7 +361,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.17.1...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.17.2...HEAD
+[0.17.2]: https://github.com/ggozad/haiku.skills/compare/0.17.1...0.17.2
 [0.17.1]: https://github.com/ggozad/haiku.skills/compare/0.17.0...0.17.1
 [0.17.0]: https://github.com/ggozad/haiku.skills/compare/0.16.0...0.17.0
 [0.16.0]: https://github.com/ggozad/haiku.skills/compare/0.15.1...0.16.0
