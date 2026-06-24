@@ -1632,7 +1632,7 @@ class TestEventsToActivity:
         result_part = ToolReturnPart(
             tool_call_id="call-1", tool_name="search", content="results"
         )
-        event = FunctionToolResultEvent(result=result_part)
+        event = FunctionToolResultEvent(part=result_part)
 
         result = _events_to_activity("web", [event])
         assert len(result) == 1
@@ -1652,7 +1652,7 @@ class TestEventsToActivity:
         result_part = ToolReturnPart(
             tool_call_id="call-1", tool_name="search", content="results"
         )
-        result_event = FunctionToolResultEvent(result=result_part)
+        result_event = FunctionToolResultEvent(part=result_part)
 
         result = _events_to_activity("web", [call_event, result_event])
         assert len(result) == 2  # 1 from call + 1 from result
@@ -1681,7 +1681,7 @@ class TestEventsToActivity:
         result_part = RetryPromptPart(
             tool_call_id="call-1", tool_name="search", content="Invalid arguments"
         )
-        event = FunctionToolResultEvent(result=result_part)
+        event = FunctionToolResultEvent(part=result_part)
 
         result = _events_to_activity("web", [event])
         assert len(result) == 1
