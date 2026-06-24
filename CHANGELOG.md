@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- `Skill.force_final_answer` (default `True`): when a skill run exhausts its `request_limit`, `run_skill` makes one final tool-less completion seeded with the gathered message history instead of raising `UsageLimitExceeded`. Set `False` to restore the raising behavior.
+
 ## [0.17.2] - 2026-06-05
 
 ### Changed

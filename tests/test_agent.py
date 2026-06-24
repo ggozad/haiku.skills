@@ -1,3 +1,4 @@
+import logging
 from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
@@ -12,6 +13,7 @@ from ag_ui.core import (
 )
 from pydantic import BaseModel
 from pydantic_ai import Agent, ModelRetry, RunContext, ToolReturn
+from pydantic_ai.exceptions import UsageLimitExceeded
 from pydantic_ai.messages import (
     FunctionToolCallEvent,
     FunctionToolResultEvent,
@@ -30,6 +32,8 @@ from haiku.skills.agent import (
     _create_read_resource,
     _create_run_script,
     _events_to_activity,
+    _RequestLimitGuard,
+    _SkillRequestLimitReached,
     resolve_model,
     run_agui_stream,
     run_skill,
@@ -722,48 +726,215 @@ class TestRunSkillWithState:
         assert len(captured_settings) == 1
         assert captured_settings[0] is None
 
+    def _captured_guards(self) -> tuple[list[Any], Any]:
+        """Patch Agent.__init__ to capture the _RequestLimitGuard instances."""
+        guards: list[Any] = []
+        original_init = Agent.__init__
+
+        def patched_init(self: Any, *args: Any, **kwargs: Any) -> None:
+            for cap in kwargs.get("capabilities") or []:
+                if isinstance(cap, _RequestLimitGuard):
+                    guards.append(cap)
+            original_init(self, *args, **kwargs)
+
+        return guards, patched_init
+
     async def test_run_skill_default_request_limit_is_20(
         self, allow_model_requests: None
     ):
         """Without skill.request_limit set, run_skill uses the legacy default of 20."""
-        captured_limits: list[Any] = []
-        original_run = Agent.run
-
-        async def patched_run(self: Any, *args: Any, **kwargs: Any) -> Any:
-            captured_limits.append(kwargs.get("usage_limits"))
-            return await original_run(self, *args, **kwargs)
-
+        guards, patched_init = self._captured_guards()
         skill = Skill(
             metadata=SkillMetadata(name="a", description="Test."),
             source=SkillSource.ENTRYPOINT,
             instructions="Do it.",
         )
-        with patch.object(Agent, "run", patched_run):
+        with patch.object(Agent, "__init__", patched_init):
             await run_skill(TestModel(call_tools=[]), skill, "Do it.")
-        assert len(captured_limits) == 1
-        assert captured_limits[0].request_limit == 20
+        assert len(guards) == 1
+        assert guards[0].limit == 20
 
     async def test_run_skill_honors_skill_request_limit(
         self, allow_model_requests: None
     ):
-        """When skill.request_limit is set, run_skill passes it through."""
-        captured_limits: list[Any] = []
-        original_run = Agent.run
-
-        async def patched_run(self: Any, *args: Any, **kwargs: Any) -> Any:
-            captured_limits.append(kwargs.get("usage_limits"))
-            return await original_run(self, *args, **kwargs)
-
+        """When skill.request_limit is set, run_skill uses it as the guard limit."""
+        guards, patched_init = self._captured_guards()
         skill = Skill(
             metadata=SkillMetadata(name="a", description="Test."),
             source=SkillSource.ENTRYPOINT,
             instructions="Do it.",
             request_limit=50,
         )
-        with patch.object(Agent, "run", patched_run):
+        with patch.object(Agent, "__init__", patched_init):
             await run_skill(TestModel(call_tools=[]), skill, "Do it.")
-        assert len(captured_limits) == 1
-        assert captured_limits[0].request_limit == 50
+        assert len(guards) == 1
+        assert guards[0].limit == 50
+
+
+class TestRunSkillForceFinalAnswer:
+    def _burn_skill(self, **kwargs: Any) -> tuple[Skill, list[int]]:
+        calls: list[int] = []
+
+        def burn() -> str:
+            """Burn a request and return gathered data."""
+            calls.append(1)
+            return "gathered data"
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use burn.",
+            tools=[burn],
+            request_limit=1,
+            **kwargs,
+        )
+        return skill, calls
+
+    async def test_forces_final_answer_on_request_limit(
+        self, allow_model_requests: None
+    ):
+        """Exhausting request_limit yields a forced answer, not an exception."""
+        skill, _ = self._burn_skill()
+        text, _, _ = await run_skill(TestModel(), skill, "Do it.")
+        assert text
+
+    async def test_forcing_call_has_no_tools(self, allow_model_requests: None):
+        """The forcing completion runs with no tools, so the skill tool is not
+        re-invoked beyond the main run."""
+        skill, calls = self._burn_skill()
+        await run_skill(TestModel(), skill, "Do it.")
+        assert len(calls) == 1
+
+    async def test_forcing_logs_warning(
+        self, allow_model_requests: None, caplog: pytest.LogCaptureFixture
+    ):
+        skill, _ = self._burn_skill()
+        with caplog.at_level(logging.WARNING):
+            text, _, _ = await run_skill(TestModel(), skill, "Do it.")
+        assert text
+        assert "forcing a final answer" in caplog.text
+
+    async def test_force_final_answer_false_reraises(self, allow_model_requests: None):
+        skill, _ = self._burn_skill(force_final_answer=False)
+        with pytest.raises(UsageLimitExceeded):
+            await run_skill(TestModel(), skill, "Do it.")
+
+    async def test_nested_tool_usage_limit_propagates(self, allow_model_requests: None):
+        """A UsageLimitExceeded raised by a skill tool is a real failure and must
+        propagate, not be turned into a forced answer."""
+
+        def nested() -> str:
+            """A tool whose own work raises a usage-limit error."""
+            raise UsageLimitExceeded("nested tool limit")
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Use nested.",
+            tools=[nested],
+            request_limit=20,
+        )
+        with pytest.raises((UsageLimitExceeded, BaseExceptionGroup)) as exc_info:
+            await run_skill(TestModel(), skill, "Do it.")
+        exc = exc_info.value
+        leaves = exc.exceptions if isinstance(exc, BaseExceptionGroup) else [exc]
+        assert any("nested tool limit" in str(e) for e in leaves)
+        assert not any(isinstance(e, _SkillRequestLimitReached) for e in leaves)
+
+    async def test_pure_exception_group_forces_answer(self, allow_model_requests: None):
+        """A group whose only leaf is the skill's own limit forces an answer."""
+        original_run = Agent.run
+        calls = {"n": 0}
+
+        async def patched_run(self: Any, *args: Any, **kwargs: Any) -> Any:
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise ExceptionGroup("g", [_SkillRequestLimitReached("limit")])
+            return await original_run(self, *args, **kwargs)
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do it.",
+        )
+        with patch.object(Agent, "run", patched_run):
+            text, _, _ = await run_skill(TestModel(call_tools=[]), skill, "Do it.")
+        assert text
+
+    async def test_mixed_exception_group_reraises_siblings(
+        self, allow_model_requests: None
+    ):
+        """A group with a real sibling failure propagates that sibling, not a
+        forced answer."""
+
+        async def patched_run(self: Any, *args: Any, **kwargs: Any) -> Any:
+            raise ExceptionGroup(
+                "g", [_SkillRequestLimitReached("limit"), ValueError("real")]
+            )
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do it.",
+        )
+        with patch.object(Agent, "run", patched_run):
+            with pytest.raises(BaseExceptionGroup) as exc_info:
+                await run_skill(TestModel(call_tools=[]), skill, "Do it.")
+        leaves = [type(e).__name__ for e in exc_info.value.exceptions]
+        assert leaves == ["ValueError"]
+
+    async def test_exception_group_without_skill_limit_reraises(
+        self, allow_model_requests: None
+    ):
+        async def patched_run(self: Any, *args: Any, **kwargs: Any) -> Any:
+            raise ExceptionGroup("g", [ValueError("real")])
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do it.",
+        )
+        with patch.object(Agent, "run", patched_run):
+            with pytest.raises(BaseExceptionGroup) as exc_info:
+                await run_skill(TestModel(call_tools=[]), skill, "Do it.")
+        leaves = [type(e).__name__ for e in exc_info.value.exceptions]
+        assert leaves == ["ValueError"]
+
+    async def test_force_false_group_reraises(self, allow_model_requests: None):
+        async def patched_run(self: Any, *args: Any, **kwargs: Any) -> Any:
+            raise ExceptionGroup("g", [_SkillRequestLimitReached("limit")])
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do it.",
+            force_final_answer=False,
+        )
+        with patch.object(Agent, "run", patched_run):
+            with pytest.raises(BaseExceptionGroup):
+                await run_skill(TestModel(call_tools=[]), skill, "Do it.")
+
+    async def test_forcing_call_failure_propagates(
+        self, allow_model_requests: None, caplog: pytest.LogCaptureFixture
+    ):
+        calls = {"n": 0}
+
+        async def patched_run(self: Any, *args: Any, **kwargs: Any) -> Any:
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise _SkillRequestLimitReached("limit")
+            raise RuntimeError("forcing boom")
+
+        skill = Skill(
+            metadata=SkillMetadata(name="a", description="Test."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="Do it.",
+        )
+        with patch.object(Agent, "run", patched_run):
+            with caplog.at_level(logging.WARNING):
+                with pytest.raises(RuntimeError, match="forcing boom"):
+                    await run_skill(TestModel(call_tools=[]), skill, "Do it.")
+        assert "forced-answer call failed" in caplog.text
 
 
 class TestRunSkillDepsType:
