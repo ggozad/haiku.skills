@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-06-29
+
 ### Added
 
 - `Skill.force_final_answer` (default `True`): when a skill run exhausts its `request_limit`, `run_skill` makes one final tool-less completion seeded with the gathered message history instead of raising `UsageLimitExceeded`. Set `False` to restore the raising behavior.
@@ -365,7 +367,8 @@
 - **Chat TUI**: Terminal-based chat interface using Textual
 - **Distributable skill packages**: Workspace members for brave-search, image-generation, and code-execution skills
 
-[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.17.2...HEAD
+[Unreleased]: https://github.com/ggozad/haiku.skills/compare/0.18.0...HEAD
+[0.18.0]: https://github.com/ggozad/haiku.skills/compare/0.17.2...0.18.0
 [0.17.2]: https://github.com/ggozad/haiku.skills/compare/0.17.1...0.17.2
 [0.17.1]: https://github.com/ggozad/haiku.skills/compare/0.17.0...0.17.1
 [0.17.0]: https://github.com/ggozad/haiku.skills/compare/0.16.0...0.17.0
