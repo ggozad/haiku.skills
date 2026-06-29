@@ -217,6 +217,18 @@ class TestSkill:
         skill = Skill(metadata=meta, source=SkillSource.FILESYSTEM, request_limit=100)
         assert skill.request_limit == 100
 
+    def test_force_final_answer_default_true(self):
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(metadata=meta, source=SkillSource.FILESYSTEM)
+        assert skill.force_final_answer is True
+
+    def test_force_final_answer_settable(self):
+        meta = SkillMetadata(name="test", description="Test skill.")
+        skill = Skill(
+            metadata=meta, source=SkillSource.FILESYSTEM, force_final_answer=False
+        )
+        assert skill.force_final_answer is False
+
     def test_resources_settable(self):
         meta = SkillMetadata(name="test", description="Test skill.")
         skill = Skill(metadata=meta, source=SkillSource.FILESYSTEM)

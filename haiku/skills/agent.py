@@ -1,6 +1,7 @@
 import asyncio
 import inspect
 import json
+import logging
 import os
 import shlex
 import sys
@@ -8,6 +9,7 @@ import time
 import warnings
 from collections.abc import AsyncIterable, Awaitable, Callable
 from contextlib import nullcontext
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -17,22 +19,27 @@ from ag_ui.core import (
     EventType,
 )
 from pydantic import BaseModel
-from pydantic_ai import Agent, RunContext, Tool, ToolReturn, UsageLimits
+from pydantic_ai import Agent, RunContext, Tool, ToolReturn
+from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.capabilities.process_event_stream import ProcessEventStream
+from pydantic_ai.exceptions import UsageLimitExceeded
 from pydantic_ai.messages import (
     AgentStreamEvent,
     FunctionToolCallEvent,
     FunctionToolResultEvent,
+    ModelMessage,
     RetryPromptPart,
 )
-from pydantic_ai.models import Model
+from pydantic_ai.models import Model, ModelRequestContext
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.toolsets import FunctionToolset
 
 from haiku.skills.models import Skill
-from haiku.skills.prompts import SKILL_PROMPT
+from haiku.skills.prompts import FORCE_FINAL_ANSWER_PROMPT, SKILL_PROMPT
 from haiku.skills.registry import SkillRegistry
 from haiku.skills.state import SkillRunDeps, compute_state_delta
+
+logger = logging.getLogger(__name__)
 
 SCRIPT_RUNNERS: dict[str, tuple[str, ...]] = {
     ".py": (sys.executable,),
@@ -210,6 +217,56 @@ def _create_run_script(
     return run_script
 
 
+class _SkillRequestLimitReached(UsageLimitExceeded):
+    """Raised when a skill run reaches its own configured request limit.
+
+    A subclass of ``UsageLimitExceeded`` so it is distinguishable from a
+    ``UsageLimitExceeded`` raised by a nested skill tool (which must propagate as
+    a real failure, not be turned into a forced answer), while still preserving
+    the ``UsageLimitExceeded`` contract when ``force_final_answer`` is off.
+    """
+
+
+@dataclass
+class _RequestLimitGuard(AbstractCapability[Any]):
+    """Enforces the skill's own request limit and captures message history.
+
+    ``before_model_request`` runs on every request, so it owns two jobs:
+    capturing the latest message history (so a forced answer can be seeded with
+    everything gathered so far) and raising ``_SkillRequestLimitReached`` once
+    the request count reaches ``limit``. Bound to a single agent instance, so it
+    is not affected by nested ``capture_run_messages`` contexts in callers.
+    """
+
+    limit: int
+    messages: list[ModelMessage] = field(default_factory=list)
+
+    async def before_model_request(
+        self, ctx: RunContext[Any], request_context: ModelRequestContext
+    ) -> ModelRequestContext:
+        self.messages = list(request_context.messages)
+        if ctx.usage.requests >= self.limit:
+            raise _SkillRequestLimitReached(
+                f"Skill reached its request limit of {self.limit}"
+            )
+        return request_context
+
+
+async def _force_final_answer(
+    model: str | Model,
+    messages: list[ModelMessage],
+    model_settings: ModelSettings | None,
+) -> str:
+    """Make one tool-less completion that forces an answer from gathered context."""
+    agent = Agent[Any, str](model)
+    result = await agent.run(
+        FORCE_FINAL_ANSWER_PROMPT,
+        message_history=messages,
+        model_settings=model_settings,
+    )
+    return result.output
+
+
 async def run_skill(
     model: str | Model,
     skill: Skill,
@@ -273,12 +330,13 @@ async def run_skill(
 
     deps_cls = skill._deps_type or SkillRunDeps
     deps = deps_cls(state=state, emit=emit)
+    guard = _RequestLimitGuard(limit=skill.request_limit or 20)
     agent = Agent[Any, str](
         model,
         system_prompt=system_prompt,
         tools=tools,
         toolsets=skill.toolsets or None,
-        capabilities=[ProcessEventStream(event_handler)],
+        capabilities=[ProcessEventStream(event_handler), guard],
         retries=3,
     )
     model_settings = (
@@ -286,15 +344,39 @@ async def run_skill(
     )
     cm: Any = skill._lifespan(deps) if skill._lifespan is not None else nullcontext()
     async with cm:
-        result = await agent.run(
-            request,
-            deps=deps,
-            usage_limits=UsageLimits(request_limit=skill.request_limit or 20),
-            model_settings=model_settings,
-            conversation_id=conversation_id,
+        try:
+            result = await agent.run(
+                request,
+                deps=deps,
+                model_settings=model_settings,
+                conversation_id=conversation_id,
+            )
+            return result.output, collected_events, emitted_events
+        except _SkillRequestLimitReached:
+            if not skill.force_final_answer:
+                raise
+        except BaseExceptionGroup as eg:
+            if not skill.force_final_answer:
+                raise
+            reached, rest = eg.split(_SkillRequestLimitReached)
+            if reached is None:
+                raise
+            if rest is not None:
+                raise rest
+
+        logger.warning(
+            "Skill '%s' hit its request limit; forcing a final answer.", skill_name
         )
-    text = result.output
-    return text, collected_events, emitted_events
+        try:
+            text = await _force_final_answer(model, guard.messages, model_settings)
+        except Exception as exc:
+            logger.warning(
+                "Skill '%s' forced-answer call failed (%s); propagating.",
+                skill_name,
+                exc,
+            )
+            raise
+        return text, collected_events, emitted_events
 
 
 class SkillToolset(FunctionToolset[Any]):

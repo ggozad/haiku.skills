@@ -53,6 +53,13 @@ def build_system_prompt(
     return template.format(preamble=preamble, skill_catalog=skill_catalog)
 
 
+FORCE_FINAL_ANSWER_PROMPT = """\
+You have reached the tool-call limit, so no tools, resources, or scripts are \
+available to you now. Disregard any earlier instruction to call a tool, read a \
+resource, or run a script. Using only the information you have already gathered \
+above, provide your best and final answer to the task now.\
+"""
+
 SKILL_PROMPT = """\
 You are a focused execution agent. Complete the following task using the \
 skills and instructions provided.
