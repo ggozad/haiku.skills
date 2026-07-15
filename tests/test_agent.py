@@ -2094,6 +2094,69 @@ class TestRunAguiStream:
 
         assert not [e for e in collected if isinstance(e, StateSnapshotEvent)]
 
+    async def test_no_rebase_snapshot_without_toolset(self):
+        """With no toolset there is nothing to rebase, even with inbound state."""
+        from types import SimpleNamespace
+
+        from ag_ui.core import RunStartedEvent, StateSnapshotEvent
+
+        class FakeAdapter:
+            run_input = SimpleNamespace(state={"whatever": {"a": 1}})
+
+            async def run_stream(self, **kwargs: Any) -> AsyncIterator[BaseEvent]:
+                yield RunStartedEvent(
+                    type=EventType.RUN_STARTED, thread_id="t", run_id="r"
+                )
+
+        collected: list[BaseEvent] = []
+        async with run_agui_stream(adapter=FakeAdapter(), toolset=None) as stream:
+            async for e in stream:
+                collected.append(e)
+
+        assert not [e for e in collected if isinstance(e, StateSnapshotEvent)]
+
+    async def test_rebase_snapshot_emitted_without_run_started(self):
+        """The rebase snapshot still flushes when the run yields no RUN_STARTED."""
+        from types import SimpleNamespace
+
+        from ag_ui.core import StateSnapshotEvent
+        from pydantic import model_validator
+
+        class DerivedState(BaseModel):
+            items: list[str] = []
+            count: int = 0
+
+            @model_validator(mode="after")
+            def _recompute(self) -> "DerivedState":
+                self.count = len(self.items)
+                return self
+
+        skill = Skill(
+            metadata=SkillMetadata(name="d", description="Derived."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="x",
+            state_type=DerivedState,
+            state_namespace="derived",
+        )
+        toolset = SkillToolset(skills=[skill])
+        incoming = {"derived": {"items": ["a", "b"], "count": 0}}
+
+        class FakeAdapter:
+            run_input = SimpleNamespace(state=incoming)
+
+            async def run_stream(self, **kwargs: Any) -> AsyncIterator[BaseEvent]:
+                if False:  # yields nothing; no RUN_STARTED
+                    yield  # type: ignore[unreachable]
+
+        collected: list[BaseEvent] = []
+        async with run_agui_stream(adapter=FakeAdapter(), toolset=toolset) as stream:
+            async for e in stream:
+                collected.append(e)
+
+        snapshots = [e for e in collected if isinstance(e, StateSnapshotEvent)]
+        assert len(snapshots) == 1
+        assert snapshots[0].snapshot["derived"]["count"] == 2
+
 
 def _make_run_input(message: str) -> Any:
     """Create a minimal RunAgentInput for testing."""
