@@ -17,6 +17,7 @@ from ag_ui.core import (
     ActivitySnapshotEvent,
     BaseEvent,
     EventType,
+    StateSnapshotEvent,
 )
 from pydantic import BaseModel
 from pydantic_ai import Agent, RunContext, Tool, ToolReturn
@@ -818,18 +819,56 @@ class AguiEventStream:
         if self._toolset is not None:
             self._toolset._event_sink = event_sink
 
+        # If the client sent state that our skills' validation corrects,
+        # re-establish the baseline with a STATE_SNAPSHOT before any
+        # per-tool deltas (which are diffed against the recomputed state).
+        rebase_event = self._rebase_snapshot_event()
+
         async def run_adapter() -> None:
+            pending_rebase = rebase_event
             try:
                 async for event in self._adapter.run_stream(**self._run_kwargs):
                     if isinstance(event, BaseEvent):
                         self._queue.put_nowait(event)
+                        if (
+                            pending_rebase is not None
+                            and event.type == EventType.RUN_STARTED
+                        ):
+                            self._queue.put_nowait(pending_rebase)
+                            pending_rebase = None
             finally:
+                if pending_rebase is not None:
+                    self._queue.put_nowait(pending_rebase)
                 if self._toolset is not None:
                     self._toolset._event_sink = None
                 self._queue.put_nowait(None)
 
         self._task = asyncio.create_task(run_adapter())
         return self
+
+    def _rebase_snapshot_event(self) -> BaseEvent | None:
+        """Restore the client-sent state, recompute it, and return a
+        STATE_SNAPSHOT if validation changed it (so the client rebases).
+
+        Returns None when there is no toolset, no inbound state, or the
+        inbound state already matches what validation produces.
+        """
+        toolset = self._toolset
+        if toolset is None:
+            return None
+        run_input = getattr(self._adapter, "run_input", None)
+        incoming = getattr(run_input, "state", None)
+        if not isinstance(incoming, dict) or not incoming:
+            return None
+        toolset.restore_state_snapshot(incoming)
+        recomputed = toolset.build_state_snapshot()
+        drifted = any(incoming.get(ns) != value for ns, value in recomputed.items())
+        if not drifted:
+            return None
+        return StateSnapshotEvent(
+            type=EventType.STATE_SNAPSHOT,
+            snapshot={**incoming, **recomputed},
+        )
 
     async def __aexit__(self, *exc_info: Any) -> None:
         if self._toolset is not None:
