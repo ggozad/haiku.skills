@@ -1997,6 +1997,211 @@ class TestRunAguiStream:
                 break
         assert toolset._event_sink is None
 
+    async def test_emits_rebase_snapshot_on_drift(self):
+        """Client-sent state that validation corrects gets a STATE_SNAPSHOT
+        rebase after RUN_STARTED (before any tool-level deltas)."""
+        from types import SimpleNamespace
+
+        from ag_ui.core import (
+            RunFinishedEvent,
+            RunStartedEvent,
+            StateSnapshotEvent,
+        )
+        from pydantic import model_validator
+
+        class DerivedState(BaseModel):
+            items: list[str] = []
+            count: int = 0
+
+            @model_validator(mode="after")
+            def _recompute(self) -> "DerivedState":
+                self.count = len(self.items)
+                return self
+
+        skill = Skill(
+            metadata=SkillMetadata(name="d", description="Derived."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="x",
+            state_type=DerivedState,
+            state_namespace="derived",
+        )
+        toolset = SkillToolset(skills=[skill])
+        # Client sent items but a stale derived count.
+        incoming = {"derived": {"items": ["a", "b"], "count": 0}}
+
+        class FakeAdapter:
+            run_input = SimpleNamespace(state=incoming)
+
+            async def run_stream(self, **kwargs: Any) -> AsyncIterator[BaseEvent]:
+                yield RunStartedEvent(
+                    type=EventType.RUN_STARTED, thread_id="t", run_id="r"
+                )
+                yield RunFinishedEvent(
+                    type=EventType.RUN_FINISHED, thread_id="t", run_id="r"
+                )
+
+        collected: list[BaseEvent] = []
+        async with run_agui_stream(adapter=FakeAdapter(), toolset=toolset) as stream:
+            async for e in stream:
+                collected.append(e)
+
+        snapshots = [e for e in collected if isinstance(e, StateSnapshotEvent)]
+        assert len(snapshots) == 1
+        assert snapshots[0].snapshot["derived"]["count"] == 2
+        types = [getattr(e, "type", None) for e in collected]
+        assert types.index(EventType.STATE_SNAPSHOT) > types.index(
+            EventType.RUN_STARTED
+        )
+
+    async def test_no_rebase_snapshot_when_consistent(self):
+        """No snapshot when the client-sent state already matches validation."""
+        from types import SimpleNamespace
+
+        from ag_ui.core import RunStartedEvent, StateSnapshotEvent
+        from pydantic import model_validator
+
+        class DerivedState(BaseModel):
+            items: list[str] = []
+            count: int = 0
+
+            @model_validator(mode="after")
+            def _recompute(self) -> "DerivedState":
+                self.count = len(self.items)
+                return self
+
+        skill = Skill(
+            metadata=SkillMetadata(name="d", description="Derived."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="x",
+            state_type=DerivedState,
+            state_namespace="derived",
+        )
+        toolset = SkillToolset(skills=[skill])
+        incoming = {"derived": {"items": ["a"], "count": 1}}  # consistent
+
+        class FakeAdapter:
+            run_input = SimpleNamespace(state=incoming)
+
+            async def run_stream(self, **kwargs: Any) -> AsyncIterator[BaseEvent]:
+                yield RunStartedEvent(
+                    type=EventType.RUN_STARTED, thread_id="t", run_id="r"
+                )
+
+        collected: list[BaseEvent] = []
+        async with run_agui_stream(adapter=FakeAdapter(), toolset=toolset) as stream:
+            async for e in stream:
+                collected.append(e)
+
+        assert not [e for e in collected if isinstance(e, StateSnapshotEvent)]
+
+    async def test_no_rebase_snapshot_without_toolset(self):
+        """With no toolset there is nothing to rebase, even with inbound state."""
+        from types import SimpleNamespace
+
+        from ag_ui.core import RunStartedEvent, StateSnapshotEvent
+
+        class FakeAdapter:
+            run_input = SimpleNamespace(state={"whatever": {"a": 1}})
+
+            async def run_stream(self, **kwargs: Any) -> AsyncIterator[BaseEvent]:
+                yield RunStartedEvent(
+                    type=EventType.RUN_STARTED, thread_id="t", run_id="r"
+                )
+
+        collected: list[BaseEvent] = []
+        async with run_agui_stream(adapter=FakeAdapter(), toolset=None) as stream:
+            async for e in stream:
+                collected.append(e)
+
+        assert not [e for e in collected if isinstance(e, StateSnapshotEvent)]
+
+    async def test_rebase_snapshot_emitted_without_run_started(self):
+        """The rebase snapshot still flushes when the run yields no RUN_STARTED."""
+        from types import SimpleNamespace
+
+        from ag_ui.core import StateSnapshotEvent
+        from pydantic import model_validator
+
+        class DerivedState(BaseModel):
+            items: list[str] = []
+            count: int = 0
+
+            @model_validator(mode="after")
+            def _recompute(self) -> "DerivedState":
+                self.count = len(self.items)
+                return self
+
+        skill = Skill(
+            metadata=SkillMetadata(name="d", description="Derived."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="x",
+            state_type=DerivedState,
+            state_namespace="derived",
+        )
+        toolset = SkillToolset(skills=[skill])
+        incoming = {"derived": {"items": ["a", "b"], "count": 0}}
+
+        class FakeAdapter:
+            run_input = SimpleNamespace(state=incoming)
+
+            async def run_stream(self, **kwargs: Any) -> AsyncIterator[BaseEvent]:
+                if False:  # yields nothing; no RUN_STARTED
+                    yield  # type: ignore[unreachable]
+
+        collected: list[BaseEvent] = []
+        async with run_agui_stream(adapter=FakeAdapter(), toolset=toolset) as stream:
+            async for e in stream:
+                collected.append(e)
+
+        snapshots = [e for e in collected if isinstance(e, StateSnapshotEvent)]
+        assert len(snapshots) == 1
+        assert snapshots[0].snapshot["derived"]["count"] == 2
+
+    async def test_invalid_inbound_state_does_not_leak_sink(self):
+        """Invalid client state must not raise out of __aenter__ or leave the
+        event sink attached; the run surfaces the error normally instead."""
+        from types import SimpleNamespace
+
+        from ag_ui.core import RunStartedEvent, StateSnapshotEvent
+        from pydantic import model_validator
+
+        class DerivedState(BaseModel):
+            items: list[str] = []
+            count: int = 0
+
+            @model_validator(mode="after")
+            def _recompute(self) -> "DerivedState":
+                self.count = len(self.items)
+                return self
+
+        skill = Skill(
+            metadata=SkillMetadata(name="d", description="Derived."),
+            source=SkillSource.ENTRYPOINT,
+            instructions="x",
+            state_type=DerivedState,
+            state_namespace="derived",
+        )
+        toolset = SkillToolset(skills=[skill])
+        # Not coercible to int -> ValidationError during restore.
+        incoming = {"derived": {"count": "not-an-int"}}
+
+        class FakeAdapter:
+            run_input = SimpleNamespace(state=incoming)
+
+            async def run_stream(self, **kwargs: Any) -> AsyncIterator[BaseEvent]:
+                yield RunStartedEvent(
+                    type=EventType.RUN_STARTED, thread_id="t", run_id="r"
+                )
+
+        collected: list[BaseEvent] = []
+        async with run_agui_stream(adapter=FakeAdapter(), toolset=toolset) as stream:
+            async for e in stream:
+                collected.append(e)
+
+        # No rebase snapshot (state was invalid), and the sink is released.
+        assert not [e for e in collected if isinstance(e, StateSnapshotEvent)]
+        assert toolset._event_sink is None
+
 
 def _make_run_input(message: str) -> Any:
     """Create a minimal RunAgentInput for testing."""
