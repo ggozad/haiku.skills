@@ -860,7 +860,12 @@ class AguiEventStream:
         incoming = getattr(run_input, "state", None)
         if not isinstance(incoming, dict) or not incoming:
             return None
-        toolset.restore_state_snapshot(incoming)
+        try:
+            toolset.restore_state_snapshot(incoming)
+        except Exception:
+            # Invalid inbound state: skip the rebase and let the run surface
+            # the validation error as a RUN_ERROR event as usual.
+            return None
         recomputed = toolset.build_state_snapshot()
         drifted = any(incoming.get(ns) != value for ns, value in recomputed.items())
         if not drifted:
