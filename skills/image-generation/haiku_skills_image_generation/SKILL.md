@@ -1,6 +1,6 @@
 ---
 name: image-generation
-description: Generate images from text prompts using Ollama.
+description: Generate images from text prompts using Ollama or Atlas Cloud.
 ---
 
 # Image Generation
@@ -8,6 +8,8 @@ description: Generate images from text prompts using Ollama.
 Use the **generate_image** tool to create images from text descriptions.
 
 The tool accepts `width` and `height` parameters (default 1024x1024) and returns the file path of the generated image.
+
+Set `IMAGE_GENERATION_PROVIDER=atlas` and `ATLASCLOUD_API_KEY` to use Atlas Cloud. Ollama remains the default provider. Atlas generation submits once, then polls the prediction endpoint with bounded GET requests.
 
 ## Workflow
 

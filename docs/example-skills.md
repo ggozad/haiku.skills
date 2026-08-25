@@ -28,7 +28,7 @@ Tools: `search`, `fetch_page`. Requires `BRAVE_API_KEY` environment variable.
 
 ## image-generation
 
-Image generation via [Ollama](https://ollama.com/).
+Image generation via [Ollama](https://ollama.com/) or optional Atlas Cloud configuration.
 
 ```bash
 uv add haiku-skills-image-generation
