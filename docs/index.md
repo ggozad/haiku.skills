@@ -1,5 +1,11 @@
 # haiku.skills
 
+!!! warning "Deprecated"
+    haiku.skills is unmaintained as of September 2026. There will be no further
+    releases or fixes. Use
+    [pydantic-ai-harness](https://github.com/ggozad/pydantic-ai-harness) instead.
+    The packages already on PyPI stay installable.
+
 Skill-powered AI agents implementing the [Agent Skills specification](https://agentskills.io/specification) with [pydantic-ai](https://ai.pydantic.dev/).
 
 ## How it works

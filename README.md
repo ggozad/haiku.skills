@@ -1,5 +1,11 @@
 # haiku.skills
 
+> [!WARNING]
+> **Deprecated.** haiku.skills is unmaintained as of September 2026. There will be
+> no further releases or fixes. Use
+> [pydantic-ai-harness](https://github.com/ggozad/pydantic-ai-harness) instead.
+> The packages already on PyPI stay installable.
+
 [![Tests](https://github.com/ggozad/haiku.skills/actions/workflows/test.yml/badge.svg)](https://github.com/ggozad/haiku.skills/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/ggozad/haiku.skills/graph/badge.svg)](https://codecov.io/gh/ggozad/haiku.skills)
 
